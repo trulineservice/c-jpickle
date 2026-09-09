@@ -148,12 +148,17 @@ export default async function BookingSuccessPage({ params, searchParams }: PageP
       payment_method: 'paymongo',
       notes: null,
       created_at: now.toISOString(),
-      courts: { name: 'Court 1 - Indoor (Pro Cushion)', type: 'indoor', hourly_rate: 300 },
+      courts: {
+        name: 'Court 1 - Indoor (Pro Cushion)',
+        type: 'indoor',
+        hourly_rate: 300,
+      },
       profiles: null,
     };
   } else {
     booking = rawBooking as unknown as RawSuccessBooking;
   }
+
   const court = Array.isArray(booking.courts) ? booking.courts[0] : booking.courts;
   const profile = Array.isArray(booking.profiles) ? booking.profiles[0] : booking.profiles;
   const customerName = booking.guest_name || profile?.full_name || 'Player';

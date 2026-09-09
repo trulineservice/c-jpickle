@@ -23,22 +23,22 @@ export default async function LandingPage() {
     {
       id: "court-1",
       name: "Court 1 — Indoor",
-      category: "",
+      category: "USA Pickleball Specification",
       badge: "Just In",
       price: "₱300",
       rateText: "/ hour",
-      specs: "",
+      specs: "20' × 44' • 8mm Cushion Shock Pad",
       image: "/court-overhead.png",
       colors: ["#111111", "#1e3a5f", "#007d48"],
     },
     {
       id: "court-2",
       name: "Court 2 — Indoor",
-      category: "",
+      category: "USA Pickleball Specification",
       badge: "High Demand",
       price: "₱300",
       rateText: "/ hour",
-      specs: "",
+      specs: "20' × 44' • 8mm Cushion Shock Pad",
       image: "/court-overhead.png",
       colors: ["#111111", "#2b3244", "#d30005"],
     },
@@ -118,11 +118,11 @@ export default async function LandingPage() {
   ];
 
   return (
-    <div className="flex-1 flex flex-col font-sans bg-white text-[#111111]">
+    <div className="flex-1 flex flex-col font-sans bg-background text-foreground">
 
       {/* 1. EDITORIAL CAMPAIGN HERO (Towering 96px Bebas Neue Uppercase Headline) */}
       <section className="relative w-full max-w-[1440px] mx-auto px-4 sm:px-8 pt-4 pb-12">
-        <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] min-h-[480px] sm:min-h-[580px] bg-[#f5f5f5] overflow-hidden">
+        <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] min-h-[480px] sm:min-h-[580px] bg-[#f5f5f5] dark:bg-[#18181c] overflow-hidden">
           <Image
             src="/hero-action.jpg"
             alt="C&J Pickleball Arena Athlete Action"
@@ -175,18 +175,18 @@ export default async function LandingPage() {
 
       {/* 2. SECTION RHYTHM: 48px GAP • FEATURED COURTS GRID (3-UP PLP CATALOG) */}
       <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 py-12">
-        <div className="flex items-baseline justify-between border-b border-[#cacacb] pb-4 mb-8">
+        <div className="flex items-baseline justify-between border-b border-[#cacacb] dark:border-[#27272a] pb-4 mb-8">
           <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-[#707072] block mb-1">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93] block mb-1">
               Arena Inventory
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] uppercase">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] dark:text-foreground uppercase">
               Featured Courts
             </h2>
           </div>
           <Link
             href="/book"
-            className="text-sm font-medium text-[#111111] hover:text-[#707072] flex items-center gap-1"
+            className="text-sm font-medium text-[#111111] dark:text-foreground hover:text-[#707072] dark:hover:text-[#8a8a93] flex items-center gap-1"
           >
             <span>View All Slots</span>
             <ArrowRight className="w-4 h-4" />
@@ -196,9 +196,9 @@ export default async function LandingPage() {
         {/* 3-Up Product Card Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {courts.map((court) => (
-            <div key={court.id} className="group flex flex-col bg-white">
+            <div key={court.id} className="group flex flex-col bg-white dark:bg-[#121215] border border-transparent dark:border-[#222226] p-0 md:p-3 transition-colors">
               {/* Product Card Image: Square 1:1 on Soft-Cloud (#f5f5f5) */}
-              <div className="relative aspect-square w-full bg-[#f5f5f5] overflow-hidden">
+              <div className="relative aspect-square w-full bg-[#f5f5f5] dark:bg-[#18181c] overflow-hidden">
                 <Image
                   src={court.image}
                   alt={court.name}
@@ -209,7 +209,7 @@ export default async function LandingPage() {
 
                 {/* Promo Badge (badge-promo) */}
                 <div className="absolute top-3 left-3 z-10">
-                  <span className="inline-block bg-white border border-[#cacacb] text-[#111111] text-xs font-semibold px-3 py-1 rounded-full">
+                  <span className="inline-block bg-white dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs font-semibold px-3 py-1 rounded-full">
                     {court.badge}
                   </span>
                 </div>
@@ -222,36 +222,36 @@ export default async function LandingPage() {
                   {court.colors.map((color, idx) => (
                     <span
                       key={idx}
-                      className={`w-3 h-3 rounded-full border ${idx === 0 ? "ring-1 ring-[#111111] ring-offset-1" : "border-[#cacacb]"
+                      className={`w-3 h-3 rounded-full border ${idx === 0 ? "ring-1 ring-[#111111] dark:ring-white ring-offset-1 dark:ring-offset-[#121215]" : "border-[#cacacb] dark:border-[#27272a]"
                         }`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
                 </div>
 
-                <h3 className="text-base font-semibold text-[#111111] group-hover:text-[#707072] transition-colors">
+                <h3 className="text-base font-semibold text-[#111111] dark:text-foreground group-hover:text-[#707072] dark:group-hover:text-[#8a8a93] transition-colors">
                   {court.name}
                 </h3>
-                <p className="text-sm text-[#707072]">
+                <p className="text-sm text-[#707072] dark:text-[#8a8a93]">
                   {court.category}
                 </p>
-                <p className="text-xs text-[#707072] pt-0.5">
+                <p className="text-xs text-[#707072] dark:text-[#8a8a93] pt-0.5">
                   {court.specs}
                 </p>
 
                 {/* Price Row */}
                 <div className="pt-2 flex items-baseline justify-between">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-base font-bold text-[#111111]">
+                    <span className="text-base font-bold text-[#111111] dark:text-foreground">
                       {court.price}
                     </span>
-                    <span className="text-xs text-[#707072]">
+                    <span className="text-xs text-[#707072] dark:text-[#8a8a93]">
                       {court.rateText}
                     </span>
                   </div>
 
                   <Link href="/book">
-                    <Button size="sm" className="bg-[#111111] text-white hover:bg-[#222222] text-xs px-4">
+                    <Button size="sm" className="bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-[#ededed] text-xs px-4 cursor-pointer">
                       Book Now
                     </Button>
                   </Link>
@@ -263,19 +263,19 @@ export default async function LandingPage() {
       </section>
 
       {/* 3. PRO GEAR & ACCESSORIES RAIL (4-UP PRODUCT CATALOG) */}
-      <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 py-12 border-t border-[#cacacb]">
-        <div className="flex items-baseline justify-between border-b border-[#cacacb] pb-4 mb-8">
+      <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 py-12 border-t border-[#cacacb] dark:border-[#27272a]">
+        <div className="flex items-baseline justify-between border-b border-[#cacacb] dark:border-[#27272a] pb-4 mb-8">
           <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-[#707072] block mb-1">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93] block mb-1">
               Pro Shop &amp; Equipment
             </span>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] uppercase">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] dark:text-foreground uppercase">
               Tournament Gear &amp; Rentals
             </h2>
           </div>
           <Link
             href="/pricing"
-            className="text-sm font-medium text-[#111111] hover:text-[#707072] flex items-center gap-1"
+            className="text-sm font-medium text-[#111111] dark:text-foreground hover:text-[#707072] dark:hover:text-[#8a8a93] flex items-center gap-1"
           >
             <span>Explore Gear</span>
             <ArrowRight className="w-4 h-4" />
@@ -285,9 +285,9 @@ export default async function LandingPage() {
         {/* 4-Up Gear Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {gearItems.map((item) => (
-            <div key={item.id} className="group flex flex-col bg-white">
+            <div key={item.id} className="group flex flex-col bg-white dark:bg-[#121215] border border-transparent dark:border-[#222226] p-0 md:p-3 transition-colors">
               {/* 1:1 Square Product Image */}
-              <div className="relative aspect-square w-full bg-[#f5f5f5] overflow-hidden">
+              <div className="relative aspect-square w-full bg-[#f5f5f5] dark:bg-[#18181c] overflow-hidden">
                 <Image
                   src={item.image}
                   alt={item.name}
@@ -296,7 +296,7 @@ export default async function LandingPage() {
                   className="object-cover object-center p-4 transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="absolute top-2.5 left-2.5 z-10">
-                  <span className="inline-block bg-white border border-[#cacacb] text-[#111111] text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
+                  <span className="inline-block bg-white dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
                     {item.badge}
                   </span>
                 </div>
@@ -304,17 +304,17 @@ export default async function LandingPage() {
 
               {/* Metadata */}
               <div className="pt-3 space-y-1">
-                <h4 className="text-sm font-semibold text-[#111111] line-clamp-1 group-hover:text-[#707072]">
+                <h4 className="text-sm font-semibold text-[#111111] dark:text-foreground line-clamp-1 group-hover:text-[#707072] dark:group-hover:text-[#8a8a93]">
                   {item.name}
                 </h4>
-                <p className="text-xs text-[#707072]">
+                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
                   {item.category}
                 </p>
                 <div className="pt-1 flex items-baseline justify-between">
-                  <span className="text-sm font-bold text-[#111111]">
+                  <span className="text-sm font-bold text-[#111111] dark:text-foreground">
                     {item.price}
                   </span>
-                  <span className="text-[11px] text-[#707072]">
+                  <span className="text-[11px] text-[#707072] dark:text-[#8a8a93]">
                     {item.type}
                   </span>
                 </div>
@@ -352,7 +352,7 @@ export default async function LandingPage() {
                 <Button
                   size="lg"
                   variant="on-image"
-                  className="bg-white text-[#111111] hover:bg-[#f5f5f5] text-sm font-medium h-12 px-8"
+                  className="bg-white text-[#111111] hover:bg-[#f5f5f5] text-sm font-medium h-12 px-8 cursor-pointer"
                 >
                   Read Court Guidelines
                 </Button>
@@ -365,10 +365,10 @@ export default async function LandingPage() {
       {/* 5. INTERACTIVE TECHNICAL BLUEPRINT */}
       <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 py-12">
         <div className="mb-8">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#707072] block mb-1">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93] block mb-1">
             Arena Architecture
           </span>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] uppercase">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] dark:text-foreground uppercase">
             Court Blueprint &amp; NVZ Strategy
           </h2>
         </div>
@@ -377,22 +377,22 @@ export default async function LandingPage() {
 
       {/* 6. PDP-STYLE DISCLOSURE ROWS / FREQUENTLY ASKED QUESTIONS */}
       <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 py-12">
-        <div className="border-b border-[#cacacb] pb-4 mb-8">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#707072] block mb-1">
+        <div className="border-b border-[#cacacb] dark:border-[#27272a] pb-4 mb-8">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93] block mb-1">
             Player Information
           </span>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] uppercase">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] dark:text-foreground uppercase">
             Frequently Asked Questions
           </h2>
         </div>
 
-        <div className="divide-y divide-[#cacacb] border-t border-b border-[#cacacb]">
+        <div className="divide-y divide-[#cacacb] dark:divide-[#27272a] border-t border-b border-[#cacacb] dark:border-[#27272a]">
           {faqs.map((faq, idx) => (
             <div key={idx} className="py-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
-              <h3 className="text-base font-semibold text-[#111111] md:w-1/3 shrink-0">
+              <h3 className="text-base font-semibold text-[#111111] dark:text-foreground md:w-1/3 shrink-0">
                 {faq.q}
               </h3>
-              <p className="text-sm text-[#707072] leading-relaxed md:w-2/3">
+              <p className="text-sm text-[#707072] dark:text-[#8a8a93] leading-relaxed md:w-2/3">
                 {faq.a}
               </p>
             </div>

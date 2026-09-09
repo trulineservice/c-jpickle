@@ -69,19 +69,19 @@ export function PickleballCourtVisualizer({
   const current = zones[activeZone] || zones.kitchen;
 
   return (
-    <div className="w-full bg-[#f5f5f5] border border-[#cacacb] rounded-none p-6 sm:p-10 space-y-8 font-sans text-[#111111]">
+    <div className="w-full bg-[#f5f5f5] dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] rounded-none p-6 sm:p-10 space-y-8 font-sans text-[#111111] dark:text-foreground">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-[#cacacb] pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 border-b border-[#cacacb] dark:border-[#27272a] pb-6">
         <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-[#707072] block mb-1">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93] block mb-1">
             Technical Blueprint
           </span>
-          <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111]">
+          <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] dark:text-foreground">
             Official 20&apos; × 44&apos; USAP Court Architecture
           </h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-3 py-1 bg-white border border-[#cacacb] rounded-full text-[#111111]">
+          <span className="text-xs font-semibold px-3 py-1 bg-white dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] rounded-full text-[#111111] dark:text-foreground">
             {selectedCourtName}
           </span>
         </div>
@@ -97,8 +97,8 @@ export function PickleballCourtVisualizer({
               onClick={() => setActiveZone(key)}
               className={`h-9 px-4 rounded-full text-xs font-medium transition-all cursor-pointer ${
                 isActive
-                  ? "bg-[#111111] text-white"
-                  : "bg-white text-[#111111] border border-[#cacacb] hover:border-[#111111]"
+                  ? "bg-[#111111] dark:bg-white text-white dark:text-[#111111]"
+                  : "bg-white dark:bg-[#18181c] text-[#111111] dark:text-foreground border border-[#cacacb] dark:border-[#27272a] hover:border-[#111111] dark:hover:border-white"
               }`}
             >
               {zone.label}
@@ -108,7 +108,7 @@ export function PickleballCourtVisualizer({
       </div>
 
       {/* Technical Blueprint SVG */}
-      <div className="relative w-full max-w-3xl mx-auto bg-white border border-[#cacacb] p-4 sm:p-8">
+      <div className="relative w-full max-w-3xl mx-auto bg-white dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] p-4 sm:p-8">
         <svg
           viewBox="0 0 600 300"
           className="w-full h-auto select-none overflow-visible"
@@ -119,8 +119,7 @@ export function PickleballCourtVisualizer({
             y="10"
             width="580"
             height="280"
-            fill="#f5f5f5"
-            stroke="#cacacb"
+            className="fill-[#f5f5f5] dark:fill-[#121215] stroke-[#cacacb] dark:stroke-[#27272a]"
             strokeWidth="1"
           />
 
@@ -130,8 +129,7 @@ export function PickleballCourtVisualizer({
             y="30"
             width="520"
             height="240"
-            fill="#ffffff"
-            stroke="#111111"
+            className="fill-white dark:fill-[#1a1a20] stroke-[#111111] dark:stroke-white"
             strokeWidth="2.5"
           />
 
@@ -143,10 +141,9 @@ export function PickleballCourtVisualizer({
             width="175"
             height="120"
             fill={activeZone === "service_left" ? "#111111" : "#ffffff"}
-            fillOpacity={activeZone === "service_left" ? 0.15 : 1}
-            stroke="#111111"
+            fillOpacity={activeZone === "service_left" ? 0.25 : 0.05}
+            className="stroke-[#111111] dark:stroke-white/80 cursor-pointer transition-colors"
             strokeWidth="1.5"
-            className="cursor-pointer transition-colors"
             onClick={() => setActiveZone("service_left")}
           />
           {/* Left Even (bottom) */}
@@ -156,10 +153,9 @@ export function PickleballCourtVisualizer({
             width="175"
             height="120"
             fill={activeZone === "service_right" ? "#111111" : "#ffffff"}
-            fillOpacity={activeZone === "service_right" ? 0.15 : 1}
-            stroke="#111111"
+            fillOpacity={activeZone === "service_right" ? 0.25 : 0.05}
+            className="stroke-[#111111] dark:stroke-white/80 cursor-pointer transition-colors"
             strokeWidth="1.5"
-            className="cursor-pointer transition-colors"
             onClick={() => setActiveZone("service_right")}
           />
 
@@ -169,11 +165,10 @@ export function PickleballCourtVisualizer({
             y="30"
             width="85"
             height="240"
-            fill={activeZone === "kitchen" ? "#111111" : "#f5f5f5"}
-            fillOpacity={activeZone === "kitchen" ? 0.2 : 0.8}
-            stroke="#111111"
+            fill={activeZone === "kitchen" ? "#111111" : "#007d48"}
+            fillOpacity={activeZone === "kitchen" ? 0.35 : 0.12}
+            className="stroke-[#111111] dark:stroke-white/80 cursor-pointer transition-colors"
             strokeWidth="1.5"
-            className="cursor-pointer transition-colors"
             onClick={() => setActiveZone("kitchen")}
           />
 
@@ -183,11 +178,10 @@ export function PickleballCourtVisualizer({
             y="30"
             width="85"
             height="240"
-            fill={activeZone === "kitchen" ? "#111111" : "#f5f5f5"}
-            fillOpacity={activeZone === "kitchen" ? 0.2 : 0.8}
-            stroke="#111111"
+            fill={activeZone === "kitchen" ? "#111111" : "#007d48"}
+            fillOpacity={activeZone === "kitchen" ? 0.35 : 0.12}
+            className="stroke-[#111111] dark:stroke-white/80 cursor-pointer transition-colors"
             strokeWidth="1.5"
-            className="cursor-pointer transition-colors"
             onClick={() => setActiveZone("kitchen")}
           />
 
@@ -199,10 +193,9 @@ export function PickleballCourtVisualizer({
             width="175"
             height="120"
             fill={activeZone === "service_right" ? "#111111" : "#ffffff"}
-            fillOpacity={activeZone === "service_right" ? 0.15 : 1}
-            stroke="#111111"
+            fillOpacity={activeZone === "service_right" ? 0.25 : 0.05}
+            className="stroke-[#111111] dark:stroke-white/80 cursor-pointer transition-colors"
             strokeWidth="1.5"
-            className="cursor-pointer transition-colors"
             onClick={() => setActiveZone("service_right")}
           />
           {/* Right Odd (bottom) */}
@@ -212,10 +205,9 @@ export function PickleballCourtVisualizer({
             width="175"
             height="120"
             fill={activeZone === "service_left" ? "#111111" : "#ffffff"}
-            fillOpacity={activeZone === "service_left" ? 0.15 : 1}
-            stroke="#111111"
+            fillOpacity={activeZone === "service_left" ? 0.25 : 0.05}
+            className="stroke-[#111111] dark:stroke-white/80 cursor-pointer transition-colors"
             strokeWidth="1.5"
-            className="cursor-pointer transition-colors"
             onClick={() => setActiveZone("service_left")}
           />
 
@@ -225,24 +217,24 @@ export function PickleballCourtVisualizer({
             y1="22"
             x2="300"
             y2="278"
-            stroke={activeZone === "net" ? "#d30005" : "#111111"}
+            stroke={activeZone === "net" ? "#d30005" : "currentColor"}
             strokeWidth={activeZone === "net" ? 4 : 2.5}
             strokeDasharray="4 2"
-            className="cursor-pointer"
+            className="text-[#111111] dark:text-white cursor-pointer"
             onClick={() => setActiveZone("net")}
           />
           {/* Net Posts */}
-          <circle cx="300" cy="22" r="4" fill="#111111" />
-          <circle cx="300" cy="278" r="4" fill="#111111" />
+          <circle cx="300" cy="22" r="4" className="fill-[#111111] dark:fill-white" />
+          <circle cx="300" cy="278" r="4" className="fill-[#111111] dark:fill-white" />
 
           {/* Architectural Dimension Callouts */}
           <text x="300" y="150" textAnchor="middle" fill="#707072" fontSize="10" fontWeight="600">
             NET (34&quot; CENTER)
           </text>
-          <text x="257" y="150" textAnchor="middle" fill="#111111" fontSize="10" fontWeight="700">
+          <text x="257" y="150" textAnchor="middle" className="fill-[#111111] dark:fill-white font-bold" fontSize="10">
             7&apos; NVZ
           </text>
-          <text x="342" y="150" textAnchor="middle" fill="#111111" fontSize="10" fontWeight="700">
+          <text x="342" y="150" textAnchor="middle" className="fill-[#111111] dark:fill-white font-bold" fontSize="10">
             7&apos; NVZ
           </text>
           <text x="127" y="90" textAnchor="middle" fill="#707072" fontSize="10" fontWeight="500">
@@ -259,7 +251,7 @@ export function PickleballCourtVisualizer({
           </text>
 
           {/* Outer Dimension Lines */}
-          <line x1="40" y1="288" x2="560" y2="288" stroke="#cacacb" strokeWidth="1" />
+          <line x1="40" y1="288" x2="560" y2="288" className="stroke-[#cacacb] dark:stroke-[#27272a]" strokeWidth="1" />
           <text x="300" y="297" textAnchor="middle" fill="#707072" fontSize="9" fontWeight="600">
             44 FEET OVERALL
           </text>
@@ -267,18 +259,18 @@ export function PickleballCourtVisualizer({
       </div>
 
       {/* Zone Detail Panel */}
-      <div className="bg-white border border-[#cacacb] p-6 sm:p-8 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#e5e5e5] pb-4">
+      <div className="bg-white dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] p-6 sm:p-8 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#e5e5e5] dark:border-[#27272a] pb-4">
           <div>
-            <h4 className="text-xl font-bold tracking-tight text-[#111111]">
+            <h4 className="text-xl font-bold tracking-tight text-[#111111] dark:text-foreground">
               {current.title}
             </h4>
-            <span className="text-xs text-[#707072] font-semibold tracking-wide">
+            <span className="text-xs text-[#707072] dark:text-[#8a8a93] font-semibold tracking-wide">
               {current.dims}
             </span>
           </div>
           <Link href="/book">
-            <Button size="sm" className="bg-[#111111] text-white hover:bg-[#222222]">
+            <Button size="sm" className="bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-[#ededed] cursor-pointer">
               Book Court (₱300/hr)
             </Button>
           </Link>
@@ -286,26 +278,26 @@ export function PickleballCourtVisualizer({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2 text-sm">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#111111] block mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground block mb-1">
               Function
             </span>
-            <p className="text-[#707072] leading-relaxed">
+            <p className="text-[#707072] dark:text-[#8a8a93] leading-relaxed">
               {current.desc}
             </p>
           </div>
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#111111] block mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground block mb-1">
               USAP Rule
             </span>
-            <p className="text-[#707072] leading-relaxed">
+            <p className="text-[#707072] dark:text-[#8a8a93] leading-relaxed">
               {current.rules}
             </p>
           </div>
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#111111] block mb-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground block mb-1">
               Pro Tactic
             </span>
-            <p className="text-[#707072] leading-relaxed">
+            <p className="text-[#707072] dark:text-[#8a8a93] leading-relaxed">
               {current.tactics}
             </p>
           </div>

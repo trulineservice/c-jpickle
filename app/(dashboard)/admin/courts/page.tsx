@@ -35,24 +35,24 @@ export default async function AdminCourtsPage() {
   const maintenanceCount = (courts?.length || 0) - activeCount;
 
   return (
-    <div className="p-6 sm:p-10 max-w-[1440px] mx-auto space-y-8 text-[#111111] font-sans bg-white">
+    <div className="p-6 sm:p-10 max-w-[1440px] mx-auto space-y-8 text-foreground font-sans bg-background">
       
       {/* Header & Add Court Modal */}
-      <div className="flex flex-col md:flex-row items-start md:items-baseline justify-between gap-4 border-b border-[#cacacb] pb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-baseline justify-between gap-4 border-b border-[#cacacb] dark:border-[#222226] pb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#707072]">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93]">
               Administration
             </span>
-            <span className="text-xs text-[#cacacb]">•</span>
-            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#f5f5f5] text-[#111111] border border-[#cacacb]">
+            <span className="text-xs text-[#cacacb] dark:text-[#27272a]">•</span>
+            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a]">
               Facility Management
             </span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-[#111111]">
+          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-foreground">
             COURT &amp; ARENA INFRASTRUCTURE
           </h1>
-          <p className="text-xs text-[#707072] mt-1">
+          <p className="text-xs text-[#707072] dark:text-[#8a8a93] mt-1">
             Configure championship courts, hourly rate structures, and availability schedules.
           </p>
         </div>
@@ -60,24 +60,24 @@ export default async function AdminCourtsPage() {
         <Dialog>
           <DialogTrigger
             render={
-              <Button size="sm" className="bg-[#111111] text-white hover:bg-[#222222] h-10 px-5 text-xs font-medium rounded-full">
+              <Button size="sm" className="bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 h-10 px-5 text-xs font-medium rounded-full cursor-pointer">
                 <Plus className="h-4 w-4 mr-2" /> Add New Court
               </Button>
             }
           />
-          <DialogContent className="sm:max-w-md bg-white border border-[#cacacb] text-[#111111] rounded-none p-6 sm:p-8 shadow-2xl">
+          <DialogContent className="sm:max-w-md bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-foreground rounded-none p-6 sm:p-8 shadow-2xl">
             <form action={createCourt}>
               <DialogHeader className="space-y-1 pb-2">
-                <DialogTitle className="text-2xl font-bold tracking-tight text-[#111111]">
+                <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
                   Commission Court Facility
                 </DialogTitle>
-                <DialogDescription className="text-xs text-[#707072]">
+                <DialogDescription className="text-xs text-[#707072] dark:text-[#8a8a93]">
                   Enter the facility details and hourly rate for the new pickleball court.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-[#111111]">
+                  <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-foreground">
                     Court Name / Identifier
                   </Label>
                   <Input 
@@ -85,11 +85,11 @@ export default async function AdminCourtsPage() {
                     name="name" 
                     placeholder="e.g. Court 3 - Indoor (Pro Cushion)" 
                     required 
-                    className="h-10 px-4 rounded-full bg-[#f5f5f5] text-xs text-[#111111] border-transparent focus:border-[#111111]"
+                    className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-foreground border border-transparent focus:border-[#111111] dark:focus:border-white"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="rate" className="text-xs font-bold uppercase tracking-wider text-[#111111]">
+                  <Label htmlFor="rate" className="text-xs font-bold uppercase tracking-wider text-foreground">
                     Hourly Rate (PHP)
                   </Label>
                   <Input 
@@ -100,12 +100,12 @@ export default async function AdminCourtsPage() {
                     min="1" 
                     step="1" 
                     required 
-                    className="h-10 px-4 rounded-full bg-[#f5f5f5] text-xs text-[#111111] border-transparent focus:border-[#111111]"
+                    className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-foreground border border-transparent focus:border-[#111111] dark:focus:border-white"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" className="w-full h-10 rounded-full bg-[#111111] hover:bg-[#222222] text-white font-semibold text-xs transition-colors">
+                <Button type="submit" className="w-full h-10 rounded-full bg-[#111111] dark:bg-white hover:bg-[#222222] dark:hover:bg-zinc-200 text-white dark:text-[#111111] font-semibold text-xs transition-colors cursor-pointer">
                   Save &amp; Activate Court
                 </Button>
               </DialogFooter>
@@ -116,62 +116,62 @@ export default async function AdminCourtsPage() {
 
       {/* Overview Stat Tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="border border-[#cacacb] p-6 bg-white space-y-1">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#707072]">Total Facilities</p>
-          <div className="text-4xl font-display uppercase tracking-tight text-[#111111]">
+        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93]">Total Facilities</p>
+          <div className="text-4xl font-display uppercase tracking-tight text-foreground">
             {courts?.length || 0}
           </div>
-          <p className="text-[11px] text-[#707072]">Registered championship courts</p>
+          <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Registered championship courts</p>
         </div>
 
-        <div className="border border-[#cacacb] p-6 bg-white space-y-1">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#007d48]">Active Online</p>
-          <div className="text-4xl font-display uppercase tracking-tight text-[#007d48]">
+        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#007d48] dark:text-[#10b981]">Active Online</p>
+          <div className="text-4xl font-display uppercase tracking-tight text-[#007d48] dark:text-[#10b981]">
             {activeCount}
           </div>
-          <p className="text-[11px] text-[#707072]">Available on booking engine</p>
+          <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Available on booking engine</p>
         </div>
 
-        <div className="border border-[#cacacb] p-6 bg-white space-y-1">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#d30005]">Maintenance / Inactive</p>
-          <div className="text-4xl font-display uppercase tracking-tight text-[#d30005]">
+        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#d30005] dark:text-red-400">Maintenance / Inactive</p>
+          <div className="text-4xl font-display uppercase tracking-tight text-[#d30005] dark:text-red-400">
             {maintenanceCount}
           </div>
-          <p className="text-[11px] text-[#707072]">Offline for servicing</p>
+          <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Offline for servicing</p>
         </div>
       </div>
 
       {/* Courts Table */}
-      <Card className="border border-[#cacacb] bg-white rounded-none overflow-hidden shadow-none">
-        <CardHeader className="border-b border-[#cacacb] bg-[#f5f5f5] p-6">
+      <Card className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] rounded-none overflow-hidden shadow-none">
+        <CardHeader className="border-b border-[#cacacb] dark:border-[#222226] bg-[#f5f5f5] dark:bg-[#18181c] p-6">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg font-bold uppercase tracking-tight text-[#111111]">
+              <CardTitle className="text-lg font-bold uppercase tracking-tight text-foreground">
                 Arena Court Inventory
               </CardTitle>
-              <CardDescription className="text-xs text-[#707072] mt-0.5">
+              <CardDescription className="text-xs text-[#707072] dark:text-[#8a8a93] mt-0.5">
                 Active courts automatically publish to the player reservation portal and cashier POS timeline.
               </CardDescription>
             </div>
-            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] hidden sm:inline-block">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] hidden sm:inline-block">
               Real-time Status
             </span>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
-            <TableHeader className="bg-white border-b border-[#cacacb]">
-              <TableRow className="border-[#cacacb]">
-                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] h-12">Facility Name</TableHead>
-                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] h-12">Hourly Tariff</TableHead>
-                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] h-12">Operational Status</TableHead>
-                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-[#707072] h-12">Action Control</TableHead>
+            <TableHeader className="bg-white dark:bg-[#121215] border-b border-[#cacacb] dark:border-[#222226]">
+              <TableRow className="border-[#cacacb] dark:border-[#222226]">
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Facility Name</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Hourly Tariff</TableHead>
+                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Operational Status</TableHead>
+                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Action Control</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {!courts || courts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-16 text-[#707072] text-xs font-medium">
+                  <TableCell colSpan={4} className="text-center py-16 text-[#707072] dark:text-[#8a8a93] text-xs font-medium">
                     No courts found. Commission your first court above.
                   </TableCell>
                 </TableRow>
@@ -180,30 +180,30 @@ export default async function AdminCourtsPage() {
                   const isActive = court.is_active !== false && court.status !== 'maintenance';
 
                   return (
-                    <TableRow key={court.id} className="border-b border-[#cacacb] hover:bg-[#f5f5f5]/60 transition-colors">
-                      <TableCell className="font-bold text-[#111111] py-4">
+                    <TableRow key={court.id} className="border-b border-[#cacacb] dark:border-[#222226] hover:bg-[#f5f5f5]/60 dark:hover:bg-[#18181c]/60 transition-colors">
+                      <TableCell className="font-bold text-foreground py-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-[#f5f5f5] border border-[#cacacb] flex items-center justify-center shrink-0">
-                            <MapPin className="h-4 w-4 text-[#111111]" />
+                          <div className="w-8 h-8 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] flex items-center justify-center shrink-0">
+                            <MapPin className="h-4 w-4 text-foreground" />
                           </div>
                           <div>
-                            <span className="text-sm font-bold text-[#111111] block">{court.name}</span>
-                            <span className="text-[10px] text-[#707072] font-mono">ID: {court.id.slice(0, 8)}</span>
+                            <span className="text-sm font-bold text-foreground block">{court.name}</span>
+                            <span className="text-[10px] text-[#707072] dark:text-[#8a8a93] font-mono">ID: {court.id.slice(0, 8)}</span>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm font-semibold text-[#111111] py-4">
-                        ₱{Number(court.hourly_rate || 300).toFixed(2)} <span className="text-xs text-[#707072] font-normal">/ hour</span>
+                      <TableCell className="text-sm font-semibold text-foreground py-4">
+                        ₱{Number(court.hourly_rate || 300).toFixed(2)} <span className="text-xs text-[#707072] dark:text-[#8a8a93] font-normal">/ hour</span>
                       </TableCell>
                       <TableCell className="py-4">
                         {!isActive ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5f5f5] text-[#d30005] border border-[#d30005]/30 text-[11px] font-bold uppercase tracking-wider">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#d30005]" />
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-[#d30005] dark:text-red-400 border border-[#d30005]/30 text-[11px] font-bold uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#d30005] dark:bg-red-400" />
                             Maintenance / Offline
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5f5f5] text-[#007d48] border border-[#007d48]/30 text-[11px] font-bold uppercase tracking-wider">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#007d48]" />
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-[#007d48] dark:text-[#10b981] border border-[#007d48]/30 text-[11px] font-bold uppercase tracking-wider">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#007d48] dark:bg-[#10b981]" />
                             Active Online
                           </span>
                         )}
@@ -218,13 +218,13 @@ export default async function AdminCourtsPage() {
                             size="sm" 
                             type="submit"
                             className={!isActive 
-                              ? "border-[#007d48]/40 bg-white text-[#007d48] hover:bg-[#f5f5f5] text-xs font-semibold rounded-full h-8 px-4" 
-                              : "border-[#d30005]/40 bg-white text-[#d30005] hover:bg-[#f5f5f5] text-xs font-semibold rounded-full h-8 px-4"}
+                              ? "border-[#007d48]/40 bg-white dark:bg-[#18181c] text-[#007d48] dark:text-[#10b981] hover:bg-[#f5f5f5] dark:hover:bg-[#222226] text-xs font-semibold rounded-full h-8 px-4 cursor-pointer" 
+                              : "border-[#d30005]/40 bg-white dark:bg-[#18181c] text-[#d30005] dark:text-red-400 hover:bg-[#f5f5f5] dark:hover:bg-[#222226] text-xs font-semibold rounded-full h-8 px-4 cursor-pointer"}
                           >
                             {!isActive ? (
-                              <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-[#007d48]" /> Bring Online</>
+                              <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-[#007d48] dark:text-[#10b981]" /> Bring Online</>
                             ) : (
-                              <><Wrench className="h-3.5 w-3.5 mr-1.5 text-[#d30005]" /> Set Maintenance</>
+                              <><Wrench className="h-3.5 w-3.5 mr-1.5 text-[#d30005] dark:text-red-400" /> Set Maintenance</>
                             )}
                           </Button>
                         </form>

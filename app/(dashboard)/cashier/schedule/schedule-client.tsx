@@ -537,18 +537,18 @@ export default function ScheduleClient({
   }).format(gridMonthDate);
 
   return (
-    <div className="p-6 sm:p-10 max-w-[1440px] mx-auto min-h-screen flex flex-col bg-white text-[#111111] font-sans selection:bg-[#111111] selection:text-white space-y-6">
+    <div className="p-6 sm:p-10 max-w-[1440px] mx-auto min-h-screen flex flex-col bg-background text-foreground font-sans selection:bg-foreground selection:text-background space-y-6">
       
       {/* Success Notification Banner */}
       {successBanner && (
-        <div className="p-4 border border-[#007d48]/40 bg-[#f5f5f5] text-[#007d48] text-xs font-semibold flex items-center justify-between">
+        <div className="p-4 border border-[#007d48]/40 bg-[#f5f5f5] dark:bg-[#121215] text-[#007d48] text-xs font-semibold flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-[#007d48] shrink-0" />
             <span>{successBanner}</span>
           </div>
           <button
             onClick={() => setSuccessBanner(null)}
-            className="text-[#707072] hover:text-[#111111] text-xs px-2"
+            className="text-[#707072] dark:text-[#8a8a93] hover:text-foreground text-xs px-2"
           >
             ✕
           </button>
@@ -556,23 +556,23 @@ export default function ScheduleClient({
       )}
 
       {/* Top Header & View Mode Switcher */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-[#cacacb] pb-6">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-[#cacacb] dark:border-[#222226] pb-6">
         
         {/* Left Title & Live Pulse */}
         <div className="space-y-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#707072]">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93]">
               Operations
             </span>
-            <span className="text-xs text-[#cacacb]">•</span>
-            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#f5f5f5] text-[#111111] border border-[#cacacb]">
+            <span className="text-xs text-[#cacacb] dark:text-[#333338]">•</span>
+            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-[#111111] dark:text-foreground border border-[#cacacb] dark:border-[#27272a]">
               Live Court Scheduler
             </span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-[#111111]">
+          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-[#111111] dark:text-foreground">
             TIMELINE &amp; RESERVATIONS
           </h1>
-          <p className="text-xs text-[#707072]">
+          <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
             Real-time court availability matrix, scheduled player check-ins, and walk-in registry.
           </p>
         </div>
@@ -581,14 +581,14 @@ export default function ScheduleClient({
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           
           {/* Primary View Switcher: Calendar Grid vs Day Timeline */}
-          <div className="flex items-center bg-[#f5f5f5] p-1 rounded-full border border-[#cacacb]">
+          <div className="flex items-center bg-[#f5f5f5] dark:bg-[#18181c] p-1 rounded-full border border-[#cacacb] dark:border-[#27272a]">
             <button
               type="button"
               onClick={() => setViewMode('month_grid')}
               className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all ${
                 viewMode === 'month_grid'
-                  ? 'bg-[#111111] text-white'
-                  : 'text-[#707072] hover:text-[#111111]'
+                  ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
+                  : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
@@ -600,8 +600,8 @@ export default function ScheduleClient({
               onClick={() => setViewMode('timeline')}
               className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all ${
                 viewMode === 'timeline'
-                  ? 'bg-[#111111] text-white'
-                  : 'text-[#707072] hover:text-[#111111]'
+                  ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
+                  : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
               }`}
             >
               <ListTodo className="w-3.5 h-3.5 shrink-0" />
@@ -612,18 +612,18 @@ export default function ScheduleClient({
 
           {/* Client Search Bar */}
           <div className="relative flex-1 sm:w-52">
-            <Search className="w-3.5 h-3.5 text-[#707072] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-[#707072] dark:text-[#8a8a93] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search player name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-9 pr-8 bg-[#f5f5f5] border border-transparent text-[#111111] rounded-full text-xs font-medium focus:outline-none focus:border-[#111111] placeholder:text-[#707072]"
+              className="w-full h-10 pl-9 pr-8 bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground rounded-full text-xs font-medium focus:outline-none focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#707072] hover:text-[#111111] text-xs"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground text-xs"
               >
                 ✕
               </button>
@@ -639,7 +639,7 @@ export default function ScheduleClient({
               fetchMonthAllBookings(currentMonthStr);
             }}
             disabled={isLoading}
-            className="border-[#cacacb] text-[#111111] hover:bg-[#f5f5f5] rounded-full h-10 px-4 text-xs font-semibold"
+            className="border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full h-10 px-4 text-xs font-semibold"
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
             Sync
@@ -653,22 +653,22 @@ export default function ScheduleClient({
               setIsWalkInOpen(open);
             }}
           >
-            <DialogTrigger className="inline-flex items-center justify-center rounded-full text-xs font-semibold bg-[#111111] hover:bg-[#222222] text-white h-10 px-5 cursor-pointer">
+            <DialogTrigger className="inline-flex items-center justify-center rounded-full text-xs font-semibold bg-[#111111] dark:bg-white hover:bg-[#222222] dark:hover:bg-[#ededed] text-white dark:text-[#111111] h-10 px-5 cursor-pointer">
               <Plus className="h-4 w-4 mr-1" /> + Walk-in
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md bg-white border border-[#cacacb] text-[#111111] rounded-none p-6 sm:p-8 shadow-2xl">
+            <DialogContent className="sm:max-w-md bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground rounded-none p-6 sm:p-8 shadow-2xl">
               <form onSubmit={handleCreateWalkIn}>
                 <DialogHeader className="space-y-1 pb-2">
-                  <DialogTitle className="text-2xl font-bold tracking-tight text-[#111111]">
+                  <DialogTitle className="text-2xl font-bold tracking-tight text-[#111111] dark:text-foreground">
                     Walk-In Court Booking
                   </DialogTitle>
-                  <DialogDescription className="text-xs text-[#707072]">
+                  <DialogDescription className="text-xs text-[#707072] dark:text-[#8a8a93]">
                     Immediately reserve a court slot and record counter cash or QR tender.
                   </DialogDescription>
                 </DialogHeader>
 
                 {walkInError && (
-                  <div className="p-3 my-2 border border-[#d30005]/40 bg-[#f5f5f5] text-xs text-[#d30005] font-medium">
+                  <div className="p-3 my-2 border border-[#d30005]/40 bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-[#d30005] font-medium">
                     {walkInError}
                   </div>
                 )}
@@ -677,15 +677,15 @@ export default function ScheduleClient({
                   {/* Select Date */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-[#111111]">Reservation Date</Label>
+                      <Label className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground">Reservation Date</Label>
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => setWalkInDate(getTodayStr())}
                           className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                             walkInDate === getTodayStr()
-                              ? 'bg-[#111111] text-white border-[#111111]'
-                              : 'text-[#707072] border-[#cacacb] bg-[#f5f5f5]'
+                              ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] border-[#111111] dark:border-white'
+                              : 'text-[#707072] dark:text-[#8a8a93] border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c]'
                           }`}
                         >
                           Today
@@ -695,8 +695,8 @@ export default function ScheduleClient({
                           onClick={() => setWalkInDate(getTomorrowStr())}
                           className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
                             walkInDate === getTomorrowStr()
-                              ? 'bg-[#111111] text-white border-[#111111]'
-                              : 'text-[#707072] border-[#cacacb] bg-[#f5f5f5]'
+                              ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] border-[#111111] dark:border-white'
+                              : 'text-[#707072] dark:text-[#8a8a93] border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c]'
                           }`}
                         >
                           Tomorrow
@@ -708,20 +708,20 @@ export default function ScheduleClient({
                       value={walkInDate}
                       onChange={(e) => setWalkInDate(e.target.value)}
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] border-transparent text-[#111111] text-xs focus:border-[#111111]"
+                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs focus:border-[#111111] dark:focus:border-white"
                     />
                   </div>
 
                   {/* Select Court */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-[#111111]">Select Court</Label>
+                    <Label className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground">Select Court</Label>
                     <select
                       value={walkInCourtId}
                       onChange={(e) => setWalkInCourtId(e.target.value)}
-                      className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] border border-transparent text-[#111111] text-xs font-medium focus:border-[#111111] outline-none"
+                      className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs font-medium focus:border-[#111111] dark:focus:border-white outline-none"
                     >
                       {courts.map((c) => (
-                        <option key={c.id} value={c.id}>
+                        <option key={c.id} value={c.id} className="dark:bg-[#18181c] dark:text-foreground">
                           {c.name} (₱{Number(c.hourly_rate ?? 300).toFixed(2)}/hr)
                         </option>
                       ))}
@@ -731,14 +731,14 @@ export default function ScheduleClient({
                   {/* Start Hour & Duration */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-[#111111]">Start Time</Label>
+                      <Label className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground">Start Time</Label>
                       <select
                         value={walkInHour}
                         onChange={(e) => setWalkInHour(parseInt(e.target.value, 10))}
-                        className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] border border-transparent text-[#111111] text-xs font-medium focus:border-[#111111] outline-none"
+                        className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs font-medium focus:border-[#111111] dark:focus:border-white outline-none"
                       >
                         {OPERATING_SLOTS.map((h) => (
-                          <option key={h} value={h}>
+                          <option key={h} value={h} className="dark:bg-[#18181c] dark:text-foreground">
                             {formatHour(h)}
                           </option>
                         ))}
@@ -746,14 +746,14 @@ export default function ScheduleClient({
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-[#111111]">Duration</Label>
+                      <Label className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground">Duration</Label>
                       <select
                         value={walkInDuration}
                         onChange={(e) => setWalkInDuration(parseInt(e.target.value, 10))}
-                        className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] border border-transparent text-[#111111] text-xs font-medium focus:border-[#111111] outline-none"
+                        className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs font-medium focus:border-[#111111] dark:focus:border-white outline-none"
                       >
                         {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                          <option key={h} value={h}>
+                          <option key={h} value={h} className="dark:bg-[#18181c] dark:text-foreground">
                             {h} Hour{h > 1 ? 's' : ''} (₱{(300 * h).toLocaleString()})
                           </option>
                         ))}
@@ -763,37 +763,37 @@ export default function ScheduleClient({
 
                   {/* Client Name & Contact */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-[#111111]">Player Full Name</Label>
+                    <Label className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground">Player Full Name</Label>
                     <Input
                       placeholder="e.g. Alex Santos"
                       value={walkInName}
                       onChange={(e) => setWalkInName(e.target.value)}
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] border-transparent text-[#111111] text-xs focus:border-[#111111]"
+                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-[#111111]">Phone Number (Optional)</Label>
+                    <Label className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground">Phone Number (Optional)</Label>
                     <Input
                       placeholder="e.g. 0917 123 4567"
                       value={walkInPhone}
                       onChange={(e) => setWalkInPhone(e.target.value)}
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] border-transparent text-[#111111] text-xs focus:border-[#111111]"
+                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
                     />
                   </div>
 
                   {/* Payment Method */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-[#111111]">Tender Collected</Label>
+                    <Label className="text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-foreground">Tender Collected</Label>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setWalkInPaymentMethod('cash')}
                         className={`p-3 rounded-full border text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${
                           walkInPaymentMethod === 'cash'
-                            ? 'bg-[#111111] text-white border-[#111111]'
-                            : 'bg-[#f5f5f5] border-[#cacacb] text-[#111111]'
+                            ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] border-[#111111] dark:border-white'
+                            : 'bg-[#f5f5f5] dark:bg-[#18181c] border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground'
                         }`}
                       >
                         <Banknote className="w-4 h-4" /> Cash Counter
@@ -803,8 +803,8 @@ export default function ScheduleClient({
                         onClick={() => setWalkInPaymentMethod('counter_qr')}
                         className={`p-3 rounded-full border text-xs font-semibold flex items-center justify-center gap-2 transition-colors ${
                           walkInPaymentMethod === 'counter_qr'
-                            ? 'bg-[#111111] text-white border-[#111111]'
-                            : 'bg-[#f5f5f5] border-[#cacacb] text-[#111111]'
+                            ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] border-[#111111] dark:border-white'
+                            : 'bg-[#f5f5f5] dark:bg-[#18181c] border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground'
                         }`}
                       >
                         <QrCode className="w-4 h-4" /> Counter QR Ph
@@ -817,7 +817,7 @@ export default function ScheduleClient({
                   <Button
                     type="submit"
                     disabled={walkInLoading}
-                    className="w-full bg-[#111111] hover:bg-[#222222] text-white font-semibold rounded-full h-11 transition-colors"
+                    className="w-full bg-[#111111] dark:bg-white hover:bg-[#222222] dark:hover:bg-[#ededed] text-white dark:text-[#111111] font-semibold rounded-full h-11 transition-colors"
                   >
                     {walkInLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -840,7 +840,7 @@ export default function ScheduleClient({
         <div className="space-y-4">
           
           {/* Calendar Grid Controls Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-[#cacacb] bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215]">
             
             {/* Month Navigation */}
             <div className="flex items-center gap-2">
@@ -848,13 +848,13 @@ export default function ScheduleClient({
                 variant="outline"
                 size="icon"
                 onClick={() => handleOffsetMonth(-1)}
-                className="h-8 w-8 text-[#111111] border-[#cacacb] hover:bg-[#f5f5f5] rounded-full"
+                className="h-8 w-8 text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
 
-              <h2 className="text-xl font-display uppercase tracking-tight text-[#111111] px-2 flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-[#111111]" />
+              <h2 className="text-xl font-display uppercase tracking-tight text-[#111111] dark:text-foreground px-2 flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-[#111111] dark:text-foreground" />
                 <span>{monthFormattedTitle}</span>
               </h2>
 
@@ -862,7 +862,7 @@ export default function ScheduleClient({
                 variant="outline"
                 size="icon"
                 onClick={() => handleOffsetMonth(1)}
-                className="h-8 w-8 text-[#111111] border-[#cacacb] hover:bg-[#f5f5f5] rounded-full"
+                className="h-8 w-8 text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -875,7 +875,7 @@ export default function ScheduleClient({
                   setGridMonthDate(new Date(today.getFullYear(), today.getMonth(), 1));
                   handleDateSelect(getTodayStr());
                 }}
-                className="h-8 px-3 text-xs font-semibold text-[#111111] hover:bg-[#f5f5f5] rounded-full"
+                className="h-8 px-3 text-xs font-semibold text-[#111111] dark:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
               >
                 Today
               </Button>
@@ -883,14 +883,14 @@ export default function ScheduleClient({
 
             {/* Court Filter Pills */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-[#707072] font-semibold mr-1">Filter Court:</span>
+              <span className="text-xs text-[#707072] dark:text-[#8a8a93] font-semibold mr-1">Filter Court:</span>
               <button
                 type="button"
                 onClick={() => setSelectedCourtFilter('all')}
                 className={`px-3.5 py-1 rounded-full text-xs font-semibold transition-colors ${
                   selectedCourtFilter === 'all'
-                    ? 'bg-[#111111] text-white'
-                    : 'bg-[#f5f5f5] border border-[#cacacb] text-[#111111] hover:bg-[#e5e5e5]'
+                    ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
+                    : 'bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#e5e5e5] dark:hover:bg-[#222226]'
                 }`}
               >
                 All Courts
@@ -902,8 +902,8 @@ export default function ScheduleClient({
                   onClick={() => setSelectedCourtFilter(court.id)}
                   className={`px-3.5 py-1 rounded-full text-xs font-semibold transition-colors ${
                     selectedCourtFilter === court.id
-                      ? 'bg-[#111111] text-white'
-                      : 'bg-[#f5f5f5] border border-[#cacacb] text-[#111111] hover:bg-[#e5e5e5]'
+                      ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
+                      : 'bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#e5e5e5] dark:hover:bg-[#222226]'
                   }`}
                 >
                   {court.name.split(' - ')[0]}
@@ -914,14 +914,14 @@ export default function ScheduleClient({
           </div>
 
           {/* 7-Column Calendar Grid Matrix */}
-          <div className="border border-[#cacacb] bg-white overflow-hidden">
+          <div className="border border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215] overflow-hidden">
             
             {/* Weekday Header */}
-            <div className="grid grid-cols-7 border-b border-[#cacacb] bg-[#f5f5f5] text-center">
+            <div className="grid grid-cols-7 border-b border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] text-center">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                 <div
                   key={day}
-                  className="py-2.5 text-xs font-bold uppercase tracking-wider text-[#707072]"
+                  className="py-2.5 text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]"
                 >
                   {day}
                 </div>
@@ -929,7 +929,7 @@ export default function ScheduleClient({
             </div>
 
             {/* Month Day Cells */}
-            <div className="grid grid-cols-7 divide-x divide-y divide-[#cacacb] bg-white">
+            <div className="grid grid-cols-7 divide-x divide-y divide-[#cacacb] dark:divide-[#27272a] bg-white dark:bg-[#121215]">
               {calendarGridDays.map((dayObj) => {
                 const rawDayBookings = monthBookings[dayObj.dateStr] || [];
                 const dayBookings = rawDayBookings.filter((b) => {
@@ -955,29 +955,29 @@ export default function ScheduleClient({
                     key={dayObj.dateStr}
                     className={`min-h-[150px] sm:min-h-[190px] p-2.5 flex flex-col justify-between transition-colors group relative ${
                       !dayObj.isCurrentMonth
-                        ? 'bg-[#f5f5f5]/50 text-[#707072] opacity-50'
+                        ? 'bg-[#f5f5f5]/50 dark:bg-[#18181c]/30 text-[#707072] dark:text-[#66666e] opacity-50'
                         : dayObj.isToday
-                        ? 'bg-[#f5f5f5] ring-1 ring-inset ring-[#111111]'
-                        : 'hover:bg-[#f5f5f5]/40'
+                        ? 'bg-[#f5f5f5] dark:bg-[#18181c] ring-1 ring-inset ring-[#111111] dark:ring-white/40'
+                        : 'hover:bg-[#f5f5f5]/40 dark:hover:bg-[#18181c]/40'
                     }`}
                   >
                     
                     {/* Day Cell Header */}
-                    <div className="flex items-center justify-between pb-1.5 border-b border-[#e5e5e5]">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-[#e5e5e5] dark:border-[#222226]">
                       <div className="flex items-center gap-1.5">
                         <span
                           className={`text-xs sm:text-sm font-bold w-6 h-6 rounded-full flex items-center justify-center ${
                             dayObj.isToday
-                              ? 'bg-[#111111] text-white'
+                              ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
                               : dayObj.isCurrentMonth
-                              ? 'text-[#111111]'
-                              : 'text-[#707072]'
+                              ? 'text-[#111111] dark:text-foreground'
+                              : 'text-[#707072] dark:text-[#66666e]'
                           }`}
                         >
                           {dayObj.dayNumber}
                         </span>
                         {dayObj.isToday && (
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-[#111111] hidden sm:inline">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-[#111111] dark:text-foreground hidden sm:inline">
                             Today
                           </span>
                         )}
@@ -986,14 +986,14 @@ export default function ScheduleClient({
                       {/* Booking Count Badge or + Add Walkin Button */}
                       <div className="flex items-center gap-1">
                         {dayBookings.length > 0 ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f5f5f5] text-[#111111] border border-[#cacacb]">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-[#111111] dark:text-foreground border border-[#cacacb] dark:border-[#27272a]">
                             {dayBookings.length}
                           </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => openWalkInForSlot(courts[0]?.id || '', 8, dayObj.dateStr)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-semibold text-[#111111] hover:bg-[#111111] hover:text-white bg-[#f5f5f5] px-2 py-0.5 rounded-full border border-[#cacacb] cursor-pointer"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-semibold text-[#111111] dark:text-foreground hover:bg-[#111111] dark:hover:bg-white hover:text-white dark:hover:text-[#111111] bg-[#f5f5f5] dark:bg-[#18181c] px-2 py-0.5 rounded-full border border-[#cacacb] dark:border-[#27272a] cursor-pointer"
                             title="Add Walk-in for this date"
                           >
                             + Book
@@ -1006,7 +1006,7 @@ export default function ScheduleClient({
                     <div className="flex-1 py-1.5 space-y-1 overflow-y-auto max-h-[135px] scrollbar-none">
                       {dayBookings.length === 0 ? (
                         <div className="h-full flex items-center justify-center py-4">
-                          <span className="text-[10px] text-[#707072] font-medium">
+                          <span className="text-[10px] text-[#707072] dark:text-[#66666e] font-medium">
                             {dayObj.isCurrentMonth ? 'Available' : ''}
                           </span>
                         </div>
@@ -1025,27 +1025,27 @@ export default function ScheduleClient({
                                 e.stopPropagation();
                                 setSelectedBooking(b);
                               }}
-                              className={`p-1.5 rounded-md border text-left cursor-pointer transition-all hover:border-[#111111] flex flex-col gap-0.5 ${
+                              className={`p-1.5 rounded-md border text-left cursor-pointer transition-all hover:border-[#111111] dark:hover:border-white/50 flex flex-col gap-0.5 ${
                                 isCancelled
-                                  ? 'bg-[#f5f5f5] border-[#cacacb] text-[#707072] line-through opacity-60'
+                                  ? 'bg-[#f5f5f5] dark:bg-[#18181c] border-[#cacacb] dark:border-[#27272a] text-[#707072] dark:text-[#66666e] line-through opacity-60'
                                   : isCheckedIn
-                                  ? 'bg-[#f5f5f5] border-[#007d48]/50 text-[#007d48]'
-                                  : 'bg-[#f5f5f5] border-[#cacacb] text-[#111111]'
+                                  ? 'bg-[#f5f5f5] dark:bg-[#007d48]/10 border-[#007d48]/50 text-[#007d48]'
+                                  : 'bg-[#f5f5f5] dark:bg-[#1a1a1f] border-[#cacacb] dark:border-[#2a2a30] text-[#111111] dark:text-foreground'
                               }`}
                               title={`Click to check in: ${clientDisplayName} (${formatTimeSlot(b.start_time, b.end_time)})`}
                             >
                               {/* Client Full Name */}
                               <div className="flex items-center justify-between gap-1 truncate">
-                                <span className="text-[11px] font-bold text-[#111111] truncate">
+                                <span className="text-[11px] font-bold text-[#111111] dark:text-foreground truncate">
                                   {clientDisplayName}
                                 </span>
-                                <span className="text-[8px] font-bold uppercase tracking-wider text-[#707072] shrink-0">
+                                <span className="text-[8px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] shrink-0">
                                   {courtLabel}
                                 </span>
                               </div>
 
                               {/* Time Range */}
-                              <div className="flex items-center justify-between text-[9px] text-[#707072] font-mono">
+                              <div className="flex items-center justify-between text-[9px] text-[#707072] dark:text-[#8a8a93] font-mono">
                                 <span>{formatTimeSlot(b.start_time, b.end_time)}</span>
                                 {isCheckedIn && (
                                   <span className="text-[8px] font-bold text-[#007d48]">ARRIVED</span>
@@ -1063,7 +1063,7 @@ export default function ScheduleClient({
                             handleDateSelect(dayObj.dateStr);
                             setViewMode('timeline');
                           }}
-                          className="w-full text-center text-[9px] font-bold text-[#111111] hover:underline bg-[#f5f5f5] py-1 rounded border border-[#cacacb] block"
+                          className="w-full text-center text-[9px] font-bold text-[#111111] dark:text-foreground hover:underline bg-[#f5f5f5] dark:bg-[#18181c] py-1 rounded border border-[#cacacb] dark:border-[#27272a] block"
                         >
                           +{dayBookings.length - 4} more • Timeline →
                         </button>
@@ -1071,14 +1071,14 @@ export default function ScheduleClient({
                     </div>
 
                     {/* Footer link to switch to single day timeline */}
-                    <div className="pt-1 border-t border-[#e5e5e5] flex items-center justify-between">
+                    <div className="pt-1 border-t border-[#e5e5e5] dark:border-[#222226] flex items-center justify-between">
                       <button
                         type="button"
                         onClick={() => {
                           handleDateSelect(dayObj.dateStr);
                           setViewMode('timeline');
                         }}
-                        className="text-[9px] text-[#707072] hover:text-[#111111] font-semibold flex items-center gap-1 cursor-pointer"
+                        className="text-[9px] text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground font-semibold flex items-center gap-1 cursor-pointer"
                       >
                         <Eye className="w-3 h-3" /> Day Timeline
                       </button>
@@ -1101,43 +1101,43 @@ export default function ScheduleClient({
         <div className="space-y-4 flex-1 flex flex-col min-h-0">
           
           {/* Day Selector & Occupancy Ribbon */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border border-[#cacacb] bg-white">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215]">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => handleOffsetDay(-1)}
-                  className="h-8 w-8 text-[#111111] border-[#cacacb] hover:bg-[#f5f5f5] rounded-full"
+                  className="h-8 w-8 text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="font-bold text-sm uppercase text-[#111111] tracking-wide">{displayFormattedDate}</span>
+                <span className="font-bold text-sm uppercase text-[#111111] dark:text-foreground tracking-wide">{displayFormattedDate}</span>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => handleOffsetDay(1)}
-                  className="h-8 w-8 text-[#111111] border-[#cacacb] hover:bg-[#f5f5f5] rounded-full"
+                  className="h-8 w-8 text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 {isTodayActive && (
-                  <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#111111] text-white">
+                  <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#111111] dark:bg-white text-white dark:text-[#111111]">
                     Today
                   </span>
                 )}
               </div>
 
               {/* Facility Occupancy Meter */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#f5f5f5] border border-[#cacacb] text-xs">
-                <Activity className="w-3.5 h-3.5 text-[#111111] shrink-0" />
-                <span className="text-[#707072] font-medium">Occupancy:</span>
-                <span className="font-bold text-[#111111]">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] text-xs">
+                <Activity className="w-3.5 h-3.5 text-[#111111] dark:text-foreground shrink-0" />
+                <span className="text-[#707072] dark:text-[#8a8a93] font-medium">Occupancy:</span>
+                <span className="font-bold text-[#111111] dark:text-foreground">
                   {occupancyPercent}% ({totalHoursBooked}/{totalCapacityHours} hrs)
                 </span>
-                <div className="w-16 h-1.5 bg-[#cacacb] rounded-full overflow-hidden ml-1">
+                <div className="w-16 h-1.5 bg-[#cacacb] dark:bg-[#333338] rounded-full overflow-hidden ml-1">
                   <div
-                    className="h-full bg-[#111111] rounded-full transition-all duration-300"
+                    className="h-full bg-[#111111] dark:bg-white rounded-full transition-all duration-300"
                     style={{ width: `${Math.min(100, occupancyPercent)}%` }}
                   />
                 </div>
@@ -1145,11 +1145,11 @@ export default function ScheduleClient({
             </div>
 
             <div className="flex items-center gap-4 text-xs font-semibold">
-              <div className="flex items-center gap-1.5 text-[#707072]">
+              <div className="flex items-center gap-1.5 text-[#707072] dark:text-[#8a8a93]">
                 <span>Active Bookings:</span>
-                <span className="font-bold text-[#111111]">{bookings.length}</span>
+                <span className="font-bold text-[#111111] dark:text-foreground">{bookings.length}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[#707072]">
+              <div className="flex items-center gap-1.5 text-[#707072] dark:text-[#8a8a93]">
                 <span>Checked In:</span>
                 <span className="font-bold text-[#007d48]">{checkedInCount} / {bookings.length}</span>
               </div>
@@ -1157,14 +1157,14 @@ export default function ScheduleClient({
           </div>
 
           {/* TIMELINE GRID CONTAINER */}
-          <div className="flex-1 bg-white border border-[#cacacb] overflow-hidden flex flex-col min-h-0">
+          <div className="flex-1 bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] overflow-hidden flex flex-col min-h-0">
             <ScrollArea className="flex-1">
               <div className="min-w-[2000px]">
                 
                 {/* Timeline Header: Fixed Court Column + 16 Hourly Slot Columns */}
-                <div className="flex border-b border-[#cacacb] sticky top-0 z-30 bg-[#f5f5f5]">
-                  <div className="w-[260px] min-w-[260px] p-4 font-bold text-xs uppercase tracking-wider text-[#707072] border-r border-[#cacacb] bg-[#f5f5f5] flex items-center gap-2 sticky left-0 z-40">
-                    <Trophy className="w-4 h-4 text-[#111111]" />
+                <div className="flex border-b border-[#cacacb] dark:border-[#27272a] sticky top-0 z-30 bg-[#f5f5f5] dark:bg-[#18181c]">
+                  <div className="w-[260px] min-w-[260px] p-4 font-bold text-xs uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] border-r border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] flex items-center gap-2 sticky left-0 z-40">
+                    <Trophy className="w-4 h-4 text-[#111111] dark:text-foreground" />
                     <span>Arena Courts</span>
                   </div>
 
@@ -1178,7 +1178,7 @@ export default function ScheduleClient({
                       <div
                         key={hour}
                         style={{ gridColumn: idx + 1 }}
-                        className="p-3 text-center text-xs font-bold text-[#707072] border-r border-[#cacacb] bg-[#f5f5f5] flex items-center justify-center font-mono"
+                        className="p-3 text-center text-xs font-bold text-[#707072] dark:text-[#8a8a93] border-r border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] flex items-center justify-center font-mono"
                       >
                         {formatHour(hour)}
                       </div>
@@ -1199,7 +1199,7 @@ export default function ScheduleClient({
                 </div>
 
                 {/* Timeline Rows per Court */}
-                <div className="relative divide-y divide-[#cacacb]">
+                <div className="relative divide-y divide-[#cacacb] dark:divide-[#27272a]">
                   {courts.map((court) => {
                     const courtBookings = bookings.filter((b) => {
                       const bCourtId = b.courts?.id || b.court_id;
@@ -1209,16 +1209,16 @@ export default function ScheduleClient({
                     return (
                       <div
                         key={court.id}
-                        className="flex border-b border-[#cacacb] min-h-[115px] relative group hover:bg-[#f5f5f5]/30 transition-colors"
+                        className="flex border-b border-[#cacacb] dark:border-[#27272a] min-h-[115px] relative group hover:bg-[#f5f5f5]/30 dark:hover:bg-[#18181c]/30 transition-colors"
                       >
                         {/* Court Info */}
-                        <div className="w-[260px] min-w-[260px] p-4 text-xs font-bold text-[#111111] border-r border-[#cacacb] bg-white sticky left-0 z-20 flex flex-col justify-between">
+                        <div className="w-[260px] min-w-[260px] p-4 text-xs font-bold text-[#111111] dark:text-foreground border-r border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215] sticky left-0 z-20 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="w-2.5 h-2.5 rounded-full bg-[#007d48]" />
-                              <span className="font-bold text-sm text-[#111111] tracking-tight">{court.name}</span>
+                              <span className="font-bold text-sm text-[#111111] dark:text-foreground tracking-tight">{court.name}</span>
                             </div>
-                            <div className="flex items-center gap-2 mt-1 ml-4.5 text-[11px] font-medium text-[#707072]">
+                            <div className="flex items-center gap-2 mt-1 ml-4.5 text-[11px] font-medium text-[#707072] dark:text-[#8a8a93]">
                               <span>₱{Number(court.hourly_rate ?? 300).toFixed(2)} / hr</span>
                               <span>•</span>
                               <span>Pro Cushion</span>
@@ -1228,7 +1228,7 @@ export default function ScheduleClient({
 
                         {/* 16 Hourly Slots Track */}
                         <div
-                          className="flex-1 grid relative bg-white"
+                          className="flex-1 grid relative bg-white dark:bg-[#121215]"
                           style={{
                             gridTemplateColumns: `repeat(${OPERATING_SLOTS.length}, minmax(110px, 1fr))`,
                           }}
@@ -1237,12 +1237,12 @@ export default function ScheduleClient({
                             <div
                               key={hour}
                               style={{ gridColumn: idx + 1, gridRow: 1 }}
-                              className="border-r border-[#e5e5e5] h-full relative group/slot flex items-center justify-center p-2"
+                              className="border-r border-[#e5e5e5] dark:border-[#222226] h-full relative group/slot flex items-center justify-center p-2"
                             >
                               <button
                                 type="button"
                                 onClick={() => openWalkInForSlot(court.id, hour)}
-                                className="opacity-0 group-hover/slot:opacity-100 transition-all text-[10px] font-semibold bg-[#111111] text-white hover:bg-[#222222] px-2.5 py-1 rounded-full flex items-center gap-1 z-10 cursor-pointer"
+                                className="opacity-0 group-hover/slot:opacity-100 transition-all text-[10px] font-semibold bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-[#ededed] px-2.5 py-1 rounded-full flex items-center gap-1 z-10 cursor-pointer"
                               >
                                 <Plus className="w-3 h-3" /> Book
                               </button>
@@ -1261,10 +1261,10 @@ export default function ScheduleClient({
                                 onClick={() => setSelectedBooking(booking)}
                                 className={`absolute inset-y-2 rounded-none p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 z-10 border ${
                                   isCancelled
-                                    ? 'bg-[#f5f5f5] border-[#cacacb] text-[#707072] opacity-60 line-through'
+                                    ? 'bg-[#f5f5f5] dark:bg-[#18181c] border-[#cacacb] dark:border-[#27272a] text-[#707072] dark:text-[#8a8a93] opacity-60 line-through'
                                     : isCheckedIn
                                     ? 'bg-[#007d48] border-[#007d48] text-white'
-                                    : 'bg-[#111111] border-[#111111] text-white'
+                                    : 'bg-[#111111] dark:bg-[#222228] border-[#111111] dark:border-[#33333a] text-white'
                                 }`}
                                 style={{
                                   gridColumn: getGridColumn(booking.start_time, booking.end_time),
@@ -1304,26 +1304,26 @@ export default function ScheduleClient({
       {/* DETAILED BOOKING MODAL WITH CLIENT DETAILS & 1-CLICK CHECK-IN */}
       {/* ========================================================================= */}
       <Dialog open={!!selectedBooking} onOpenChange={(open) => !open && setSelectedBooking(null)}>
-        <DialogContent className="sm:max-w-lg bg-white border border-[#cacacb] text-[#111111] rounded-none p-6 sm:p-8 shadow-2xl">
+        <DialogContent className="sm:max-w-lg bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground rounded-none p-6 sm:p-8 shadow-2xl">
           <DialogHeader>
             <div className="flex items-center justify-between pb-2">
-              <DialogTitle className="text-2xl font-bold tracking-tight text-[#111111]">
+              <DialogTitle className="text-2xl font-bold tracking-tight text-[#111111] dark:text-foreground">
                 Reservation Details
               </DialogTitle>
               <span
                 className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${
                   selectedBooking?.status === 'checked_in'
-                    ? 'bg-[#f5f5f5] text-[#007d48] border-[#007d48]/40'
+                    ? 'bg-[#f5f5f5] dark:bg-[#007d48]/10 text-[#007d48] border-[#007d48]/40'
                     : selectedBooking?.status === 'cancelled'
-                    ? 'bg-[#f5f5f5] text-[#d30005] border-[#d30005]/40'
-                    : 'bg-[#f5f5f5] text-[#111111] border-[#cacacb]'
+                    ? 'bg-[#f5f5f5] dark:bg-[#d30005]/10 text-[#d30005] border-[#d30005]/40'
+                    : 'bg-[#f5f5f5] dark:bg-[#18181c] text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a]'
                 }`}
               >
                 {selectedBooking?.status?.toUpperCase()}
               </span>
             </div>
-            <DialogDescription className="text-xs text-[#707072]">
-              Booking Identifier: <strong className="font-mono text-[#111111]">#{selectedBooking?.id}</strong>
+            <DialogDescription className="text-xs text-[#707072] dark:text-[#8a8a93]">
+              Booking Identifier: <strong className="font-mono text-[#111111] dark:text-foreground">#{selectedBooking?.id}</strong>
             </DialogDescription>
           </DialogHeader>
 
@@ -1331,20 +1331,20 @@ export default function ScheduleClient({
             <div className="space-y-4 py-4">
               
               {/* Client Identity Card */}
-              <div className="p-4 border border-[#cacacb] bg-[#f5f5f5] space-y-2">
+              <div className="p-4 border border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-[#111111]" />
-                    <span className="font-bold text-sm text-[#111111]">
+                    <User className="w-4 h-4 text-[#111111] dark:text-foreground" />
+                    <span className="font-bold text-sm text-[#111111] dark:text-foreground">
                       {selectedBooking.guest_name || 'Walk-in Client'}
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-[#111111] bg-white px-2.5 py-0.5 rounded-full border border-[#cacacb]">
+                  <span className="text-xs font-bold text-[#111111] dark:text-foreground bg-white dark:bg-[#121215] px-2.5 py-0.5 rounded-full border border-[#cacacb] dark:border-[#27272a]">
                     ₱{Number(selectedBooking.total_price || 300).toFixed(2)}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#cacacb] text-xs text-[#707072]">
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#cacacb] dark:border-[#27272a] text-xs text-[#707072] dark:text-[#8a8a93]">
                   {selectedBooking.guest_phone && (
                     <div className="flex items-center gap-1.5">
                       <Phone className="w-3.5 h-3.5" />
@@ -1361,17 +1361,17 @@ export default function ScheduleClient({
               </div>
 
               {/* Session Details Grid */}
-              <div className="grid grid-cols-2 gap-3 text-xs border border-[#cacacb] bg-white p-4">
+              <div className="grid grid-cols-2 gap-3 text-xs border border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215] p-4">
                 <div>
-                  <p className="text-[#707072] font-semibold mb-0.5">Assigned Court</p>
-                  <p className="font-bold text-[#111111]">
+                  <p className="text-[#707072] dark:text-[#8a8a93] font-semibold mb-0.5">Assigned Court</p>
+                  <p className="font-bold text-[#111111] dark:text-foreground">
                     {selectedBooking.courts?.name || 'Court 1 - Indoor'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[#707072] font-semibold mb-0.5">Payment Tender</p>
-                  <p className="font-bold text-[#111111] capitalize">
+                  <p className="text-[#707072] dark:text-[#8a8a93] font-semibold mb-0.5">Payment Tender</p>
+                  <p className="font-bold text-[#111111] dark:text-foreground capitalize">
                     {selectedBooking.payment_method === 'counter_qr'
                       ? 'Counter QR Ph'
                       : selectedBooking.payment_method || 'Online Gateway'}
@@ -1379,22 +1379,22 @@ export default function ScheduleClient({
                 </div>
 
                 <div>
-                  <p className="text-[#707072] font-semibold mb-0.5">Session Time</p>
-                  <p className="font-bold text-[#111111]">
+                  <p className="text-[#707072] dark:text-[#8a8a93] font-semibold mb-0.5">Session Time</p>
+                  <p className="font-bold text-[#111111] dark:text-foreground">
                     {formatTimeSlot(selectedBooking.start_time, selectedBooking.end_time)}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[#707072] font-semibold mb-0.5">Duration</p>
-                  <p className="font-bold text-[#111111]">
+                  <p className="text-[#707072] dark:text-[#8a8a93] font-semibold mb-0.5">Duration</p>
+                  <p className="font-bold text-[#111111] dark:text-foreground">
                     {selectedBooking.duration_hours || 1} Hour Session
                   </p>
                 </div>
               </div>
 
               {selectedBooking.notes && (
-                <div className="p-3 border border-[#cacacb] bg-[#f5f5f5] text-xs text-[#111111]">
+                <div className="p-3 border border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-[#111111] dark:text-foreground">
                   <strong>Special Note:</strong> {selectedBooking.notes}
                 </div>
               )}
@@ -1405,7 +1405,7 @@ export default function ScheduleClient({
             <Button
               variant="outline"
               onClick={() => setSelectedBooking(null)}
-              className="border-[#cacacb] text-[#111111] hover:bg-[#f5f5f5] rounded-full"
+              className="border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
             >
               Close
             </Button>
@@ -1413,7 +1413,7 @@ export default function ScheduleClient({
               <Button
                 onClick={handleCheckIn}
                 disabled={isPending}
-                className="bg-[#111111] hover:bg-[#222222] text-white font-semibold rounded-full px-6"
+                className="bg-[#111111] dark:bg-white hover:bg-[#222222] dark:hover:bg-[#ededed] text-white dark:text-[#111111] font-semibold rounded-full px-6"
               >
                 {isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-1.5" />

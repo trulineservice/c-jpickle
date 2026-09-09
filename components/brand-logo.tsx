@@ -21,12 +21,14 @@ export function BrandLogo({
   };
 
   const current = sizeMap[size];
-  const primaryColor = inverted ? "#ffffff" : "#111111";
-  const secondaryColor = inverted ? "#cacacb" : "#707072";
+  const primaryStroke = inverted ? "#ffffff" : "currentColor";
+  const secondaryColor = inverted ? "#cacacb" : undefined;
 
   return (
     <div
-      className={`inline-flex items-center gap-2.5 select-none font-sans group ${className}`}
+      className={`inline-flex items-center gap-2.5 select-none font-sans group ${
+        inverted ? "text-white" : "text-[#111111] dark:text-[#f4f4f5]"
+      } ${className}`}
       role="img"
       aria-label="C&J Pickleball Logo"
     >
@@ -46,7 +48,7 @@ export function BrandLogo({
             y="2"
             width="40"
             height="40"
-            stroke={primaryColor}
+            stroke={primaryStroke}
             strokeWidth="3.5"
             fill="none"
           />
@@ -56,7 +58,7 @@ export function BrandLogo({
             y1="22"
             x2="42"
             y2="22"
-            stroke={primaryColor}
+            stroke={primaryStroke}
             strokeWidth="2.5"
           />
           {/* Kitchen / Non-Volley Boundary Lines */}
@@ -65,7 +67,7 @@ export function BrandLogo({
             y1="15"
             x2="42"
             y2="15"
-            stroke={primaryColor}
+            stroke={primaryStroke}
             strokeWidth="1.5"
             strokeDasharray="2 2"
           />
@@ -74,14 +76,14 @@ export function BrandLogo({
             y1="29"
             x2="42"
             y2="29"
-            stroke={primaryColor}
+            stroke={primaryStroke}
             strokeWidth="1.5"
             strokeDasharray="2 2"
           />
           {/* Dynamic Strike Slash / Ball Contact Vector */}
           <path
             d="M 12 34 L 32 10"
-            stroke={inverted ? "#ffffff" : "#111111"}
+            stroke={primaryStroke}
             strokeWidth="4"
             strokeLinecap="square"
           />
@@ -90,7 +92,7 @@ export function BrandLogo({
             cx="22"
             cy="22"
             r="3.5"
-            fill={inverted ? "#ffffff" : "#111111"}
+            fill={primaryStroke}
           />
         </svg>
       </div>
@@ -100,13 +102,13 @@ export function BrandLogo({
         <div className="flex items-baseline gap-1">
           <span
             className={`font-black tracking-tighter uppercase font-display ${current.textClass}`}
-            style={{ color: primaryColor, letterSpacing: "-0.03em" }}
+            style={{ letterSpacing: "-0.03em" }}
           >
             C&amp;J
           </span>
           <span
             className={`font-black tracking-tight uppercase ${current.textClass}`}
-            style={{ color: primaryColor, letterSpacing: "0.02em" }}
+            style={{ letterSpacing: "0.02em" }}
           >
             COURTS
           </span>
@@ -114,8 +116,11 @@ export function BrandLogo({
 
         {withSubtitle && (
           <span
-            className={`font-bold tracking-[0.25em] uppercase mt-0.5 ${current.subClass}`}
-            style={{ color: secondaryColor }}
+            className={`font-bold tracking-[0.25em] uppercase mt-0.5 ${
+              inverted
+                ? "text-[#cacacb]"
+                : "text-[#707072] dark:text-[#8a8a93]"
+            } ${current.subClass}`}
           >
             PICKLEBALL ARENA
           </span>
