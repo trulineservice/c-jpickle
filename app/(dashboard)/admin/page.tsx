@@ -72,6 +72,7 @@ export default async function AdminOverviewPage() {
       refund_status,
       refund_reference,
       refund_processed_at,
+      profiles:profiles!bookings_user_id_fkey ( full_name, phone ),
       courts ( name )
     `)
     .order('created_at', { ascending: false });
