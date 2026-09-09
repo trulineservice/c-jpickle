@@ -78,10 +78,10 @@ export default async function AdminOverviewPage() {
 
   const rawBookings = (rawData as unknown as RawAdminBooking[]) || [];
 
-  // 3. Fetch POS transactions (pro-shop sales)
+  // 3. Fetch POS transactions (pro-shop sales, rentals & equipment)
   const { data: posTransactions } = await supabase
     .from('pos_transactions')
-    .select('total_amount, payment_method, status, created_at')
+    .select('id, invoice_number, total_amount, gross_amount, vatable_sales, vat_amount, vat_exempt_sales, discount_amount, discount_type, payment_method, status, created_at')
     .neq('status', 'voided');
 
   const activeBookings = rawBookings.filter(
@@ -105,6 +105,12 @@ export default async function AdminOverviewPage() {
   let monthlyHoursBooked = 0;
   let paymongoRevenue = 0;
   let cashRevenue = 0;
+
+  // BIR Tax Compliance Accumulators
+  let posVatableSales = 0;
+  let posVatAmount = 0;
+  let posVatExemptSales = 0;
+  let posDiscounts = 0;
 
   for (const b of activeBookings) {
     const bookingDate = new Date(b.created_at || b.start_time);
@@ -133,7 +139,7 @@ export default async function AdminOverviewPage() {
     }
   }
 
-  // Include completed POS shop sales into revenue metrics
+  // Include completed POS shop sales into revenue & tax metrics
   for (const tx of posTransactions || []) {
     const txDate = new Date(tx.created_at);
     const txAmount = Number(tx.total_amount) || 0;
@@ -147,6 +153,11 @@ export default async function AdminOverviewPage() {
     } else {
       cashRevenue += txAmount;
     }
+
+    posVatableSales += Number(tx.vatable_sales || 0);
+    posVatAmount += Number(tx.vat_amount || 0);
+    posVatExemptSales += Number(tx.vat_exempt_sales || 0);
+    posDiscounts += Number(tx.discount_amount || 0);
   }
 
   // Calculate Month-over-Month Growth
@@ -204,6 +215,10 @@ export default async function AdminOverviewPage() {
     paymongoRevenue,
     cashRevenue,
     totalTransactionsCount: activeBookings.length + (posTransactions?.length || 0),
+    posVatableSales,
+    posVatAmount,
+    posVatExemptSales,
+    posDiscounts,
   };
 
   return <AdminDashboardClient metrics={metrics} bookings={formattedBookings} />;

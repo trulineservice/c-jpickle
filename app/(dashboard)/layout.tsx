@@ -10,7 +10,8 @@ import {
   Calendar,
   LogOut,
   ShieldAlert,
-  Home
+  Home,
+  Users
 } from "lucide-react";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -112,6 +113,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 >
                   <Calendar className="h-4 w-4 text-[#111111]" />
                   Manage Courts
+                </Link>
+
+                <Link
+                  href="/admin/players"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-full text-xs font-semibold text-[#111111] hover:bg-[#f5f5f5] transition-colors"
+                >
+                  <Users className="h-4 w-4 text-[#111111]" />
+                  Players &amp; History
                 </Link>
               </>
             )}

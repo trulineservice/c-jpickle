@@ -11,7 +11,8 @@ import {
   Calendar,
   ShieldAlert,
   Home,
-  LogOut
+  LogOut,
+  Users
 } from 'lucide-react';
 import { logout } from '@/app/actions';
 
@@ -130,6 +131,15 @@ export function DashboardMobileNav({
                   >
                     <Calendar className="w-4 h-4" />
                     Manage Courts
+                  </Link>
+
+                  <Link
+                    href="/admin/players"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] text-xs font-semibold text-[#111111]"
+                  >
+                    <Users className="w-4 h-4" />
+                    Players &amp; History
                   </Link>
                 </>
               )}

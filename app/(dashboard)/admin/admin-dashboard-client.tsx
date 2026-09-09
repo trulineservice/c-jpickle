@@ -67,6 +67,10 @@ export interface AdminMetrics {
   paymongoRevenue: number;
   cashRevenue: number;
   totalTransactionsCount: number;
+  posVatableSales?: number;
+  posVatAmount?: number;
+  posVatExemptSales?: number;
+  posDiscounts?: number;
 }
 
 export default function AdminDashboardClient({
@@ -379,6 +383,63 @@ export default function AdminDashboardClient({
           <p className="text-xs text-[#707072]">16 hrs/day × 2 indoor courts</p>
         </div>
 
+      </div>
+
+      {/* Philippine BIR EOPT Tax & Statutory Discount Compliance Strip */}
+      <div className="border border-[#cacacb] p-6 bg-[#fafafa] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#cacacb] pb-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#007d48]" />
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#111111]">
+              Philippine Tax Compliance (BIR EOPT Act RA 11976 / RA 9994 / RA 10754)
+            </h3>
+          </div>
+          <span className="text-[11px] font-mono text-[#707072]">
+            TIN: 432-891-002-00000 • MIN: MIN-260908-CJ01
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="p-4 bg-white border border-[#e5e5e5] space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">
+              VATable Net Sales
+            </span>
+            <div className="text-xl font-bold text-[#111111]">
+              ₱{(metrics.posVatableSales || 0).toFixed(2)}
+            </div>
+            <p className="text-[10px] text-[#707072]">Subject to 12% standard output VAT</p>
+          </div>
+
+          <div className="p-4 bg-white border border-[#e5e5e5] space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">
+              12% Output VAT
+            </span>
+            <div className="text-xl font-bold text-[#111111]">
+              ₱{(metrics.posVatAmount || 0).toFixed(2)}
+            </div>
+            <p className="text-[10px] text-[#707072]">Tax liabilities for BIR filing</p>
+          </div>
+
+          <div className="p-4 bg-white border border-[#e5e5e5] space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">
+              VAT-Exempt Sales
+            </span>
+            <div className="text-xl font-bold text-[#111111]">
+              ₱{(metrics.posVatExemptSales || 0).toFixed(2)}
+            </div>
+            <p className="text-[10px] text-[#707072]">Senior Citizen &amp; PWD base</p>
+          </div>
+
+          <div className="p-4 bg-white border border-[#e5e5e5] space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#007d48]">
+              SC / PWD Discounts
+            </span>
+            <div className="text-xl font-bold text-[#007d48]">
+              ₱{(metrics.posDiscounts || 0).toFixed(2)}
+            </div>
+            <p className="text-[10px] text-[#707072]">20% statutory deductions granted</p>
+          </div>
+        </div>
       </div>
 
       {/* Revenue Stream Breakdown Card */}

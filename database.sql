@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   role public.user_role NOT NULL DEFAULT 'client'::public.user_role,
   full_name text,
+  email text,
   phone text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
@@ -176,7 +177,18 @@ CREATE TABLE IF NOT EXISTS public.pos_products (
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.pos_transactions (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  invoice_number text UNIQUE,
   cashier_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  customer_name text,
+  customer_tin text,
+  discount_type text DEFAULT 'none' CHECK (discount_type IN ('none', 'senior_citizen', 'pwd', 'special')),
+  discount_id_number text,
+  gross_amount numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (gross_amount >= 0),
+  discount_amount numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (discount_amount >= 0),
+  vatable_sales numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (vatable_sales >= 0),
+  vat_amount numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (vat_amount >= 0),
+  vat_exempt_sales numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (vat_exempt_sales >= 0),
+  zero_rated_sales numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (zero_rated_sales >= 0),
   total_amount numeric(10, 2) NOT NULL CHECK (total_amount >= 0),
   payment_method public.payment_method_type NOT NULL DEFAULT 'cash'::public.payment_method_type,
   status text NOT NULL DEFAULT 'completed' CHECK (status IN ('completed', 'voided', 'refunded')),

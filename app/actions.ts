@@ -583,15 +583,49 @@ export async function createWalkInBooking(formData: FormData): Promise<void> {
   revalidatePath('/admin');
 }
 
+export interface PosCompliancePayload {
+  customerName?: string;
+  customerTin?: string;
+  discountType?: 'none' | 'senior_citizen' | 'pwd' | 'special';
+  discountIdNumber?: string;
+}
+
+export interface PosCheckoutResult {
+  success: boolean;
+  transactionId: string;
+  invoiceNumber: string;
+  customerName?: string;
+  discountType: string;
+  discountIdNumber?: string;
+  grossAmount: number;
+  discountAmount: number;
+  vatableSales: number;
+  vatAmount: number;
+  vatExemptSales: number;
+  zeroRatedSales: number;
+  total: number;
+  paymentMethod: string;
+  createdAt: string;
+  items: {
+    productId: string;
+    name: string;
+    quantity: number;
+    price: number;
+    subtotal: number;
+  }[];
+}
+
 /**
  * Process POS Item Sale (Equipment, Pro Paddles, Beverages).
- * Validates prices from pos_products server-side and decrements stock levels.
+ * Validates prices from pos_products server-side, applies BIR statutory discounts,
+ * records VAT breakdown, and decrements stock levels.
  */
 export async function processPosTransaction(
   cart: { id: string; price?: number; quantity: number }[],
   _clientTotal: number,
-  paymentMethod: string
-): Promise<{ success: boolean; transactionId: string; total: number }> {
+  paymentMethod: string,
+  compliance?: PosCompliancePayload
+): Promise<PosCheckoutResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -619,8 +653,9 @@ export async function processPosTransaction(
     dbProducts.map((p) => [p.id, { ...p, price: Number(p.price), stock_level: Number(p.stock_level ?? 0) }])
   );
 
-  let verifiedTotal = 0;
+  let verifiedGross = 0;
   const lineItems: { transaction_id?: string; product_id: string; quantity: number; price_at_time: number }[] = [];
+  const receiptItems: PosCheckoutResult['items'] = [];
 
   for (const item of cart) {
     const dbProduct = productMap.get(item.id);
@@ -629,21 +664,87 @@ export async function processPosTransaction(
     }
     const itemQuantity = Math.max(1, item.quantity);
     const itemPrice = dbProduct.price;
-    verifiedTotal += itemPrice * itemQuantity;
+    const subtotal = itemPrice * itemQuantity;
+    verifiedGross += subtotal;
 
     lineItems.push({
       product_id: dbProduct.id,
       quantity: itemQuantity,
       price_at_time: itemPrice,
     });
+
+    receiptItems.push({
+      productId: dbProduct.id,
+      name: dbProduct.name,
+      quantity: itemQuantity,
+      price: itemPrice,
+      subtotal,
+    });
   }
 
-  // 2. Insert master transaction with trusted server-side total
+  // BIR EOPT & Statutory Compliance Calculations (RA 9994 / RA 10754)
+  const discountType = compliance?.discountType || 'none';
+  const isStatutoryDiscount = discountType === 'senior_citizen' || discountType === 'pwd';
+
+  let vatableSales = 0;
+  let vatAmount = 0;
+  let vatExemptSales = 0;
+  let discountAmount = 0;
+  let finalTotal = verifiedGross;
+
+  if (isStatutoryDiscount) {
+    // 12% VAT Exemption Base
+    vatExemptSales = Math.round((verifiedGross / 1.12) * 100) / 100;
+    // 20% Statutory Discount on Net Base
+    discountAmount = Math.round((vatExemptSales * 0.20) * 100) / 100;
+    // Final Net Payable
+    finalTotal = Math.round((vatExemptSales - discountAmount) * 100) / 100;
+    vatableSales = 0;
+    vatAmount = 0;
+  } else {
+    vatableSales = Math.round((verifiedGross / 1.12) * 100) / 100;
+    vatAmount = Math.round((verifiedGross - vatableSales) * 100) / 100;
+    vatExemptSales = 0;
+    discountAmount = 0;
+    finalTotal = verifiedGross;
+  }
+
+  // Generate Official Sequential Sales Invoice (SI) Number
+  let invoiceNumber = '';
+  try {
+    const { data: invData, error: invError } = await supabase.rpc('generate_pos_invoice_number');
+    if (!invError && invData) {
+      invoiceNumber = invData as string;
+    }
+  } catch {
+    // Fallback if rpc is unavailable
+  }
+
+  if (!invoiceNumber) {
+    const now = new Date();
+    const dateStr = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0');
+    invoiceNumber = `SI-${dateStr}-${Math.floor(10000 + Math.random() * 90000)}`;
+  }
+
+  // 2. Insert master transaction with trusted server-side total and tax fields
   const { data: transaction, error: txError } = await supabase
     .from('pos_transactions')
     .insert({
+      invoice_number: invoiceNumber,
       cashier_id: user.id,
-      total_amount: verifiedTotal,
+      customer_name: compliance?.customerName?.trim() || null,
+      customer_tin: compliance?.customerTin?.trim() || null,
+      discount_type: discountType,
+      discount_id_number: compliance?.discountIdNumber?.trim() || null,
+      gross_amount: verifiedGross,
+      discount_amount: discountAmount,
+      vatable_sales: vatableSales,
+      vat_amount: vatAmount,
+      vat_exempt_sales: vatExemptSales,
+      zero_rated_sales: 0,
+      total_amount: finalTotal,
       payment_method: paymentMethod,
     })
     .select()
@@ -680,8 +781,27 @@ export async function processPosTransaction(
   }
 
   revalidatePath('/cashier');
+  revalidatePath('/cashier/reports');
   revalidatePath('/admin');
-  return { success: true, transactionId: transaction.id, total: verifiedTotal };
+
+  return {
+    success: true,
+    transactionId: transaction.id,
+    invoiceNumber,
+    customerName: compliance?.customerName?.trim() || undefined,
+    discountType,
+    discountIdNumber: compliance?.discountIdNumber?.trim() || undefined,
+    grossAmount: verifiedGross,
+    discountAmount,
+    vatableSales,
+    vatAmount,
+    vatExemptSales,
+    zeroRatedSales: 0,
+    total: finalTotal,
+    paymentMethod,
+    createdAt: transaction.created_at || new Date().toISOString(),
+    items: receiptItems,
+  };
 }
 
 // ============================================================================

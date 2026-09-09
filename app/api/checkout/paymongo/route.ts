@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       guestEmail,
       guestPhone,
       paddleRental = false,
+      ballThrowerRental = false,
     } = body;
 
     if (!courtId || !date || (hour24 === undefined && !timeSlot)) {
@@ -127,11 +128,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Calculate Total Price (court rate * duration + optional paddle rental)
+    // 4. Calculate Total Price (court rate * duration + optional paddle rental + ball thrower rental)
     const hourlyRate = court.hourly_rate !== undefined && court.hourly_rate !== null ? Number(court.hourly_rate) : 1;
     const courtPrice = hourlyRate * duration;
     const paddlePrice = paddleRental ? 150 : 0;
-    const totalPrice = courtPrice + paddlePrice;
+    const ballThrowerPrice = ballThrowerRental ? 150 * duration : 0;
+    const totalPrice = courtPrice + paddlePrice + ballThrowerPrice;
+
+    // Compose rental notes
+    const rentalNotes: string[] = [];
+    if (paddleRental) rentalNotes.push('Pro Paddle Rental (+₱150)');
+    if (ballThrowerRental) rentalNotes.push(`Smart Ball Thrower Machine (${duration}hr @ ₱150/hr = +₱${ballThrowerPrice})`);
+    const notesSummary = rentalNotes.length > 0 ? rentalNotes.join(' • ') : null;
 
     // 5-Minute temporary reservation lock
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -156,7 +164,7 @@ export async function POST(request: NextRequest) {
           status: 'pending_payment',
           payment_method: 'paymongo',
           expires_at: expiresAt.toISOString(),
-          notes: paddleRental ? 'Includes Pro Paddle Rental (+₱150)' : null,
+          notes: notesSummary,
         })
         .select('id')
         .single();

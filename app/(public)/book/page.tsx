@@ -86,6 +86,7 @@ export default function BookPage() {
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
   const [paddleRental, setPaddleRental] = useState(false);
+  const [ballThrowerRental, setBallThrowerRental] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
@@ -240,7 +241,8 @@ export default function BookPage() {
   const hourlyRate = selectedCourt?.hourly_rate ?? 300;
   const courtSubtotal = hourlyRate * durationHours;
   const paddleFee = paddleRental ? 150 : 0;
-  const grandTotal = courtSubtotal + paddleFee;
+  const ballThrowerFee = ballThrowerRental ? 150 * durationHours : 0;
+  const grandTotal = courtSubtotal + paddleFee + ballThrowerFee;
 
   const filteredSlots = useMemo(() => {
     if (timeFilter === 'all') return slots;
@@ -291,6 +293,7 @@ export default function BookPage() {
           guestEmail: guestEmail.trim(),
           guestPhone: guestPhone.trim() || undefined,
           paddleRental,
+          ballThrowerRental,
         }),
       });
 
@@ -648,6 +651,46 @@ export default function BookPage() {
                     }`}
                   >
                     {paddleRental ? 'Remove' : '+ Add'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Smart Ball Thrower Machine Add-On */}
+            <div className="p-4 bg-[#f5f5f5] border border-[#cacacb] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-12 h-12 bg-white border border-[#cacacb] overflow-hidden shrink-0">
+                    <Image
+                      src="/gear-ball-thrower.png"
+                      alt="Smart Ball Thrower Machine"
+                      fill
+                      sizes="48px"
+                      className="object-contain p-1"
+                    />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#111111]">
+                      Smart Ball Thrower Machine
+                    </h4>
+                    <p className="text-[11px] text-[#707072]">
+                      Automated feeder &amp; drills launcher (₱150 / hr)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-xs font-bold text-[#111111] block">
+                    +₱{150 * durationHours}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBallThrowerRental(!ballThrowerRental)}
+                    className={`text-[11px] font-bold underline cursor-pointer ${
+                      ballThrowerRental ? 'text-[#d30005]' : 'text-[#111111]'
+                    }`}
+                  >
+                    {ballThrowerRental ? 'Remove' : '+ Add'}
                   </button>
                 </div>
               </div>

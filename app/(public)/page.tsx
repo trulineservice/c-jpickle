@@ -22,24 +22,24 @@ export default async function LandingPage() {
   const courts = [
     {
       id: "court-1",
-      name: "Court 1 — Indoor (Pro Cushion)",
-      category: "USA Pickleball Tournament Spec",
+      name: "Court 1 — Indoor",
+      category: "",
       badge: "Just In",
       price: "₱300",
       rateText: "/ hour",
-      specs: "8mm Cushioned Polyurethane • 850-Lux LED",
-      image: "/cj-court-bg.jpg",
+      specs: "",
+      image: "/court-overhead.png",
       colors: ["#111111", "#1e3a5f", "#007d48"],
     },
     {
       id: "court-2",
-      name: "Court 2 — Indoor (Tournament Spec)",
-      category: "Air-Conditioned Indoor Arena",
+      name: "Court 2 — Indoor",
+      category: "",
       badge: "High Demand",
       price: "₱300",
       rateText: "/ hour",
-      specs: "20' × 44' Regulation • Championship Tension Net",
-      image: "/cj-court-bg.jpg",
+      specs: "",
+      image: "/court-overhead.png",
       colors: ["#111111", "#2b3244", "#d30005"],
     },
     {
@@ -119,7 +119,7 @@ export default async function LandingPage() {
 
   return (
     <div className="flex-1 flex flex-col font-sans bg-white text-[#111111]">
-      
+
       {/* 1. EDITORIAL CAMPAIGN HERO (Towering 96px Bebas Neue Uppercase Headline) */}
       <section className="relative w-full max-w-[1440px] mx-auto px-4 sm:px-8 pt-4 pb-12">
         <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] min-h-[480px] sm:min-h-[580px] bg-[#f5f5f5] overflow-hidden">
@@ -146,7 +146,7 @@ export default async function LandingPage() {
             </h1>
 
             <p className="text-sm sm:text-base text-white/90 max-w-xl mt-4 leading-relaxed font-normal">
-              Two USA Pickleball specification 8mm cushioned courts in Tomas Morato, Quezon City. 
+              Two USA Pickleball specification 8mm cushioned courts in Tomas Morato, Quezon City.
               Fixed ₱300/hr flat rate, air-conditioned lounge, and instant digital booking.
             </p>
 
@@ -222,9 +222,8 @@ export default async function LandingPage() {
                   {court.colors.map((color, idx) => (
                     <span
                       key={idx}
-                      className={`w-3 h-3 rounded-full border ${
-                        idx === 0 ? "ring-1 ring-[#111111] ring-offset-1" : "border-[#cacacb]"
-                      }`}
+                      className={`w-3 h-3 rounded-full border ${idx === 0 ? "ring-1 ring-[#111111] ring-offset-1" : "border-[#cacacb]"
+                        }`}
                       style={{ backgroundColor: color }}
                     />
                   ))}
@@ -329,7 +328,7 @@ export default async function LandingPage() {
       <section className="w-full max-w-[1440px] mx-auto px-4 sm:px-8 py-12">
         <div className="relative w-full aspect-[16/9] sm:aspect-[21/9] min-h-[400px] bg-[#111111] overflow-hidden">
           <Image
-            src="/cj-court-bg.jpg"
+            src="/court-editorial.jpg"
             alt="C&J Arena Indoor Pickleball Tournament Court"
             fill
             sizes="(max-width: 1440px) 100vw, 1440px"
@@ -373,7 +372,7 @@ export default async function LandingPage() {
             Court Blueprint &amp; NVZ Strategy
           </h2>
         </div>
-        <PickleballCourtVisualizer selectedCourtName="Court 1 &amp; Court 2 (Indoor Pro)" />
+        <PickleballCourtVisualizer selectedCourtName="Court 1 &amp; Court 2" />
       </section>
 
       {/* 6. PDP-STYLE DISCLOSURE ROWS / FREQUENTLY ASKED QUESTIONS */}
