@@ -47,14 +47,24 @@ export interface Booking {
   paymongo_checkout_session_id: string | null;
   expires_at: string | null;
   notes?: string | null;
+  paddle_count?: number;
   created_at: string;
   updated_at: string;
   courts?: Court | Court[] | null;
   profiles?: Profile | Profile[] | null;
   booking_refunds?: BookingRefund | null;
+  // Backward-compatible direct refund properties
+  refund_wallet_type?: WalletType | string | null;
+  refund_account_name?: string | null;
+  refund_account_number?: string | null;
+  refund_reason?: string | null;
+  refund_status?: RefundStatus | string | null;
+  refund_reference?: string | null;
+  refund_processed_at?: string | null;
+  refund_processed_by?: string | null;
 }
 
-export type RefundStatus = 'pending' | 'approved' | 'rejected' | 'completed' | 'voided_no_refund';
+export type RefundStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'completed' | 'voided_no_refund';
 export type WalletType = 'gcash' | 'maya' | 'bank_transfer' | 'counter_cash';
 
 export interface BookingRefund {
@@ -80,12 +90,25 @@ export interface PosProduct {
   price: number;
   category: string;
   stock_level: number;
+  is_active?: boolean;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface PosTransaction {
   id: string;
+  invoice_number?: string | null;
   cashier_id: string | null;
+  customer_name?: string | null;
+  customer_tin?: string | null;
+  discount_type?: 'none' | 'senior_citizen' | 'pwd' | 'special' | string | null;
+  discount_id_number?: string | null;
+  gross_amount?: number;
+  discount_amount?: number;
+  vatable_sales?: number;
+  vat_amount?: number;
+  vat_exempt_sales?: number;
+  zero_rated_sales?: number;
   total_amount: number;
   payment_method: string;
   status: 'completed' | 'voided' | 'refunded';

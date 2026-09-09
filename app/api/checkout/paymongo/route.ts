@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       guestName,
       guestEmail,
       guestPhone,
+      paddleCount,
       paddleRental = false,
       ballThrowerRental = false,
     } = body;
@@ -36,6 +37,12 @@ export async function POST(request: NextRequest) {
 
     const duration = Math.max(1, parseInt(String(durationHours), 10));
     const startHour = hour24 !== undefined ? parseInt(String(hour24), 10) : parseHourFromSlot(timeSlot);
+
+    // Strict boundary clamping for paddles (0 to 4 max)
+    const rawPaddleCount = paddleCount !== undefined && paddleCount !== null
+      ? parseInt(String(paddleCount), 10)
+      : (paddleRental ? 1 : 0);
+    const clampedPaddleCount = Math.min(4, Math.max(0, isNaN(rawPaddleCount) ? 0 : rawPaddleCount));
 
     // Calculate Start Time and End Time in Philippine Time (+08:00)
     const startTime = new Date(`${date}T${startHour.toString().padStart(2, '0')}:00:00.000+08:00`);
@@ -128,17 +135,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Calculate Total Price (court rate * duration + optional paddle rental + ball thrower rental)
+    // 4. Calculate Total Price purely server-side (court rate * duration + paddle count * 150 + ball thrower rental)
     const hourlyRate = court.hourly_rate !== undefined && court.hourly_rate !== null ? Number(court.hourly_rate) : 1;
     const courtPrice = hourlyRate * duration;
-    const paddlePrice = paddleRental ? 150 : 0;
+    const paddlePrice = clampedPaddleCount * 150;
     const ballThrowerPrice = ballThrowerRental ? 150 * duration : 0;
     const totalPrice = courtPrice + paddlePrice + ballThrowerPrice;
 
     // Compose rental notes
     const rentalNotes: string[] = [];
-    if (paddleRental) rentalNotes.push('Pro Paddle Rental (+₱150)');
-    if (ballThrowerRental) rentalNotes.push(`Smart Ball Thrower Machine (${duration}hr @ ₱150/hr = +₱${ballThrowerPrice})`);
+    if (clampedPaddleCount > 0) {
+      rentalNotes.push(`${clampedPaddleCount}x Pro Carbon Paddle Rental (+₱${paddlePrice})`);
+    }
+    if (ballThrowerRental) {
+      rentalNotes.push(`Smart Ball Thrower Machine (${duration}hr @ ₱150/hr = +₱${ballThrowerPrice})`);
+    }
     const notesSummary = rentalNotes.length > 0 ? rentalNotes.join(' • ') : null;
 
     // 5-Minute temporary reservation lock
@@ -146,28 +157,44 @@ export async function POST(request: NextRequest) {
     const originUrl = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const formattedSlot = `${startHour % 12 === 0 ? 12 : startHour % 12}:00 ${startHour >= 12 ? 'PM' : 'AM'}`;
 
+    const bookingPayload: Record<string, any> = {
+      court_id: court.id,
+      user_id: user.id,
+      guest_name: guestName || user.user_metadata?.full_name || 'Member Player',
+      guest_email: user.email || guestEmail,
+      guest_phone: guestPhone || null,
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      duration_hours: duration,
+      total_price: totalPrice,
+      currency: 'PHP',
+      status: 'pending_payment',
+      payment_method: 'paymongo',
+      expires_at: expiresAt.toISOString(),
+      notes: notesSummary,
+      paddle_count: clampedPaddleCount,
+    };
+
     let bookingId: string | null = null;
     try {
-      const { data: booking, error: insertError } = await supabase
+      let { data: booking, error: insertError } = await supabase
         .from('bookings')
-        .insert({
-          court_id: court.id,
-          user_id: user.id,
-          guest_name: guestName || user.user_metadata?.full_name || 'Member Player',
-          guest_email: user.email || guestEmail,
-          guest_phone: guestPhone || null,
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
-          duration_hours: duration,
-          total_price: totalPrice,
-          currency: 'PHP',
-          status: 'pending_payment',
-          payment_method: 'paymongo',
-          expires_at: expiresAt.toISOString(),
-          notes: notesSummary,
-        })
+        .insert(bookingPayload)
         .select('id')
         .single();
+
+      // Self-healing fallback if remote DB doesn't have paddle_count column yet (PostgREST PGRST204 / 42703)
+      if (insertError && (insertError.code === 'PGRST204' || insertError.message?.includes('paddle_count'))) {
+        console.warn('[Checkout API] paddle_count column not found in schema cache. Inserting without column (saved in notes).');
+        delete bookingPayload.paddle_count;
+        const retry = await supabase
+          .from('bookings')
+          .insert(bookingPayload)
+          .select('id')
+          .single();
+        booking = retry.data;
+        insertError = retry.error;
+      }
 
       if (booking?.id) {
         bookingId = booking.id;

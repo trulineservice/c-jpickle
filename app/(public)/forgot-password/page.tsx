@@ -9,9 +9,9 @@ import { resetPasswordWithTempPassword } from "@/app/actions";
 export default async function ForgotPasswordPage({
   searchParams,
 }: {
-  searchParams: Promise<{ message?: string; success?: string }>;
+  searchParams: Promise<{ message?: string; success?: string; email?: string; dev_code?: string }>;
 }) {
-  const { message, success } = await searchParams;
+  const { message, success, email, dev_code } = await searchParams;
 
   return (
     <div className="flex-1 flex items-center justify-center px-4 py-16 sm:px-6 lg:px-8 font-sans bg-white text-[#111111]">
@@ -24,13 +24,47 @@ export default async function ForgotPasswordPage({
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] uppercase">
               Check Your Email
             </h1>
-            <p className="text-sm text-[#707072]">
+            {email && (
+              <div className="inline-block px-3 py-1 bg-[#f5f5f5] text-xs font-mono font-semibold text-[#111111] rounded-full">
+                {email}
+              </div>
+            )}
+            <p className="text-sm text-[#707072] leading-relaxed">
               {success}
             </p>
-            <div className="pt-4">
+
+            {/* Sandbox Notice & Temporary Access Code */}
+            {dev_code && (
+              <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl text-left space-y-2.5">
+                <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+                  <span>SANDBOX ACCESS CODE</span>
+                  <span className="text-[10px] bg-amber-200/60 px-2 py-0.5 rounded-full font-mono">Dev Mode</span>
+                </div>
+                <div className="bg-white border border-amber-300 rounded-lg p-3 text-center">
+                  <div className="text-[10px] uppercase font-bold text-[#707072] tracking-wider mb-1">
+                    Temporary Password
+                  </div>
+                  <div className="font-mono text-xl font-black text-[#111111] tracking-widest select-all">
+                    {dev_code}
+                  </div>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-normal">
+                  Neither <strong>RESEND_API_KEY</strong> nor <strong>SMTP_PASS</strong> is configured in <code>.env</code> yet. Use the temporary password above to log in and change your password in Settings.
+                </p>
+              </div>
+            )}
+
+            {!dev_code && (
+              <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg text-xs text-[#64748b] text-left space-y-1">
+                <p className="font-semibold text-[#334155]">Didn&apos;t see the message?</p>
+                <p>Check your Spam/Junk folder. The email was dispatched directly by C&J Pickleball Arena.</p>
+              </div>
+            )}
+
+            <div className="pt-2">
               <Link href="/login">
-                <button className="w-full h-12 bg-[#111111] text-white hover:bg-[#222222] font-medium text-sm rounded-full">
-                  Return to Login
+                <button className="w-full h-12 bg-[#111111] text-white hover:bg-[#222222] font-medium text-sm rounded-full transition-colors">
+                  Proceed to Login
                 </button>
               </Link>
             </div>

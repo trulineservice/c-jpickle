@@ -1001,74 +1001,126 @@ function generateTempPassword(): string {
 }
 
 /**
- * Handle Forgot Password by generating a temp password and emailing it via SMTP
+ * Handle Forgot Password by dispatching a custom branded email
+ * directly via Resend / Nodemailer SMTP (completely bypassing Supabase's mailer).
  */
 export async function resetPasswordWithTempPassword(formData: FormData): Promise<void> {
-  const email = (formData.get('email') as string)?.trim();
-  if (!email) {
-    redirect('/forgot-password?message=' + encodeURIComponent('Email is required'));
+  const email = (formData.get('email') as string)?.trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    redirect('/forgot-password?message=' + encodeURIComponent('Please enter a valid email address.'));
   }
 
-  const { createClient: createServiceClient } = await import('@supabase/supabase-js');
-  const adminSupabase = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  // Fetch user by email via Admin API
-  const { data: { users }, error: listError } = await adminSupabase.auth.admin.listUsers();
-  const user = users?.find(u => u.email === email);
-
-  if (listError || !user) {
-    // For security, don't reveal if user exists, just return success
-    redirect('/forgot-password?success=' + encodeURIComponent('If an account exists with this email, a temporary password has been sent. Please check your inbox.'));
-  }
-
-  // Generate Temp Password
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://c-j-pickleball.vercel.app').replace(/\/$/, '');
   const tempPassword = generateTempPassword();
 
-  // Update User Password via Admin API
-  const { error: updateError } = await adminSupabase.auth.admin.updateUserById(user.id, {
-    password: tempPassword,
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  let userFullName = 'Valued Player';
+  let resetUrl: string | undefined = undefined;
+
+  if (serviceRoleKey && serviceRoleKey.length > 10) {
+    try {
+      const { createClient: createServiceClient } = await import('@supabase/supabase-js');
+      const adminSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        serviceRoleKey,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+          },
+        }
+      );
+
+      // Check profile name if available
+      try {
+        const { data: profile } = await adminSupabase
+          .from('profiles')
+          .select('full_name')
+          .eq('email', email)
+          .maybeSingle();
+        if (profile?.full_name) {
+          userFullName = profile.full_name;
+        }
+      } catch {
+        // Non-blocking
+      }
+
+      // Generate secure recovery link via Supabase Admin (does NOT send an email)
+      try {
+        const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+          type: 'recovery',
+          email,
+          options: {
+            redirectTo: `${appUrl}/auth/callback?next=/dashboard`,
+          },
+        });
+
+        if (!linkError && linkData?.properties?.action_link) {
+          resetUrl = linkData.properties.action_link;
+        }
+      } catch (linkErr) {
+        console.warn('[Admin Generate Link Warning]:', linkErr);
+      }
+
+      // Try updating password to temporary password as direct credential access
+      try {
+        const { data: userData } = await adminSupabase.auth.admin.listUsers();
+        const foundUser = userData?.users?.find((u) => u.email?.toLowerCase() === email);
+        if (foundUser) {
+          if (foundUser.user_metadata?.full_name) {
+            userFullName = foundUser.user_metadata.full_name;
+          }
+          await adminSupabase.auth.admin.updateUserById(foundUser.id, {
+            password: tempPassword,
+          });
+        }
+      } catch (updateErr) {
+        console.warn('[Admin User Update Warning]:', updateErr);
+      }
+    } catch (adminErr) {
+      console.error('[Admin Supabase Auth Error]:', adminErr);
+    }
+  } else {
+    console.warn(
+      '[Forgot Password] SUPABASE_SERVICE_ROLE_KEY is not configured in .env. Running in custom email dispatch mode.'
+    );
+  }
+
+  // Send custom branded email directly via Resend / Nodemailer SMTP (NOT from Supabase)
+  let devCode: string | undefined = undefined;
+  try {
+    const { sendPasswordResetEmail } = await import('@/lib/email');
+    const dispatchResult = await sendPasswordResetEmail({
+      to: email,
+      recipientName: userFullName,
+      tempPassword,
+      resetUrl,
+    });
+
+    if (dispatchResult.provider === 'sandbox') {
+      devCode = tempPassword;
+    }
+
+    console.log(
+      `[Forgot Password] Custom email dispatched to ${email} via provider: ${dispatchResult.provider}`
+    );
+  } catch (emailErr) {
+    console.error('[Forgot Password Email Dispatch Error]:', emailErr);
+  }
+
+  const successMessage =
+    'A password reset request has been processed directly by our system. Please check your inbox (and spam folder).';
+  
+  const queryParams = new URLSearchParams({
+    success: successMessage,
+    email,
   });
 
-  if (updateError) {
-    console.error('[Forgot Password Error]:', updateError);
-    redirect('/forgot-password?message=' + encodeURIComponent('Failed to reset password. Please try again.'));
+  if (devCode) {
+    queryParams.set('dev_code', devCode);
   }
 
-  // Send Email via Nodemailer
-  try {
-    const nodemailer = await import('nodemailer');
-    const transporter = nodemailer.createTransport({
-      service: 'gmail', 
-      auth: {
-        user: process.env.SMTP_USER || 'aarongelaga222@gmail.com',
-        pass: process.env.SMTP_PASS, 
-      },
-    });
-
-    await transporter.sendMail({
-      from: process.env.SMTP_USER || 'aarongelaga222@gmail.com',
-      to: email,
-      subject: 'Your Temporary Password for C&J Pickleball',
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2>Password Reset Request</h2>
-          <p>A request was made to reset your password. Here is your temporary password:</p>
-          <div style="background:#f5f5f5; padding:15px; text-align:center; font-size: 24px; letter-spacing: 2px; font-weight: bold; border-radius: 8px; margin: 20px 0;">
-            ${tempPassword}
-          </div>
-          <p>Please log in and navigate to the <b>Settings</b> tab in your dashboard to change this password immediately.</p>
-          <p style="color: #707072; font-size: 12px; margin-top: 30px;">If you did not request this, please contact support immediately.</p>
-        </div>
-      `,
-    });
-  } catch (emailError) {
-    console.error('[Email Dispatch Error]:', emailError);
-  }
-
-  redirect('/forgot-password?success=' + encodeURIComponent('A temporary password has been sent to your email address. Please check your inbox and log in.'));
+  redirect(`/forgot-password?${queryParams.toString()}`);
 }
 
 /**

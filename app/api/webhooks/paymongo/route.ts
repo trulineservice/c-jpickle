@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
         durationHours: booking.duration_hours,
         totalPrice: Number(booking.total_price),
         paymentMethod: 'PayMongo (Online)',
+        notes: booking.notes,
       });
     }
 
