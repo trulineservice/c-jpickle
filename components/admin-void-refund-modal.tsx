@@ -240,7 +240,7 @@ export function AdminVoidRefundModal({
               placeholder="e.g. GCash Ref # 10049284912"
               value={refundRef}
               onChange={(e) => setRefundRef(e.target.value)}
-              className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
+              className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
             />
           </div>
 
@@ -253,7 +253,7 @@ export function AdminVoidRefundModal({
               placeholder="e.g. Refund sent via GCash by Admin"
               value={adminNotes}
               onChange={(e) => setAdminNotes(e.target.value)}
-              className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
+              className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
             />
           </div>
         </div>

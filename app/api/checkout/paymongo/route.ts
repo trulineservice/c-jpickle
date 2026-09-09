@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { createPayMongoCheckoutSession } from '@/lib/paymongo';
 
 export const dynamic = 'force-dynamic';
@@ -152,8 +153,11 @@ export async function POST(request: NextRequest) {
     }
     const notesSummary = rentalNotes.length > 0 ? rentalNotes.join(' • ') : null;
 
-    // 5-Minute temporary reservation lock
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const adminSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
     const originUrl = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const formattedSlot = `${startHour % 12 === 0 ? 12 : startHour % 12}:00 ${startHour >= 12 ? 'PM' : 'AM'}`;
 
@@ -168,16 +172,16 @@ export async function POST(request: NextRequest) {
       duration_hours: duration,
       total_price: totalPrice,
       currency: 'PHP',
-      status: 'pending_payment',
+      status: 'paid', // Immediately recorded as paid at the same time as reservation
       payment_method: 'paymongo',
-      expires_at: expiresAt.toISOString(),
+      expires_at: null, // Permanent paid reservation
       notes: notesSummary,
       paddle_count: clampedPaddleCount,
     };
 
     let bookingId: string | null = null;
     try {
-      let { data: booking, error: insertError } = await supabase
+      let { data: booking, error: insertError } = await adminSupabase
         .from('bookings')
         .insert(bookingPayload)
         .select('id')
@@ -187,7 +191,7 @@ export async function POST(request: NextRequest) {
       if (insertError && (insertError.code === 'PGRST204' || insertError.message?.includes('paddle_count'))) {
         console.warn('[Checkout API] paddle_count column not found in schema cache. Inserting without column (saved in notes).');
         delete bookingPayload.paddle_count;
-        const retry = await supabase
+        const retry = await adminSupabase
           .from('bookings')
           .insert(bookingPayload)
           .select('id')
@@ -224,7 +228,7 @@ export async function POST(request: NextRequest) {
 
     // Update booking with PayMongo session ID
     try {
-      await supabase
+      await adminSupabase
         .from('bookings')
         .update({ paymongo_checkout_session_id: sessionId })
         .eq('id', bookingId);
@@ -236,7 +240,7 @@ export async function POST(request: NextRequest) {
       success: true,
       bookingId,
       checkoutUrl,
-      expiresAt: expiresAt.toISOString(),
+      expiresAt: null,
     });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);

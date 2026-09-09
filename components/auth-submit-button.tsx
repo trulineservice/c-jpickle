@@ -25,7 +25,7 @@ export function AuthSubmitButton({
     >
       {pending ? (
         <span className="flex items-center justify-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin text-white" />
+          <Loader2 className="w-4 h-4 animate-spin text-current" />
           <span>{loadingLabel}</span>
         </span>
       ) : (

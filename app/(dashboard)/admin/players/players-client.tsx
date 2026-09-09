@@ -236,7 +236,7 @@ export default function PlayersClient({ players }: { players: PlayerSummary[] })
             placeholder="Search by player name, email, or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-10 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#8a8a93] border border-transparent focus-visible:bg-white dark:focus-visible:bg-[#121215] focus-visible:border-[#111111] dark:focus-visible:border-white"
+            className="pl-10 h-10 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus-visible:bg-white dark:focus-visible:bg-black focus-visible:border-[#111111] dark:focus-visible:border-white"
           />
         </div>
 

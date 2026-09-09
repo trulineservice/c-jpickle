@@ -618,7 +618,7 @@ export default function ScheduleClient({
               placeholder="Search player name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-9 pr-8 bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground rounded-full text-xs font-medium focus:outline-none focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
+              className="w-full h-10 pl-9 pr-8 bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-[#111111] dark:text-foreground rounded-full text-xs font-medium focus:outline-none focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
             />
             {searchQuery && (
               <button
@@ -708,7 +708,7 @@ export default function ScheduleClient({
                       value={walkInDate}
                       onChange={(e) => setWalkInDate(e.target.value)}
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs focus:border-[#111111] dark:focus:border-white"
+                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-[#111111] dark:text-foreground text-xs focus:border-[#111111] dark:focus:border-white"
                     />
                   </div>
 
@@ -718,10 +718,10 @@ export default function ScheduleClient({
                     <select
                       value={walkInCourtId}
                       onChange={(e) => setWalkInCourtId(e.target.value)}
-                      className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs font-medium focus:border-[#111111] dark:focus:border-white outline-none"
+                      className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-[#111111] dark:text-foreground text-xs font-medium focus:border-[#111111] dark:focus:border-white outline-none"
                     >
                       {courts.map((c) => (
-                        <option key={c.id} value={c.id} className="dark:bg-[#18181c] dark:text-foreground">
+                        <option key={c.id} value={c.id} className="dark:bg-black dark:text-foreground">
                           {c.name} (₱{Number(c.hourly_rate ?? 300).toFixed(2)}/hr)
                         </option>
                       ))}
@@ -769,7 +769,7 @@ export default function ScheduleClient({
                       value={walkInName}
                       onChange={(e) => setWalkInName(e.target.value)}
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
+                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-[#111111] dark:text-foreground text-xs focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
                     />
                   </div>
 
@@ -779,7 +779,7 @@ export default function ScheduleClient({
                       placeholder="e.g. 0917 123 4567"
                       value={walkInPhone}
                       onChange={(e) => setWalkInPhone(e.target.value)}
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
+                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-[#111111] dark:text-foreground text-xs focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
                     />
                   </div>
 

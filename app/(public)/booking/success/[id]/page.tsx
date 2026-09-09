@@ -32,78 +32,89 @@ interface RawSuccessBooking {
 export default async function BookingSuccessPage({ params, searchParams }: PageProps) {
   const { id: bookingId } = await params;
   const resolvedSearchParams = await searchParams;
-  const isMockPayment = resolvedSearchParams.mock_payment === 'true';
+  const adminSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
-  const supabase = await createClient();
+  // Automatically confirm booking as paid if any legacy pending hold exists, and send confirmation email
+  const { data: rawCurrent } = await adminSupabase
+    .from('bookings')
+    .select('status, guest_email, guest_name, duration_hours, total_price, start_time, end_time, notes, courts(name)')
+    .eq('id', bookingId)
+    .maybeSingle();
 
-  // If mock payment was triggered in development/sandbox, update booking to paid
-  if (isMockPayment) {
-    const adminSupabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+  const currentBooking = rawCurrent as unknown as {
+    status: string;
+    guest_email: string | null;
+    guest_name: string | null;
+    duration_hours: number;
+    total_price: number;
+    start_time: string;
+    end_time: string;
+    notes: string | null;
+    courts: { name: string } | { name: string }[] | null;
+  } | null;
 
-    const { data: rawCurrent } = await adminSupabase
-      .from('bookings')
-      .select('status, guest_email, guest_name, duration_hours, total_price, start_time, end_time, courts(name)')
-      .eq('id', bookingId)
-      .single();
+  if (currentBooking) {
+    const isPending = currentBooking.status === 'pending_payment';
+    const emailNotSent = !currentBooking.notes || !currentBooking.notes.includes('[email_sent]');
 
-    const currentBooking = rawCurrent as unknown as {
-      status: string;
-      guest_email: string | null;
-      guest_name: string | null;
-      duration_hours: number;
-      total_price: number;
-      start_time: string;
-      end_time: string;
-      courts: { name: string } | { name: string }[] | null;
-    } | null;
+    if (isPending || emailNotSent) {
+      const updatedNotes = emailNotSent
+        ? (currentBooking.notes ? `${currentBooking.notes} | [email_sent]` : '[email_sent]')
+        : currentBooking.notes;
 
-    if (currentBooking && currentBooking.status === 'pending_payment') {
       await adminSupabase
         .from('bookings')
         .update({
           status: 'paid',
           payment_method: 'paymongo',
+          notes: updatedNotes,
           updated_at: new Date().toISOString(),
         })
         .eq('id', bookingId);
 
-      // Trigger confirmation email
-      const courtName = Array.isArray(currentBooking.courts)
-        ? currentBooking.courts[0]?.name
-        : currentBooking.courts?.name || 'Court 1 - Indoor';
+      if (emailNotSent) {
+        // Trigger confirmation email with ticket QR code
+        const courtName = Array.isArray(currentBooking.courts)
+          ? currentBooking.courts[0]?.name
+          : currentBooking.courts?.name || 'Court 1 - Indoor';
 
-      const startDate = new Date(currentBooking.start_time);
-      const endDate = new Date(currentBooking.end_time);
+        const startDate = new Date(currentBooking.start_time);
+        const endDate = new Date(currentBooking.end_time);
 
-      const dateStr = new Intl.DateTimeFormat('en-PH', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }).format(startDate);
+        const dateStr = new Intl.DateTimeFormat('en-PH', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }).format(startDate);
 
-      const formatTime = (d: Date) =>
-        new Intl.DateTimeFormat('en-PH', { hour: '2-digit', minute: '2-digit' }).format(d);
+        const formatTime = (d: Date) =>
+          new Intl.DateTimeFormat('en-PH', { hour: '2-digit', minute: '2-digit' }).format(d);
 
-      await sendBookingConfirmationEmail({
-        bookingId,
-        customerName: currentBooking.guest_name || 'Valued Player',
-        customerEmail: currentBooking.guest_email || 'guest@cjcourt.com',
-        courtName,
-        dateStr,
-        timeRange: `${formatTime(startDate)} - ${formatTime(endDate)}`,
-        durationHours: currentBooking.duration_hours,
-        totalPrice: Number(currentBooking.total_price),
-        paymentMethod: 'PayMongo (Online Checkout)',
-      });
+        try {
+          await sendBookingConfirmationEmail({
+            bookingId,
+            customerName: currentBooking.guest_name || 'Valued Player',
+            customerEmail: currentBooking.guest_email || 'guest@cjcourt.com',
+            courtName,
+            dateStr,
+            timeRange: `${formatTime(startDate)} - ${formatTime(endDate)}`,
+            durationHours: currentBooking.duration_hours,
+            totalPrice: Number(currentBooking.total_price),
+            paymentMethod: 'PayMongo (Online Checkout)',
+          });
+        } catch (emailErr) {
+          console.warn('[BookingSuccessPage] Failed to dispatch email:', emailErr);
+        }
+      }
     }
   }
 
-  // Fetch final booking details
-  const { data: rawBooking, error } = await supabase
+  // Fetch final booking details directly via admin client to guarantee full guest ticket access
+  const { data: rawBooking, error } = await adminSupabase
     .from('bookings')
     .select(`
       id,
@@ -124,7 +135,7 @@ export default async function BookingSuccessPage({ params, searchParams }: PageP
       courts ( name, type, hourly_rate )
     `)
     .eq('id', bookingId)
-    .single();
+    .maybeSingle();
 
   let booking: RawSuccessBooking;
 

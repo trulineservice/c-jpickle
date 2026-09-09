@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { createClient } from '@/utils/supabase/client';
 import type { AvailabilitySlot, Court } from '@/types/database';
 import { CourtSelector } from '@/components/booking/court-selector';
-import { DurationSelector, type DurationOption } from '@/components/booking/duration-selector';
 import { TimeSlotGrid } from '@/components/booking/time-slot-grid';
 import { BookingSummaryCard } from '@/components/booking/booking-summary-card';
 import { AlertCircle, Lock } from 'lucide-react';
@@ -39,22 +38,6 @@ const DEFAULT_COURTS: Court[] = [
   },
 ];
 
-const DURATION_OPTIONS: DurationOption[] = Array.from({ length: 12 }, (_, i) => {
-  const h = i + 1;
-  return {
-    hours: h,
-    label: `${h} Hour${h > 1 ? 's' : ''}`,
-    description:
-      h === 1
-        ? 'Single match'
-        : h === 2
-        ? 'Doubles match'
-        : h <= 4
-        ? 'Squad tournament block'
-        : 'Arena private block',
-  };
-});
-
 export default function BookPage() {
   const [courts, setCourts] = useState<Court[]>(DEFAULT_COURTS);
   const [selectedCourt, setSelectedCourt] = useState<Court>(DEFAULT_COURTS[0]);
@@ -68,8 +51,13 @@ export default function BookPage() {
     today.setHours(0, 0, 0, 0);
     return today;
   });
-  const [durationHours, setDurationHours] = useState<number>(1);
-  const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+
+  // Multi-slot selection state
+  const [selectedSlots, setSelectedSlots] = useState<AvailabilitySlot[]>([]);
+
+  // Derived duration & start slot
+  const durationHours = Math.max(1, selectedSlots.length);
+  const selectedSlot = selectedSlots.length > 0 ? selectedSlots[0] : null;
 
   // Form & Auth State
   const [guestName, setGuestName] = useState('');
@@ -128,7 +116,7 @@ export default function BookPage() {
             name: c.name,
             type: c.type || (c.name?.toLowerCase().includes('outdoor') ? 'outdoor' : 'indoor'),
             hourly_rate: c.hourly_rate !== undefined && c.hourly_rate !== null ? Number(c.hourly_rate) : 300,
-            is_active: c.is_active !== false,
+            is_active: c.is_active ?? true,
             created_at: c.created_at || new Date().toISOString(),
           }));
 
@@ -159,7 +147,7 @@ export default function BookPage() {
 
     try {
       const res = await fetch(
-        `/api/availability?courtId=${selectedCourt.id}&date=${rawDateStr}&durationHours=${durationHours}`
+        `/api/availability?courtId=${selectedCourt.id}&date=${rawDateStr}&durationHours=1`
       );
       if (!res.ok) throw new Error('Could not fetch slot availability.');
 
@@ -171,12 +159,12 @@ export default function BookPage() {
         setMonthOverview((prev) => ({ ...prev, ...data.monthOverview }));
       }
 
-      setSelectedSlot((prev) => {
-        if (!prev) return null;
-        const stillAvailable = loadedSlots.find(
-          (s) => s.hour24 === prev.hour24 && s.available
+      // Preserve only still-available slots in selection
+      setSelectedSlots((prev) => {
+        if (prev.length === 0) return [];
+        return prev.filter((p) =>
+          loadedSlots.some((s) => s.hour24 === p.hour24 && s.available)
         );
-        return stillAvailable || null;
       });
     } catch (err: unknown) {
       console.error('Failed to load availability:', err);
@@ -184,7 +172,7 @@ export default function BookPage() {
     } finally {
       setIsLoadingSlots(false);
     }
-  }, [rawDateStr, selectedCourt?.id, durationHours]);
+  }, [rawDateStr, selectedCourt?.id]);
 
   useEffect(() => {
     fetchAvailability();
@@ -248,7 +236,7 @@ export default function BookPage() {
     today.setHours(0, 0, 0, 0);
     if (date < today) return;
     setSelectedDate(date);
-    setSelectedSlot(null);
+    setSelectedSlots([]);
   };
 
   const handleInitiateCheckout = async () => {
@@ -256,8 +244,8 @@ export default function BookPage() {
       window.location.href = `/login?next=${encodeURIComponent('/book')}`;
       return;
     }
-    if (!selectedSlot) {
-      setErrorMessage('Please pick an available time slot from the schedule below.');
+    if (selectedSlots.length === 0 || !selectedSlot) {
+      setErrorMessage('Please select one or more available time slots from the schedule below.');
       return;
     }
     if (!guestName.trim() || !guestEmail.trim()) {
@@ -277,7 +265,7 @@ export default function BookPage() {
           date: rawDateStr,
           timeSlot: selectedSlot.time,
           hour24: selectedSlot.hour24,
-          durationHours,
+          durationHours: selectedSlots.length,
           guestName: guestName.trim(),
           guestEmail: guestEmail.trim(),
           guestPhone: guestPhone.trim() || undefined,
@@ -315,49 +303,49 @@ export default function BookPage() {
     : 'No Date Selected';
 
   return (
-    <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-8 py-8 md:py-12 font-sans bg-white text-[#111111]">
+    <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-8 py-8 md:py-12 font-sans bg-background text-foreground">
       {/* Header Bar */}
-      <div className="border-b border-[#cacacb] pb-6 mb-8 flex flex-col md:flex-row md:items-baseline justify-between gap-4">
+      <div className="border-b border-[#cacacb] dark:border-[#27272a] pb-6 mb-8 flex flex-col md:flex-row md:items-baseline justify-between gap-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-[#707072] block mb-1">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#a1a1aa] block mb-1">
             Live Reservation
           </span>
-          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-[#111111]">
+          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-foreground">
             SELECT COURT &amp; SCHEDULE
           </h1>
         </div>
 
-        <div className="flex items-center gap-3 text-xs font-medium text-[#707072]">
-          <span className="text-[#111111] font-bold">₱300 / hr Flat Rate</span>
+        <div className="flex items-center gap-3 text-xs font-medium text-[#707072] dark:text-[#a1a1aa]">
+          <span className="text-foreground font-bold">₱300 / hr Flat Rate</span>
           <span>•</span>
           <span>PayMongo Instant Lock</span>
           <span>•</span>
-          <span className="text-[#007d48] font-semibold">24h Cancellation Guarantee</span>
+          <span className="text-[#007d48] dark:text-[#10b981] font-semibold">24h Cancellation Guarantee</span>
         </div>
       </div>
 
       {/* Account Required Banner */}
       {!isAuthLoading && !isAuthenticated && (
-        <div className="p-4 bg-[#f5f5f5] border border-[#cacacb] mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+        <div className="p-4 bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
           <div className="flex items-center gap-3">
-            <Lock className="w-4 h-4 text-[#111111] shrink-0" />
+            <Lock className="w-4 h-4 text-foreground shrink-0" />
             <div>
-              <strong className="text-[#111111] block font-bold text-xs uppercase tracking-wide">
+              <strong className="text-foreground block font-bold text-xs uppercase tracking-wide">
                 Account Required to Reserve
               </strong>
-              <span className="text-[#707072]">
+              <span className="text-[#707072] dark:text-[#a1a1aa]">
                 Please sign in or register to secure your court reservation.
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/login?next=/book">
-              <Button size="sm" className="bg-[#111111] text-white hover:bg-[#222222] text-xs px-4">
+              <Button size="sm" className="bg-[#111111] hover:bg-[#222222] text-white dark:bg-white dark:text-[#111111] dark:hover:bg-[#e5e5e5] text-xs px-4">
                 Sign In
               </Button>
             </Link>
             <Link href="/signup?next=/book">
-              <Button size="sm" variant="secondary" className="text-xs px-4">
+              <Button size="sm" variant="secondary" className="text-xs px-4 dark:bg-[#27272a] dark:text-white dark:hover:bg-[#323238]">
                 Create Account
               </Button>
             </Link>
@@ -367,7 +355,7 @@ export default function BookPage() {
 
       {/* Error Alert */}
       {errorMessage && (
-        <div className="p-4 border border-[#d30005] bg-white text-[#d30005] text-xs mb-8 flex items-center gap-2">
+        <div className="p-4 border border-[#d30005] bg-white dark:bg-[#18181c] text-[#d30005] text-xs mb-8 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{errorMessage}</span>
         </div>
@@ -375,33 +363,24 @@ export default function BookPage() {
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        {/* Left Column: Court, Duration, Calendar, Slots */}
+        {/* Left Column: Court Selection, Calendar, Slots */}
         <div className="lg:col-span-7 space-y-8">
           {/* Step 1: Court Selection */}
-          <div className="border border-[#cacacb] p-6 space-y-6">
+          <div className="border border-[#cacacb] dark:border-[#27272a] p-6 bg-white dark:bg-[#121215]">
             <CourtSelector
               courts={courts}
               selectedCourt={selectedCourt}
               onSelectCourt={(c) => {
                 setSelectedCourt(c);
-                setSelectedSlot(null);
-              }}
-            />
-
-            <DurationSelector
-              durationHours={durationHours}
-              durationOptions={DURATION_OPTIONS}
-              onSelectDuration={(h) => {
-                setDurationHours(h);
-                setSelectedSlot(null);
+                setSelectedSlots([]);
               }}
             />
           </div>
 
           {/* Step 2: Calendar Card */}
-          <div className="border border-[#cacacb] p-6 space-y-4 bg-white">
-            <div className="flex items-baseline justify-between border-b border-[#cacacb] pb-3">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#707072]">
+          <div className="border border-[#cacacb] dark:border-[#27272a] p-6 space-y-4 bg-white dark:bg-[#121215]">
+            <div className="flex items-baseline justify-between border-b border-[#cacacb] dark:border-[#27272a] pb-3">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#a1a1aa]">
                 2. Select Date ({formattedDisplayDate})
               </span>
               <div className="flex items-center gap-2">
@@ -414,9 +393,9 @@ export default function BookPage() {
                     today.setHours(0, 0, 0, 0);
                     setSelectedDate(today);
                     setVisibleMonth(today);
-                    setSelectedSlot(null);
+                    setSelectedSlots([]);
                   }}
-                  className="text-xs px-3 rounded-full border-[#cacacb] text-[#111111] hover:bg-[#f5f5f5]"
+                  className="text-xs px-3 rounded-full border-[#cacacb] dark:border-[#27272a] text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
                 >
                   Today
                 </Button>
@@ -430,9 +409,9 @@ export default function BookPage() {
                     tomorrow.setHours(0, 0, 0, 0);
                     setSelectedDate(tomorrow);
                     setVisibleMonth(tomorrow);
-                    setSelectedSlot(null);
+                    setSelectedSlots([]);
                   }}
-                  className="text-xs px-3 rounded-full border-[#cacacb] text-[#111111] hover:bg-[#f5f5f5]"
+                  className="text-xs px-3 rounded-full border-[#cacacb] dark:border-[#27272a] text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
                 >
                   Tomorrow
                 </Button>
@@ -447,7 +426,7 @@ export default function BookPage() {
                 selected={selectedDate}
                 modifiers={calendarModifiers}
                 onSelect={handleDateSelect}
-                className="w-full text-[#111111]"
+                className="w-full text-foreground"
                 disabled={(d) => {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
@@ -457,17 +436,18 @@ export default function BookPage() {
             </div>
           </div>
 
-          {/* Step 3: Time Slot Availability Grid */}
-          <div className="border border-[#cacacb] p-6 space-y-4">
+          {/* Step 3: Time Slot Availability Grid (Multi-Select) */}
+          <div className="border border-[#cacacb] dark:border-[#27272a] p-6 space-y-4 bg-white dark:bg-[#121215]">
             <TimeSlotGrid
               slots={filteredSlots}
-              selectedSlot={selectedSlot}
-              onSelectSlot={(slot) => setSelectedSlot(slot)}
+              selectedSlots={selectedSlots}
+              onSelectSlots={(newSlots) => setSelectedSlots(newSlots)}
+              onClearSelection={() => setSelectedSlots([])}
               isLoading={isLoadingSlots}
               errorMessage={errorMessage}
               timeFilter={timeFilter}
               onFilterChange={(f) => setTimeFilter(f)}
-              durationHours={durationHours}
+              hourlyRate={hourlyRate}
             />
           </div>
         </div>
@@ -478,6 +458,7 @@ export default function BookPage() {
             selectedCourt={selectedCourt}
             selectedDateStr={formattedDisplayDate}
             selectedSlot={selectedSlot}
+            selectedSlots={selectedSlots}
             durationHours={durationHours}
             paddleCount={paddleCount}
             onPaddleCountChange={setPaddleCount}

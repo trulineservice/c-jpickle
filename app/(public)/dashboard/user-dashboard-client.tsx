@@ -400,7 +400,7 @@ export default function UserDashboardClient({
                   required 
                   minLength={6}
                   placeholder="Enter new password"
-                  className="h-11 w-full px-4 rounded-full border border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] text-sm text-[#111111] dark:text-foreground focus:outline-none focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
+                  className="h-11 w-full px-4 rounded-full border border-[#cacacb] dark:border-[#3f3f46] bg-[#f5f5f5] dark:bg-black text-sm text-[#111111] dark:text-foreground focus:outline-none focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
                 />
                 <p className="text-[10px] text-[#707072] dark:text-[#8a8a93] mt-1">Must be at least 6 characters long.</p>
               </div>

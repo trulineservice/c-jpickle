@@ -85,7 +85,7 @@ export default async function AdminCourtsPage() {
                     name="name" 
                     placeholder="e.g. Court 3 - Indoor (Pro Cushion)" 
                     required 
-                    className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-foreground border border-transparent focus:border-[#111111] dark:focus:border-white"
+                    className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46] placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus:border-[#111111] dark:focus:border-white"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -100,7 +100,7 @@ export default async function AdminCourtsPage() {
                     min="1" 
                     step="1" 
                     required 
-                    className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-foreground border border-transparent focus:border-[#111111] dark:focus:border-white"
+                    className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46] placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus:border-[#111111] dark:focus:border-white"
                   />
                 </div>
               </div>

@@ -180,7 +180,7 @@ export function RefundRequestModal({
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
               required
-              className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
+              className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
             />
           </div>
 
@@ -195,7 +195,7 @@ export function RefundRequestModal({
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
               required
-              className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
+              className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
             />
           </div>
 
@@ -208,13 +208,13 @@ export function RefundRequestModal({
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs h-10 px-4 rounded-full focus:border-[#111111] dark:focus:border-white outline-none cursor-pointer"
+              className="w-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-[#111111] dark:text-foreground text-xs h-10 px-4 rounded-full focus:border-[#111111] dark:focus:border-white outline-none cursor-pointer"
             >
-              <option value="Schedule Conflict" className="dark:bg-[#18181c] dark:text-foreground">Schedule Conflict</option>
-              <option value="Emergency / Illness" className="dark:bg-[#18181c] dark:text-foreground">Emergency / Illness</option>
-              <option value="Severe Weather / Travel Issues" className="dark:bg-[#18181c] dark:text-foreground">Severe Weather / Travel Issues</option>
-              <option value="Booked Wrong Court or Time" className="dark:bg-[#18181c] dark:text-foreground">Booked Wrong Court or Time</option>
-              <option value="Other" className="dark:bg-[#18181c] dark:text-foreground">Other Reason</option>
+              <option value="Schedule Conflict" className="dark:bg-black dark:text-foreground">Schedule Conflict</option>
+              <option value="Emergency / Illness" className="dark:bg-black dark:text-foreground">Emergency / Illness</option>
+              <option value="Severe Weather / Travel Issues" className="dark:bg-black dark:text-foreground">Severe Weather / Travel Issues</option>
+              <option value="Booked Wrong Court or Time" className="dark:bg-black dark:text-foreground">Booked Wrong Court or Time</option>
+              <option value="Other" className="dark:bg-black dark:text-foreground">Other Reason</option>
             </select>
           </div>
 
@@ -224,7 +224,7 @@ export function RefundRequestModal({
                 placeholder="Briefly state your reason..."
                 value={customReason}
                 onChange={(e) => setCustomReason(e.target.value)}
-                className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border-transparent dark:border-[#27272a] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#66666e]"
+                className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-xs text-[#111111] dark:text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
               />
             </div>
           )}

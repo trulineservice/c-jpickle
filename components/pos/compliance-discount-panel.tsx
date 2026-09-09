@@ -70,7 +70,7 @@ export function ComplianceDiscountPanel({
       {isStatutory && (
         <div className="space-y-2 pt-2 border-t border-[#f0f0f0] animate-in fade-in duration-200">
           <div>
-            <Label htmlFor="custName" className="text-[11px] font-bold uppercase text-[#707072]">
+            <Label htmlFor="custName" className="text-[11px] font-bold uppercase text-[#707072] dark:text-[#a1a1aa]">
               Customer Full Name <span className="text-[#d30005]">*</span>
             </Label>
             <Input
@@ -84,7 +84,7 @@ export function ComplianceDiscountPanel({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
-              <Label htmlFor="discId" className="text-[11px] font-bold uppercase text-[#707072]">
+              <Label htmlFor="discId" className="text-[11px] font-bold uppercase text-[#707072] dark:text-[#a1a1aa]">
                 Senior / PWD ID Number <span className="text-[#d30005]">*</span>
               </Label>
               <Input
@@ -96,7 +96,7 @@ export function ComplianceDiscountPanel({
               />
             </div>
             <div>
-              <Label htmlFor="custTin" className="text-[11px] font-bold uppercase text-[#707072]">
+              <Label htmlFor="custTin" className="text-[11px] font-bold uppercase text-[#707072] dark:text-[#a1a1aa]">
                 Customer TIN (Optional)
               </Label>
               <Input

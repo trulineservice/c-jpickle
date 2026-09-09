@@ -230,7 +230,7 @@ export default function AdminDashboardClient({
                       name="fullName"
                       placeholder="Jane Doe"
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-foreground border border-transparent focus:border-[#111111] dark:focus:border-white"
+                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46] placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus:border-[#111111] dark:focus:border-white"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -243,7 +243,7 @@ export default function AdminDashboardClient({
                       type="email"
                       placeholder="staff@cjcourt.com"
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-foreground border border-transparent focus:border-[#111111] dark:focus:border-white"
+                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46] placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus:border-[#111111] dark:focus:border-white"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -253,10 +253,10 @@ export default function AdminDashboardClient({
                     <select
                       id="role"
                       name="role"
-                      className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-foreground text-xs font-medium outline-none focus:border-[#111111] dark:focus:border-white cursor-pointer"
+                      className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-foreground text-xs font-medium outline-none focus:border-[#111111] dark:focus:border-white cursor-pointer"
                     >
-                      <option value="cashier">Cashier Staff</option>
-                      <option value="owner">Owner / Co-Admin</option>
+                      <option value="cashier" className="dark:bg-black">Cashier Staff</option>
+                      <option value="owner" className="dark:bg-black">Owner / Co-Admin</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
@@ -268,7 +268,7 @@ export default function AdminDashboardClient({
                       name="password"
                       type="password"
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-foreground border border-transparent focus:border-[#111111] dark:focus:border-white"
+                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46] placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus:border-[#111111] dark:focus:border-white"
                     />
                   </div>
                 </div>
@@ -513,7 +513,7 @@ export default function AdminDashboardClient({
                 placeholder="Search player, email, ref..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#8a8a93] border border-transparent focus:border-[#111111] dark:focus:border-white"
+                className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus:border-[#111111] dark:focus:border-white"
               />
             </div>
 

@@ -150,7 +150,7 @@ export default function CashierClient({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search gear, balls, drinks..."
-            className="pl-9 h-10 rounded-full text-xs bg-[#f5f5f5] border-transparent focus:border-[#111111]"
+            className="pl-9 h-10 rounded-full text-xs bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus:border-[#111111] dark:focus:border-white"
           />
         </div>
       </div>
