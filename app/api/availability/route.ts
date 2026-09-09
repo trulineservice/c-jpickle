@@ -81,22 +81,65 @@ export async function GET(request: NextRequest) {
         console.warn('[Availability API] Could not auto-expire pending holds:', cleanErr);
       }
 
-      let monthQuery = supabase
-        .from('bookings')
+      // Query zero-PII view v_court_availability first, falling back to bookings table
+      let viewQuery = supabase
+        .from('v_court_availability')
         .select('id, start_time, end_time, status, expires_at')
         .gte('end_time', startOfMonth.toISOString())
-        .lte('start_time', endOfMonth.toISOString())
-        .in('status', ['paid', 'checked_in', 'walk_in', 'pending_payment']);
+        .lte('start_time', endOfMonth.toISOString());
 
       if (targetCourtId) {
-        monthQuery = monthQuery.eq('court_id', targetCourtId);
+        viewQuery = viewQuery.eq('court_id', targetCourtId);
       }
 
-      const { data: monthBookings, error: monthErr } = await monthQuery;
-      if (monthErr) {
-        console.warn('[Availability API] Database query warning (using fallback open schedule):', monthErr.message);
-      } else if (monthBookings) {
-        allBookings = monthBookings;
+      const { data: viewBookings, error: viewErr } = await viewQuery;
+      if (!viewErr && viewBookings) {
+        allBookings = viewBookings;
+      } else {
+        // Fallback for environments before view migration
+        let fallbackQuery = supabase
+          .from('bookings')
+          .select('id, start_time, end_time, status, expires_at')
+          .gte('end_time', startOfMonth.toISOString())
+          .lte('start_time', endOfMonth.toISOString())
+          .in('status', ['paid', 'checked_in', 'walk_in', 'pending_payment']);
+
+        if (targetCourtId) {
+          fallbackQuery = fallbackQuery.eq('court_id', targetCourtId);
+        }
+
+        const { data: fallbackBookings } = await fallbackQuery;
+        if (fallbackBookings) {
+          allBookings = fallbackBookings;
+        }
+      }
+
+      // Check for court maintenance schedules
+      try {
+        let maintenanceQuery = supabase
+          .from('court_maintenance_schedules')
+          .select('id, start_time, end_time')
+          .gte('end_time', startOfMonth.toISOString())
+          .lte('start_time', endOfMonth.toISOString());
+
+        if (targetCourtId) {
+          maintenanceQuery = maintenanceQuery.eq('court_id', targetCourtId);
+        }
+
+        const { data: maintenanceWindows } = await maintenanceQuery;
+        if (maintenanceWindows && maintenanceWindows.length > 0) {
+          for (const m of maintenanceWindows) {
+            allBookings.push({
+              id: m.id,
+              start_time: m.start_time,
+              end_time: m.end_time,
+              status: 'maintenance',
+              expires_at: null,
+            });
+          }
+        }
+      } catch (maintErr) {
+        // Silently skip if table not created yet
       }
     } catch (dbErr) {
       console.warn('[Availability API] Supabase connection unavailable, providing dynamic real-time schedule:', dbErr);

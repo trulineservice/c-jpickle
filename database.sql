@@ -99,12 +99,37 @@ CREATE TABLE IF NOT EXISTS public.courts (
 );
 
 -- ----------------------------------------------------------------------------
--- 5. BOOKINGS TABLE (Core Court Reservations - 3NF Clean)
+-- 5. COURT MAINTENANCE & PRICING RULES (3NF Normalization)
 -- ----------------------------------------------------------------------------
--- Eliminated redundancy:
---   - Removed duplicate customer_id (unified on user_id)
---   - Removed duplicate total_amount (unified on total_price)
---   - Extracted 8 refund fields into dedicated booking_refunds table
+CREATE TABLE IF NOT EXISTS public.court_maintenance_schedules (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  court_id uuid NOT NULL REFERENCES public.courts(id) ON DELETE CASCADE,
+  start_time timestamp with time zone NOT NULL,
+  end_time timestamp with time zone NOT NULL,
+  title text NOT NULL,
+  description text,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+  CONSTRAINT valid_maintenance_time CHECK (end_time > start_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_court_maintenance_court_time 
+  ON public.court_maintenance_schedules (court_id, start_time, end_time);
+
+CREATE TABLE IF NOT EXISTS public.court_pricing_rules (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  court_id uuid REFERENCES public.courts(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  day_of_week integer CHECK (day_of_week BETWEEN 0 AND 6),
+  start_hour integer NOT NULL CHECK (start_hour BETWEEN 0 AND 23),
+  end_hour integer NOT NULL CHECK (end_hour BETWEEN 1 AND 24 AND end_hour > start_hour),
+  hourly_rate numeric(10, 2) NOT NULL CHECK (hourly_rate >= 0),
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- ----------------------------------------------------------------------------
+-- 6. BOOKINGS TABLE (Core Court Reservations - 3NF Clean)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.bookings (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -131,6 +156,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   paymongo_checkout_session_id text,
   expires_at timestamp with time zone,
   notes text,
+  paddle_count integer NOT NULL DEFAULT 0 CHECK (paddle_count >= 0 AND paddle_count <= 4),
   
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
@@ -139,7 +165,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
 );
 
 -- ----------------------------------------------------------------------------
--- 6. BOOKING REFUNDS TABLE (Normalized 3NF Entity for Refunds & Voids)
+-- 7. BOOKING REFUNDS TABLE (Normalized 3NF Entity for Refunds & Voids)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.booking_refunds (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -159,10 +185,40 @@ CREATE TABLE IF NOT EXISTS public.booking_refunds (
 );
 
 -- ----------------------------------------------------------------------------
--- 7. POS PRODUCTS & INVENTORY
+-- 8. EQUIPMENT RENTALS TABLE (Normalized Rental Line Items)
 -- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.equipment_rentals (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id uuid NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
+  product_id uuid, -- Optional FK to pos_products
+  equipment_type text NOT NULL CHECK (equipment_type IN ('paddle', 'ball_thrower', 'balls', 'other')),
+  equipment_name text NOT NULL,
+  quantity integer NOT NULL CHECK (quantity > 0 AND quantity <= 4),
+  rate_per_unit numeric(10, 2) NOT NULL CHECK (rate_per_unit >= 0),
+  total_price numeric(10, 2) NOT NULL CHECK (total_price >= 0),
+  returned_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_equipment_rentals_booking_id 
+  ON public.equipment_rentals (booking_id);
+
+-- ----------------------------------------------------------------------------
+-- 9. POS CATEGORIES & PRODUCTS
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.pos_categories (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  name text NOT NULL UNIQUE,
+  slug text NOT NULL UNIQUE,
+  description text,
+  display_order integer NOT NULL DEFAULT 0,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
 CREATE TABLE IF NOT EXISTS public.pos_products (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  category_id uuid REFERENCES public.pos_categories(id) ON DELETE SET NULL,
   name text NOT NULL UNIQUE,
   category text NOT NULL,
   price numeric(10, 2) NOT NULL CHECK (price >= 0),
@@ -173,7 +229,7 @@ CREATE TABLE IF NOT EXISTS public.pos_products (
 );
 
 -- ----------------------------------------------------------------------------
--- 8. POS TRANSACTIONS & RECEIPT ITEMS
+-- 10. POS TRANSACTIONS & RECEIPT ITEMS
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.pos_transactions (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -204,7 +260,25 @@ CREATE TABLE IF NOT EXISTS public.pos_transaction_items (
 );
 
 -- ----------------------------------------------------------------------------
--- 9. GIST EXCLUSION CONSTRAINT (Double-Booking Elimination Engine-Level)
+-- 11. SECURITY AUDIT LOGS (Immutable Fiscal & Security Trail)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.security_audit_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  actor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  action text NOT NULL,
+  entity_type text NOT NULL,
+  entity_id text NOT NULL,
+  old_data jsonb,
+  new_data jsonb,
+  ip_address text,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_security_audit_entity 
+  ON public.security_audit_logs (entity_type, entity_id);
+
+-- ----------------------------------------------------------------------------
+-- 12. GIST EXCLUSION CONSTRAINT (Double-Booking Elimination Engine-Level)
 -- ----------------------------------------------------------------------------
 DO $$ BEGIN
   ALTER TABLE public.bookings DROP CONSTRAINT IF EXISTS no_overlapping_court_bookings;
@@ -221,54 +295,62 @@ EXCEPTION
 END $$;
 
 -- ----------------------------------------------------------------------------
--- 10. HIGH-PERFORMANCE INDEXES (Optimized for Supabase RLS & Queries)
+-- 13. HIGH-PERFORMANCE INDEXES
 -- ----------------------------------------------------------------------------
--- Court Schedule & Availability Lookup (Composite Covering Index)
 CREATE INDEX IF NOT EXISTS idx_bookings_availability 
   ON public.bookings (court_id, start_time, end_time) 
   WHERE status IN ('paid', 'checked_in', 'walk_in', 'pending_payment');
 
--- Supabase RLS Policy Acceleration (prevents Seq Scans on user dashboard)
 CREATE INDEX IF NOT EXISTS idx_bookings_user_id 
   ON public.bookings (user_id);
 
--- Booking Status & Session Lookups
 CREATE INDEX IF NOT EXISTS idx_bookings_status 
   ON public.bookings (status);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_paddle_count 
+  ON public.bookings (paddle_count) 
+  WHERE paddle_count > 0;
 
 CREATE INDEX IF NOT EXISTS idx_bookings_paymongo_session 
   ON public.bookings (paymongo_checkout_session_id) 
   WHERE paymongo_checkout_session_id IS NOT NULL;
 
--- Refund Queries
 CREATE INDEX IF NOT EXISTS idx_booking_refunds_booking_id 
   ON public.booking_refunds (booking_id);
 
 CREATE INDEX IF NOT EXISTS idx_booking_refunds_status 
   ON public.booking_refunds (status);
 
--- POS Lookups
 CREATE INDEX IF NOT EXISTS idx_pos_transactions_cashier_id 
   ON public.pos_transactions (cashier_id);
 
 CREATE INDEX IF NOT EXISTS idx_pos_transaction_items_tx_id 
   ON public.pos_transaction_items (transaction_id);
 
-CREATE INDEX IF NOT EXISTS idx_pos_transaction_items_product_id 
-  ON public.pos_transaction_items (product_id);
+-- ----------------------------------------------------------------------------
+-- 14. COMPOSITE VIEWS
+-- ----------------------------------------------------------------------------
+-- Public View: Calendar Slot Availability (Zero PII Exposure)
+CREATE OR REPLACE VIEW public.v_court_availability AS
+SELECT 
+  b.id,
+  b.court_id,
+  b.start_time,
+  b.end_time,
+  b.status,
+  b.expires_at
+FROM public.bookings b
+WHERE b.status IN ('paid', 'checked_in', 'walk_in', 'pending_payment');
 
--- ----------------------------------------------------------------------------
--- 11. BACKWARD COMPATIBILITY COMPOSITE VIEW
--- ----------------------------------------------------------------------------
--- Allows legacy queries expecting denormalized refund fields on bookings 
--- to continue operating seamlessly without breaking changes.
--- ----------------------------------------------------------------------------
+GRANT SELECT ON public.v_court_availability TO anon, authenticated;
+
+-- Composite Extended Bookings View
 CREATE OR REPLACE VIEW public.v_bookings_extended AS
 SELECT 
   b.id,
   b.court_id,
   b.user_id,
-  b.user_id AS customer_id, -- Legacy alias
+  b.user_id AS customer_id,
   b.guest_name,
   b.guest_email,
   b.guest_phone,
@@ -276,13 +358,14 @@ SELECT
   b.end_time,
   b.duration_hours,
   b.total_price,
-  b.total_price AS total_amount, -- Legacy alias
+  b.total_price AS total_amount,
   b.currency,
   b.status,
   b.payment_method,
   b.paymongo_checkout_session_id,
   b.expires_at,
   b.notes,
+  b.paddle_count,
   b.created_at,
   b.updated_at,
   r.wallet_type AS refund_wallet_type,
@@ -297,16 +380,22 @@ FROM public.bookings b
 LEFT JOIN public.booking_refunds r ON b.id = r.booking_id;
 
 -- ----------------------------------------------------------------------------
--- 12. ROW LEVEL SECURITY (RLS)
+-- 15. ROW LEVEL SECURITY (RLS) - HARDENED DEFENSE-IN-DEPTH
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.courts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.court_maintenance_schedules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.court_pricing_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.booking_refunds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.equipment_rentals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pos_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pos_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pos_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pos_transaction_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.security_audit_logs ENABLE ROW LEVEL SECURITY;
 
+-- Security Definer Helpers (search_path injection protected)
 CREATE OR REPLACE FUNCTION public.is_staff(check_uid uuid)
 RETURNS boolean AS $$
 BEGIN
@@ -315,47 +404,96 @@ BEGIN
     WHERE id = check_uid AND role IN ('owner', 'admin', 'cashier')
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path = public, pg_temp;
 
--- Profiles Policies
+CREATE OR REPLACE FUNCTION public.is_admin(check_uid uuid)
+RETURNS boolean AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = check_uid AND role IN ('owner', 'admin')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path = public, pg_temp;
+
+-- 15.1 Profiles: Read self/staff, Update self (prevent role self-promotion), Admin manage all
 DROP POLICY IF EXISTS "Profiles read access" ON public.profiles;
 CREATE POLICY "Profiles read access" ON public.profiles
   FOR SELECT USING (auth.uid() = id OR public.is_staff(auth.uid()));
 
 DROP POLICY IF EXISTS "Profiles update access" ON public.profiles;
-CREATE POLICY "Profiles update access" ON public.profiles
-  FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Profiles self update" ON public.profiles;
+CREATE POLICY "Profiles self update" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (
+    auth.uid() = id 
+    AND (
+      role = (SELECT p.role FROM public.profiles p WHERE p.id = auth.uid())
+      OR public.is_admin(auth.uid())
+    )
+  );
 
--- Courts Policies: Public read, Staff write
+DROP POLICY IF EXISTS "Profiles admin manage" ON public.profiles;
+CREATE POLICY "Profiles admin manage" ON public.profiles
+  FOR ALL USING (public.is_admin(auth.uid()));
+
+-- 15.2 Courts & Maintenance: Public read, Admin manage
 DROP POLICY IF EXISTS "Courts read access" ON public.courts;
-CREATE POLICY "Courts read access" ON public.courts
-  FOR SELECT USING (true);
+CREATE POLICY "Courts read access" ON public.courts FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Courts staff manage access" ON public.courts;
-CREATE POLICY "Courts staff manage access" ON public.courts
-  FOR ALL USING (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "Courts admin manage" ON public.courts;
+CREATE POLICY "Courts admin manage" ON public.courts FOR ALL USING (public.is_admin(auth.uid()));
 
--- Bookings Policies
+DROP POLICY IF EXISTS "Court maintenance read" ON public.court_maintenance_schedules;
+CREATE POLICY "Court maintenance read" ON public.court_maintenance_schedules FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Court maintenance admin manage" ON public.court_maintenance_schedules;
+CREATE POLICY "Court maintenance admin manage" ON public.court_maintenance_schedules FOR ALL USING (public.is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "Court pricing read" ON public.court_pricing_rules;
+CREATE POLICY "Court pricing read" ON public.court_pricing_rules FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Court pricing admin manage" ON public.court_pricing_rules;
+CREATE POLICY "Court pricing admin manage" ON public.court_pricing_rules FOR ALL USING (public.is_admin(auth.uid()));
+
+-- 15.3 Bookings: Strict PII Isolation (No "OR true" leakage!)
 DROP POLICY IF EXISTS "Bookings read access" ON public.bookings;
 CREATE POLICY "Bookings read access" ON public.bookings
   FOR SELECT USING (
     public.is_staff(auth.uid()) 
     OR (auth.uid() IS NOT NULL AND user_id = auth.uid())
-    OR true -- Public reads slot timestamps for calendar availability
   );
 
 DROP POLICY IF EXISTS "Bookings insert access" ON public.bookings;
 CREATE POLICY "Bookings insert access" ON public.bookings
-  FOR INSERT WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Bookings update access" ON public.bookings;
-CREATE POLICY "Bookings update access" ON public.bookings
-  FOR UPDATE USING (
+  FOR INSERT WITH CHECK (
     public.is_staff(auth.uid())
-    OR (auth.uid() IS NOT NULL AND user_id = auth.uid())
+    OR (
+      auth.uid() IS NOT NULL 
+      AND user_id = auth.uid() 
+      AND status = 'pending_payment'
+    )
   );
 
--- Refunds Policies
+DROP POLICY IF EXISTS "Bookings update access" ON public.bookings;
+DROP POLICY IF EXISTS "Bookings staff update" ON public.bookings;
+CREATE POLICY "Bookings staff update" ON public.bookings
+  FOR UPDATE USING (public.is_staff(auth.uid()));
+
+DROP POLICY IF EXISTS "Bookings user cancel own" ON public.bookings;
+CREATE POLICY "Bookings user cancel own" ON public.bookings
+  FOR UPDATE USING (
+    auth.uid() IS NOT NULL 
+    AND user_id = auth.uid()
+  )
+  WITH CHECK (
+    auth.uid() IS NOT NULL 
+    AND user_id = auth.uid()
+    AND status = 'cancelled'
+  );
+
+-- 15.4 Refunds: Staff or booking owner
 DROP POLICY IF EXISTS "Refunds staff or owner read access" ON public.booking_refunds;
 CREATE POLICY "Refunds staff or owner read access" ON public.booking_refunds
   FOR SELECT USING (
@@ -370,29 +508,76 @@ DROP POLICY IF EXISTS "Refunds customer insert access" ON public.booking_refunds
 CREATE POLICY "Refunds customer insert access" ON public.booking_refunds
   FOR INSERT WITH CHECK (
     public.is_staff(auth.uid())
-    OR EXISTS (
-      SELECT 1 FROM public.bookings b 
-      WHERE b.id = booking_refunds.booking_id AND b.user_id = auth.uid()
+    OR (
+      status = 'pending'
+      AND EXISTS (
+        SELECT 1 FROM public.bookings b 
+        WHERE b.id = booking_refunds.booking_id AND b.user_id = auth.uid()
+      )
     )
   );
 
 DROP POLICY IF EXISTS "Refunds staff manage access" ON public.booking_refunds;
 CREATE POLICY "Refunds staff manage access" ON public.booking_refunds
+  FOR UPDATE USING (public.is_staff(auth.uid()));
+
+-- 15.5 Equipment Rentals: Staff or booking owner
+DROP POLICY IF EXISTS "Equipment rentals read access" ON public.equipment_rentals;
+CREATE POLICY "Equipment rentals read access" ON public.equipment_rentals
+  FOR SELECT USING (
+    public.is_staff(auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM public.bookings b 
+      WHERE b.id = equipment_rentals.booking_id AND b.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Equipment rentals insert access" ON public.equipment_rentals;
+CREATE POLICY "Equipment rentals insert access" ON public.equipment_rentals
+  FOR INSERT WITH CHECK (
+    public.is_staff(auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM public.bookings b 
+      WHERE b.id = equipment_rentals.booking_id AND b.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Equipment rentals staff manage" ON public.equipment_rentals;
+CREATE POLICY "Equipment rentals staff manage" ON public.equipment_rentals
   FOR ALL USING (public.is_staff(auth.uid()));
 
--- POS Policies
+-- 15.6 POS: Public products read, Admin catalog manage, Staff transactions
+DROP POLICY IF EXISTS "POS categories read" ON public.pos_categories;
+CREATE POLICY "POS categories read" ON public.pos_categories FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "POS categories admin manage" ON public.pos_categories;
+CREATE POLICY "POS categories admin manage" ON public.pos_categories FOR ALL USING (public.is_admin(auth.uid()));
+
 DROP POLICY IF EXISTS "POS products read access" ON public.pos_products;
-CREATE POLICY "POS products read access" ON public.pos_products
-  FOR SELECT USING (true);
+CREATE POLICY "POS products read access" ON public.pos_products FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "POS staff manage products" ON public.pos_products;
-CREATE POLICY "POS staff manage products" ON public.pos_products
-  FOR ALL USING (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "POS products admin manage" ON public.pos_products;
+CREATE POLICY "POS products admin manage" ON public.pos_products FOR ALL USING (public.is_admin(auth.uid()));
 
 DROP POLICY IF EXISTS "POS staff access transactions" ON public.pos_transactions;
-CREATE POLICY "POS staff access transactions" ON public.pos_transactions
-  FOR ALL USING (public.is_staff(auth.uid()));
+CREATE POLICY "POS staff access transactions" ON public.pos_transactions FOR SELECT USING (public.is_staff(auth.uid()));
+
+DROP POLICY IF EXISTS "POS staff insert transactions" ON public.pos_transactions;
+CREATE POLICY "POS staff insert transactions" ON public.pos_transactions FOR INSERT WITH CHECK (public.is_staff(auth.uid()));
+
+DROP POLICY IF EXISTS "POS admin update transactions" ON public.pos_transactions;
+CREATE POLICY "POS admin update transactions" ON public.pos_transactions FOR UPDATE USING (public.is_admin(auth.uid()));
 
 DROP POLICY IF EXISTS "POS staff access transaction items" ON public.pos_transaction_items;
-CREATE POLICY "POS staff access transaction items" ON public.pos_transaction_items
-  FOR ALL USING (public.is_staff(auth.uid()));
+CREATE POLICY "POS staff access transaction items" ON public.pos_transaction_items FOR SELECT USING (public.is_staff(auth.uid()));
+
+DROP POLICY IF EXISTS "POS staff insert transaction items" ON public.pos_transaction_items;
+CREATE POLICY "POS staff insert transaction items" ON public.pos_transaction_items FOR INSERT WITH CHECK (public.is_staff(auth.uid()));
+
+-- 15.7 Security Audit Logs: Admin read only, Append-only for all
+DROP POLICY IF EXISTS "Audit logs admin read" ON public.security_audit_logs;
+CREATE POLICY "Audit logs admin read" ON public.security_audit_logs FOR SELECT USING (public.is_admin(auth.uid()));
+
+DROP POLICY IF EXISTS "Audit logs insert" ON public.security_audit_logs;
+CREATE POLICY "Audit logs insert" ON public.security_audit_logs FOR INSERT WITH CHECK (true);

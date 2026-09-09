@@ -53,6 +53,7 @@ export interface Booking {
   courts?: Court | Court[] | null;
   profiles?: Profile | Profile[] | null;
   booking_refunds?: BookingRefund | null;
+  equipment_rentals?: EquipmentRental[];
   // Backward-compatible direct refund properties
   refund_wallet_type?: WalletType | string | null;
   refund_account_name?: string | null;
@@ -84,8 +85,32 @@ export interface BookingRefund {
   updated_at: string;
 }
 
+export interface EquipmentRental {
+  id: string;
+  booking_id: string;
+  product_id?: string | null;
+  equipment_type: 'paddle' | 'ball_thrower' | 'balls' | 'other';
+  equipment_name: string;
+  quantity: number;
+  rate_per_unit: number;
+  total_price: number;
+  returned_at?: string | null;
+  created_at: string;
+}
+
+export interface PosCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface PosProduct {
   id: string;
+  category_id?: string | null;
   name: string;
   price: number;
   category: string;
@@ -93,6 +118,51 @@ export interface PosProduct {
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
+  pos_categories?: PosCategory | null;
+}
+
+export interface CourtMaintenanceSchedule {
+  id: string;
+  court_id: string;
+  start_time: string;
+  end_time: string;
+  title: string;
+  description?: string | null;
+  created_by?: string | null;
+  created_at: string;
+}
+
+export interface CourtPricingRule {
+  id: string;
+  court_id?: string | null;
+  name: string;
+  day_of_week?: number | null;
+  start_hour: number;
+  end_hour: number;
+  hourly_rate: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface SecurityAuditLog {
+  id: string;
+  actor_id?: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string;
+  old_data?: Record<string, any> | null;
+  new_data?: Record<string, any> | null;
+  ip_address?: string | null;
+  created_at: string;
+}
+
+export interface CourtAvailabilityView {
+  id: string;
+  court_id: string;
+  start_time: string;
+  end_time: string;
+  status: BookingStatus;
+  expires_at: string | null;
 }
 
 export interface PosTransaction {
