@@ -19,8 +19,7 @@ export interface BookingEmailDetails {
 export interface PasswordResetEmailParams {
   to: string;
   recipientName?: string;
-  tempPassword?: string;
-  resetUrl?: string;
+  resetUrl: string;
 }
 
 export interface EmailDispatchResult {
@@ -388,27 +387,22 @@ export async function sendBookingConfirmationEmail(
 }
 
 /**
- * Branded HTML Template for Password Reset Email.
+ * Branded HTML Template for Password Reset / Change Password Email.
  */
 export function generatePasswordResetEmailHtml({
   recipientName = 'Valued Player',
-  tempPassword,
   resetUrl,
 }: {
   recipientName?: string;
-  tempPassword?: string;
-  resetUrl?: string;
+  resetUrl: string;
 }): string {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://c-j-pickleball.vercel.app').replace(/\/$/, '');
-  const loginUrl = resetUrl || `${appUrl}/login`;
-
   return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Password Reset — C&J Pickleball Arena</title>
+  <title>Reset Your Password — C&J Pickleball Arena</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -476,48 +470,40 @@ export function generatePasswordResetEmailHtml({
       color: #94a3b8;
       margin: 0 0 20px 0;
     }
-    .code-box {
-      background: #101217;
-      border: 1px solid #334155;
-      border-radius: 14px;
-      padding: 20px;
-      text-align: center;
-      margin: 24px 0;
-    }
-    .code-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-    }
-    .code-value {
-      font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-      font-size: 28px;
-      font-weight: 900;
-      color: #f59e0b;
-      letter-spacing: 3px;
-      padding: 6px 12px;
-      user-select: all;
-    }
     .btn-container {
       text-align: center;
-      margin: 28px 0;
+      margin: 32px 0;
     }
     .btn {
       display: inline-block;
-      background: #ffffff;
+      background: #f59e0b;
       color: #111111;
       font-weight: 800;
-      font-size: 14px;
+      font-size: 15px;
       text-decoration: none;
-      padding: 14px 32px;
+      padding: 16px 36px;
       border-radius: 999px;
-      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     .btn:hover {
-      background: #f1f5f9;
+      background: #d97706;
+    }
+    .link-fallback {
+      background: #101217;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 14px;
+      margin: 20px 0;
+      word-break: break-all;
+      font-size: 11px;
+      color: #94a3b8;
+      font-family: monospace;
+    }
+    .link-fallback a {
+      color: #38bdf8;
+      text-decoration: none;
     }
     .alert-box {
       background: rgba(239, 68, 68, 0.08);
@@ -547,33 +533,27 @@ export function generatePasswordResetEmailHtml({
     </div>
 
     <div class="content">
-      <div class="badge">Password Reset</div>
+      <div class="badge">Password Reset Request</div>
       <h2 class="title">Hello, ${recipientName}</h2>
       <p class="text">
-        We received a request to access your C&J Pickleball account. Use the temporary credentials below to log in securely:
+        We received a request to change the password for your C&J Pickleball account. Click the button below to set your new password:
       </p>
 
-      ${
-        tempPassword
-          ? `
-      <div class="code-box">
-        <div class="code-label">Your Temporary Access Password</div>
-        <div class="code-value">${tempPassword}</div>
-      </div>
-      <p class="text" style="text-align: center; font-size: 12px; color: #94a3b8;">
-        Copy this password, log in, and immediately update your password in <strong>Settings</strong>.
-      </p>`
-          : ''
-      }
-
       <div class="btn-container">
-        <a href="${loginUrl}" class="btn" target="_blank">
-          ${resetUrl ? 'Set New Password' : 'Log In to C&J Court'}
+        <a href="${resetUrl}" class="btn" target="_blank">
+          Change Password
         </a>
       </div>
 
+      <p class="text" style="font-size: 12px; margin-bottom: 6px;">
+        If the button above doesn't work, copy and paste this link into your browser:
+      </p>
+      <div class="link-fallback">
+        <a href="${resetUrl}" target="_blank">${resetUrl}</a>
+      </div>
+
       <div class="alert-box">
-        <strong>Security Notice:</strong> If you did not initiate this password reset request, someone may have entered your email by mistake. Please change your password immediately or contact arena management.
+        <strong>Security Notice:</strong> This password reset link will expire in <strong>1 hour</strong>. If you did not request a password change, you can safely ignore this email—your existing password will remain unchanged.
       </div>
     </div>
 
@@ -594,18 +574,16 @@ export function generatePasswordResetEmailHtml({
 export async function sendPasswordResetEmail({
   to,
   recipientName = 'Player',
-  tempPassword,
   resetUrl,
 }: PasswordResetEmailParams): Promise<EmailDispatchResult> {
   const html = generatePasswordResetEmailHtml({
     recipientName,
-    tempPassword,
     resetUrl,
   });
 
   return await dispatchCustomEmail({
     to,
-    subject: 'Your Password Reset for C&J Pickleball Arena',
+    subject: 'Reset Your Password — C&J Pickleball Arena',
     html,
   });
 }

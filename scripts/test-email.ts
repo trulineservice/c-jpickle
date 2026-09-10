@@ -2,22 +2,22 @@ import { generatePasswordResetEmailHtml, sendPasswordResetEmail } from '../lib/e
 
 async function main() {
   console.log('Testing generatePasswordResetEmailHtml...');
+  const testResetUrl = 'https://c-j-pickleball.vercel.app/reset-password?token=test_token_123';
   const html = generatePasswordResetEmailHtml({
     recipientName: 'Carlos Yulo',
-    tempPassword: 'CJPass!2026',
-    resetUrl: 'https://c-j-pickleball.vercel.app/auth/callback?next=/dashboard/settings',
+    resetUrl: testResetUrl,
   });
 
-  if (!html.includes('CJPass!2026') || !html.includes('C&J PICKLEBALL ARENA')) {
+  if (!html.includes('Change Password') || !html.includes('C&J PICKLEBALL ARENA') || !html.includes(testResetUrl)) {
     throw new Error('HTML generation failed assertions!');
   }
-  console.log('✓ HTML generated successfully with branded template and temp password.');
+  console.log('✓ HTML generated successfully with branded template and Change Password button.');
 
   console.log('Testing sendPasswordResetEmail (Sandbox mode)...');
   const result = await sendPasswordResetEmail({
     to: 'player@example.com',
     recipientName: 'Carlos Yulo',
-    tempPassword: 'CJPass!2026',
+    resetUrl: testResetUrl,
   });
 
   console.log('Result:', result);

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
+import crypto from 'node:crypto';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
@@ -979,149 +980,154 @@ export async function toggleCourtStatus(
 // ============================================================================
 
 /**
- * Generate a temporary password (matching strict regex: 1 uppercase, 1 lowercase, 1 number, 1 special char, 8-12 length)
+ * Request a Password Reset / Change Password link sent to user's email.
  */
-function generateTempPassword(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz';
-  const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const nums = '0123456789';
-  const specials = '!@#$%^&*';
-  
-  const getRandom = (str: string) => str[Math.floor(Math.random() * str.length)];
-  
-  let pwd = getRandom(upper) + getRandom(chars) + getRandom(nums) + getRandom(specials);
-  
-  const all = chars + upper + nums + specials;
-  for(let i = 0; i < 4; i++) {
-    pwd += getRandom(all);
-  }
-  
-  // Shuffle string
-  return pwd.split('').sort(() => 0.5 - Math.random()).join('');
-}
-
-/**
- * Handle Forgot Password by dispatching a custom branded email
- * directly via Resend / Nodemailer SMTP (completely bypassing Supabase's mailer).
- */
-export async function resetPasswordWithTempPassword(formData: FormData): Promise<void> {
+export async function requestPasswordReset(formData: FormData): Promise<void> {
   const email = (formData.get('email') as string)?.trim().toLowerCase();
   if (!email || !email.includes('@')) {
     redirect('/forgot-password?message=' + encodeURIComponent('Please enter a valid email address.'));
   }
 
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://c-j-pickleball.vercel.app').replace(/\/$/, '');
-  const tempPassword = generateTempPassword();
+  const token = crypto.randomBytes(32).toString('hex');
+  const supabase = await createClient();
 
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  let userFullName = 'Valued Player';
-  let resetUrl: string | undefined = undefined;
+  // Create reset token in Supabase database
+  const { data: rpcData, error: rpcError } = await supabase.rpc('create_password_reset_token', {
+    p_email: email,
+    p_token: token,
+    p_hours: 1,
+  });
 
-  if (serviceRoleKey && serviceRoleKey.length > 10) {
-    try {
-      const { createClient: createServiceClient } = await import('@supabase/supabase-js');
-      const adminSupabase = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        serviceRoleKey,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        }
-      );
-
-      // Check profile name if available
-      try {
-        const { data: profile } = await adminSupabase
-          .from('profiles')
-          .select('full_name')
-          .eq('email', email)
-          .maybeSingle();
-        if (profile?.full_name) {
-          userFullName = profile.full_name;
-        }
-      } catch {
-        // Non-blocking
-      }
-
-      // Generate secure recovery link via Supabase Admin (does NOT send an email)
-      try {
-        const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
-          type: 'recovery',
-          email,
-          options: {
-            redirectTo: `${appUrl}/auth/callback?next=/dashboard`,
-          },
-        });
-
-        if (!linkError && linkData?.properties?.action_link) {
-          resetUrl = linkData.properties.action_link;
-        }
-      } catch (linkErr) {
-        console.warn('[Admin Generate Link Warning]:', linkErr);
-      }
-
-      // Try updating password to temporary password as direct credential access
-      try {
-        const { data: userData } = await adminSupabase.auth.admin.listUsers();
-        const foundUser = userData?.users?.find((u) => u.email?.toLowerCase() === email);
-        if (foundUser) {
-          if (foundUser.user_metadata?.full_name) {
-            userFullName = foundUser.user_metadata.full_name;
-          }
-          await adminSupabase.auth.admin.updateUserById(foundUser.id, {
-            password: tempPassword,
-          });
-        }
-      } catch (updateErr) {
-        console.warn('[Admin User Update Warning]:', updateErr);
-      }
-    } catch (adminErr) {
-      console.error('[Admin Supabase Auth Error]:', adminErr);
-    }
-  } else {
-    console.warn(
-      '[Forgot Password] SUPABASE_SERVICE_ROLE_KEY is not configured in .env. Running in custom email dispatch mode.'
-    );
+  if (rpcError) {
+    console.error('[Create Reset Token Error]:', rpcError);
+    redirect('/forgot-password?message=' + encodeURIComponent('Unable to process password reset. Please try again.'));
   }
 
-  // Send custom branded email directly via Resend / Nodemailer SMTP (NOT from Supabase)
-  let devCode: string | undefined = undefined;
+  const result = rpcData as { success?: boolean; error?: string; full_name?: string } | null;
+  if (!result?.success) {
+    redirect('/forgot-password?message=' + encodeURIComponent(result?.error || 'No account found with this email address.'));
+  }
+
+  const userFullName = result.full_name || 'Valued Player';
+
+  // Determine current origin dynamically based on the incoming request host
+  let origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://c-j-pickleball.vercel.app').replace(/\/$/, '');
+  try {
+    const headersList = await headers();
+    const host = headersList.get('x-forwarded-host') || headersList.get('host');
+    const proto = headersList.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
+    if (host) {
+      origin = `${proto}://${host}`;
+    }
+  } catch {
+    // Fallback to origin default
+  }
+
+  const resetUrl = `${origin}/reset-password?token=${token}`;
+
+  // Optional companion trigger: Supabase native reset password (non-blocking)
+  try {
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/auth/callback?next=/reset-password`,
+    });
+  } catch (supaErr) {
+    console.warn('[Supabase native reset warning]:', supaErr);
+  }
+
+  // Dispatch custom branded email directly via Resend / Nodemailer SMTP
+  let devLink: string | undefined = undefined;
   try {
     const { sendPasswordResetEmail } = await import('@/lib/email');
     const dispatchResult = await sendPasswordResetEmail({
       to: email,
       recipientName: userFullName,
-      tempPassword,
       resetUrl,
     });
 
     if (dispatchResult.provider === 'sandbox') {
-      devCode = tempPassword;
+      devLink = resetUrl;
     }
 
-    console.log(
-      `[Forgot Password] Custom email dispatched to ${email} via provider: ${dispatchResult.provider}`
-    );
+    console.log(`[Forgot Password] Reset email dispatched to ${email} via provider: ${dispatchResult.provider}`);
   } catch (emailErr) {
     console.error('[Forgot Password Email Dispatch Error]:', emailErr);
   }
 
   const successMessage =
-    'A password reset request has been processed directly by our system. Please check your inbox (and spam folder).';
-  
+    'A password reset link has been sent to your email. Click the link inside the email to choose your new password.';
+
   const queryParams = new URLSearchParams({
     success: successMessage,
     email,
   });
 
-  if (devCode) {
-    queryParams.set('dev_code', devCode);
+  if (devLink) {
+    queryParams.set('dev_link', devLink);
   }
 
   redirect(`/forgot-password?${queryParams.toString()}`);
 }
+
+/**
+ * Complete Password Reset with New Password using secure token.
+ */
+export async function resetPasswordWithToken(formData: FormData): Promise<void> {
+  const token = (formData.get('token') as string)?.trim();
+  const password = formData.get('password') as string;
+  const confirmPassword = formData.get('confirmPassword') as string;
+
+  if (!token) {
+    redirect('/forgot-password?message=' + encodeURIComponent('Missing or invalid reset token. Please request a new link.'));
+  }
+
+  if (!password || password.length < 6) {
+    redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent('Password must be at least 6 characters long.'));
+  }
+
+  if (password !== confirmPassword) {
+    redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent('Passwords do not match. Please re-enter and try again.'));
+  }
+
+  const supabase = await createClient();
+  const { data: rpcData, error: rpcError } = await supabase.rpc('complete_password_reset', {
+    p_token: token,
+    p_new_password: password,
+  });
+
+  if (rpcError) {
+    console.error('[Complete Password Reset RPC Error]:', rpcError);
+    redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent('Failed to update password. Please try again.'));
+  }
+
+  const result = rpcData as { success?: boolean; error?: string; email?: string } | null;
+  if (!result?.success) {
+    redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent(result?.error || 'Reset link is invalid or has expired. Please request a new one.'));
+  }
+
+  // Attempt automatic login with the new credentials
+  if (result.email) {
+    try {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: result.email,
+        password,
+      });
+
+      if (!signInError && signInData?.user) {
+        await redirectBasedOnRole(signInData.user.id, '/dashboard');
+        redirect('/dashboard');
+      }
+    } catch {
+      // If sign-in triggers redirect, let Next handle it
+    }
+  }
+
+  redirect('/login?message=' + encodeURIComponent('Your password has been changed successfully! You can now log in with your new password.'));
+}
+
+/**
+ * Backwards compatibility alias for existing callers
+ */
+export const resetPasswordWithTempPassword = requestPasswordReset;
 
 /**
  * Handle Dashboard Settings Password Update
