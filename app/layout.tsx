@@ -20,6 +20,13 @@ const bebasNeue = Bebas_Neue({
 export const metadata: Metadata = {
   title: "C&J Pickleball • Championship Indoor Arena & Pro Club",
   description: "USA Pickleball specification 8mm cushioned indoor courts, pro carbon gear rentals, and instant online court reservation in Metro Manila.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
