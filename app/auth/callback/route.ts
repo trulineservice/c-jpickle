@@ -11,7 +11,8 @@ export async function GET(request: Request) {
   const forwardedHost = request.headers.get('x-forwarded-host');
   const host = forwardedHost || request.headers.get('host');
   const proto = request.headers.get('x-forwarded-proto') || 'https';
-  const baseOrigin = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || origin);
+  const rawBase = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || origin);
+  const baseOrigin = rawBase.replace(/0\.0\.0\.0/g, 'localhost');
 
   const token_hash = searchParams.get('token_hash');
   const type = searchParams.get('type');

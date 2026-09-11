@@ -6,6 +6,7 @@ import { logout } from "@/app/actions";
 import { BrandLogo } from "@/components/brand-logo";
 import { DashboardMobileNav } from "@/components/dashboard-mobile-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SignOutButton } from "@/components/sign-out-button";
 import {
   ShoppingCart,
   Calendar,
@@ -185,15 +186,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </div>
 
             <form action={logout}>
-              <Button
+              <SignOutButton
                 variant="outline"
                 size="sm"
-                type="submit"
                 className="border-[#cacacb] dark:border-[#27272a] text-foreground hover:text-[#d30005] hover:border-[#d30005]/40 hover:bg-[#fff5f5] dark:hover:bg-red-950/20 text-xs font-semibold h-9 px-4 gap-1.5 transition-colors cursor-pointer"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Sign Out
-              </Button>
+              />
             </form>
           </div>
         </header>

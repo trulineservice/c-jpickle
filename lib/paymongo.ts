@@ -19,9 +19,11 @@ export async function createPayMongoCheckoutSession(
   params: CreateCheckoutParams
 ): Promise<{ checkoutUrl: string; sessionId: string }> {
   const secretKey = process.env.PAYMONGO_SECRET_KEY;
+  const rawOrigin = params.originUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const safeOrigin = rawOrigin.replace(/0\.0\.0\.0/g, 'localhost').replace(/\/$/, '');
 
-  const successUrl = `${params.originUrl}/booking/success/${params.bookingId}?session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = `${params.originUrl}/book?cancelled=true&booking_id=${params.bookingId}`;
+  const successUrl = `${safeOrigin}/booking/success/${params.bookingId}?session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = `${safeOrigin}/book?cancelled=true&booking_id=${params.bookingId}`;
 
   // If no PayMongo API key is configured, provide an intelligent simulated sandbox session
   if (!secretKey || secretKey.trim() === '' || secretKey === 'your-paymongo-secret-key') {
@@ -31,7 +33,7 @@ export async function createPayMongoCheckoutSession(
     
     // Create a mock session ID
     const mockSessionId = `cs_mock_${params.bookingId.replace(/-/g, '').slice(0, 16)}`;
-    const mockCheckoutUrl = `${params.originUrl}/booking/success/${params.bookingId}?mock_payment=true&session_id=${mockSessionId}`;
+    const mockCheckoutUrl = `${safeOrigin}/booking/success/${params.bookingId}?mock_payment=true&session_id=${mockSessionId}`;
 
     return {
       checkoutUrl: mockCheckoutUrl,

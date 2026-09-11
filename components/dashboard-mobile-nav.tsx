@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BrandLogo } from '@/components/brand-logo';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { SignOutButton } from '@/components/sign-out-button';
 import {
   Menu,
   X,
@@ -43,14 +44,12 @@ export function DashboardMobileNav({
           {userRole}
         </span>
         <form action={logout}>
-          <Button
+          <SignOutButton
             variant="outline"
             size="sm"
-            type="submit"
+            showText={false}
             className="h-8 px-2 text-xs text-[#707072] dark:text-[#a1a1aa] hover:text-[#d30005] hover:bg-[#fff5f5] dark:hover:bg-red-950/20 border-[#cacacb] dark:border-[#27272a] gap-1 font-medium cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </Button>
+          />
         </form>
         <button
           type="button"

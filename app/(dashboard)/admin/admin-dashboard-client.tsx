@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { SubmitButton } from '@/components/submit-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -274,13 +275,13 @@ export default function AdminDashboardClient({
                 </div>
 
                 <DialogFooter className="pt-2">
-                  <Button
-                    type="submit"
+                  <SubmitButton
                     size="lg"
+                    loadingText="Creating Staff Account..."
                     className="w-full bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 font-medium text-sm h-11 cursor-pointer"
                   >
                     Create Account
-                  </Button>
+                  </SubmitButton>
                 </DialogFooter>
               </form>
             </DialogContent>

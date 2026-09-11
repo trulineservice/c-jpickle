@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Wrench, CheckCircle2, ShieldCheck, MapPin } from "lucide-react";
+import { Plus, ShieldCheck, MapPin } from "lucide-react";
 import { createCourt, toggleCourtStatus } from "@/app/actions";
+import { SubmitButton } from "@/components/submit-button";
+import { CourtToggleButton } from "./court-toggle-button";
 
 export default async function AdminCourtsPage() {
   const supabase = await createClient();
@@ -105,9 +107,12 @@ export default async function AdminCourtsPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" className="w-full h-10 rounded-full bg-[#111111] dark:bg-white hover:bg-[#222222] dark:hover:bg-zinc-200 text-white dark:text-[#111111] font-semibold text-xs transition-colors cursor-pointer">
+                <SubmitButton
+                  loadingText="Creating Facility..."
+                  className="w-full h-10 rounded-full bg-[#111111] dark:bg-white hover:bg-[#222222] dark:hover:bg-zinc-200 text-white dark:text-[#111111] font-semibold text-xs transition-colors cursor-pointer"
+                >
                   Save &amp; Activate Court
-                </Button>
+                </SubmitButton>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -213,20 +218,7 @@ export default async function AdminCourtsPage() {
                           "use server";
                           await toggleCourtStatus(court.id, isActive);
                         }}>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            type="submit"
-                            className={!isActive 
-                              ? "border-[#007d48]/40 bg-white dark:bg-[#18181c] text-[#007d48] dark:text-[#10b981] hover:bg-[#f5f5f5] dark:hover:bg-[#222226] text-xs font-semibold rounded-full h-8 px-4 cursor-pointer" 
-                              : "border-[#d30005]/40 bg-white dark:bg-[#18181c] text-[#d30005] dark:text-red-400 hover:bg-[#f5f5f5] dark:hover:bg-[#222226] text-xs font-semibold rounded-full h-8 px-4 cursor-pointer"}
-                          >
-                            {!isActive ? (
-                              <><CheckCircle2 className="h-3.5 w-3.5 mr-1.5 text-[#007d48] dark:text-[#10b981]" /> Bring Online</>
-                            ) : (
-                              <><Wrench className="h-3.5 w-3.5 mr-1.5 text-[#d30005] dark:text-red-400" /> Set Maintenance</>
-                            )}
-                          </Button>
+                          <CourtToggleButton isActive={isActive} />
                         </form>
                       </TableCell>
                     </TableRow>

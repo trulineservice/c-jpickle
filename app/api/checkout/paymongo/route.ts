@@ -158,7 +158,8 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const originUrl = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const rawOrigin = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const originUrl = rawOrigin.replace(/0\.0\.0\.0/g, 'localhost');
     const formattedSlot = `${startHour % 12 === 0 ? 12 : startHour % 12}:00 ${startHour >= 12 ? 'PM' : 'AM'}`;
 
     const bookingPayload: Record<string, any> = {

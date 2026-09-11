@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { ReserveCourtModal } from "@/components/reserve-court-modal";
 import { PublicMobileNav } from "@/components/public-mobile-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SignOutButton } from "@/components/sign-out-button";
 import {
   MapPin,
   Clock,
@@ -147,15 +148,11 @@ export default async function PublicLayout({ children }: { children: React.React
               </Link>
 
               <form action={logout}>
-                <Button
+                <SignOutButton
                   variant="ghost"
                   size="sm"
-                  type="submit"
                   className="text-[#707072] dark:text-[#a1a1aa] hover:text-[#d30005] hover:bg-[#fff5f5] dark:hover:bg-red-950/20 text-xs h-8 px-2.5 sm:px-3 flex items-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Sign Out</span>
-                </Button>
+                />
               </form>
             </div>
           ) : (

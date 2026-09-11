@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { logout } from '@/app/actions';
 import { BrandLogo } from '@/components/brand-logo';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { SignOutButton } from '@/components/sign-out-button';
 
 interface PublicMobileNavProps {
   userRole?: string;
@@ -103,12 +104,10 @@ export function PublicMobileNav({ userRole, isLoggedIn }: PublicMobileNavProps) 
                       </Link>
                     )}
                     <form action={logout}>
-                      <button
-                        type="submit"
-                        className="text-sm font-semibold text-[#d30005] hover:underline pt-2 inline-flex items-center gap-1.5"
-                      >
-                        <LogOut className="w-4 h-4" /> Sign Out
-                      </button>
+                      <SignOutButton
+                        isLinkStyle={true}
+                        className="text-sm font-semibold text-[#d30005] hover:underline pt-2 inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      />
                     </form>
                   </div>
                 </>
