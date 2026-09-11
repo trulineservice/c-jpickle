@@ -331,7 +331,8 @@ CREATE INDEX IF NOT EXISTS idx_pos_transaction_items_tx_id
 -- 14. COMPOSITE VIEWS
 -- ----------------------------------------------------------------------------
 -- Public View: Calendar Slot Availability (Zero PII Exposure)
-CREATE OR REPLACE VIEW public.v_court_availability AS
+CREATE OR REPLACE VIEW public.v_court_availability 
+WITH (security_invoker = on) AS
 SELECT 
   b.id,
   b.court_id,

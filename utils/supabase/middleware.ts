@@ -43,6 +43,43 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     const pathname = request.nextUrl.pathname
+    const method = request.method
+
+    // 0. CSRF Protection: Validate Origin on state-changing API requests (POST/PUT/PATCH/DELETE)
+    // Note: Next.js Server Actions automatically enforce Origin matching.
+    // Webhooks (/api/webhooks/*) authenticate via HMAC payload signature headers.
+    const isMutatingMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+    const isApiRoute = pathname.startsWith('/api/')
+    const isWebhook = pathname.startsWith('/api/webhooks/')
+
+    if (isMutatingMethod && isApiRoute && !isWebhook) {
+      const origin = request.headers.get('origin')
+      const host = request.headers.get('host')
+
+      if (origin && host) {
+        try {
+          const originHost = new URL(origin).host
+          const isAllowed =
+            originHost === host ||
+            originHost.includes('localhost') ||
+            originHost.includes('127.0.0.1') ||
+            originHost.endsWith('vercel.app')
+
+          if (!isAllowed) {
+            console.warn(`[CSRF Blocked] Untrusted origin ${origin} for host ${host} on ${pathname}`)
+            return new NextResponse(
+              JSON.stringify({ error: 'Forbidden. Cross-Site Request Forgery (CSRF) origin check failed.' }),
+              { status: 403, headers: { 'Content-Type': 'application/json' } }
+            )
+          }
+        } catch {
+          return new NextResponse(
+            JSON.stringify({ error: 'Forbidden. Invalid request origin format.' }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+      }
+    }
 
     // 1. Basic Auth Check for private routes
     const isProtectedRoute =

@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import type { AvailabilitySlot } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
+
+// Server-side privileged client for checking court occupancy without exposing PII
+const adminSupabase = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 // C&J Court Operational Hours: 6:00 AM (6) to 10:00 PM (22)
 const START_OPERATIONAL_HOUR = 6;
@@ -72,7 +79,7 @@ export async function GET(request: NextRequest) {
 
       // Proactively mark abandoned/expired checkout holds as 'expired'
       try {
-        await supabase
+        await adminSupabase
           .from('bookings')
           .update({ status: 'expired' })
           .eq('status', 'pending_payment')
@@ -81,37 +88,21 @@ export async function GET(request: NextRequest) {
         console.warn('[Availability API] Could not auto-expire pending holds:', cleanErr);
       }
 
-      // Query zero-PII view v_court_availability first, falling back to bookings table
-      let viewQuery = supabase
-        .from('v_court_availability')
+      // Query bookings using privileged server-side client (zero PII selected)
+      let bookingsQuery = adminSupabase
+        .from('bookings')
         .select('id, start_time, end_time, status, expires_at')
         .gte('end_time', startOfMonth.toISOString())
-        .lte('start_time', endOfMonth.toISOString());
+        .lte('start_time', endOfMonth.toISOString())
+        .in('status', ['paid', 'checked_in', 'walk_in', 'pending_payment']);
 
       if (targetCourtId) {
-        viewQuery = viewQuery.eq('court_id', targetCourtId);
+        bookingsQuery = bookingsQuery.eq('court_id', targetCourtId);
       }
 
-      const { data: viewBookings, error: viewErr } = await viewQuery;
-      if (!viewErr && viewBookings) {
-        allBookings = viewBookings;
-      } else {
-        // Fallback for environments before view migration
-        let fallbackQuery = supabase
-          .from('bookings')
-          .select('id, start_time, end_time, status, expires_at')
-          .gte('end_time', startOfMonth.toISOString())
-          .lte('start_time', endOfMonth.toISOString())
-          .in('status', ['paid', 'checked_in', 'walk_in', 'pending_payment']);
-
-        if (targetCourtId) {
-          fallbackQuery = fallbackQuery.eq('court_id', targetCourtId);
-        }
-
-        const { data: fallbackBookings } = await fallbackQuery;
-        if (fallbackBookings) {
-          allBookings = fallbackBookings;
-        }
+      const { data: dbBookings, error: queryErr } = await bookingsQuery;
+      if (!queryErr && dbBookings) {
+        allBookings = dbBookings;
       }
 
       // Check for court maintenance schedules
