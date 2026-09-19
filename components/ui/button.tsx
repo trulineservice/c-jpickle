@@ -9,6 +9,14 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-[#111111] text-white hover:bg-[#222222]",
+        yellow:
+          "bg-[#FFD21C] text-[#0B2A67] font-bold hover:bg-[#E8BA00] hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 focus-visible:ring-[#0B2A67]",
+        red:
+          "bg-[#bf050b] text-white font-bold hover:bg-[#a10409] hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 focus-visible:ring-[#bf050b]",
+        navy:
+          "bg-[#0B2A67] text-white font-semibold hover:bg-[#123A82] hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 focus-visible:ring-[#FFD21C]",
+        "navy-outline":
+          "border border-white/40 bg-[#0B2A67]/40 text-white font-semibold backdrop-blur-sm hover:bg-white/15 hover:border-white hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-200 focus-visible:ring-white",
         outline:
           "border-[#cacacb] bg-transparent text-[#111111] hover:bg-[#f5f5f5]",
         secondary:

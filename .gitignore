@@ -81,3 +81,10 @@ Thumbs.db
 .vercel
 .env*
 .mcp.json
+
+# Temporary subagent teamwork and scratch sessions
+.agents/orchestrator_*
+.agents/sentinel/
+.agents/teamwork_*
+.agents/victory_*
+.agents/ORIGINAL_REQUEST.md

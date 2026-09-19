@@ -18,8 +18,8 @@ const bebasNeue = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "C&J Pickleball • Championship Indoor Arena & Pro Club",
-  description: "USA Pickleball specification 8mm cushioned indoor courts, pro carbon gear rentals, and instant online court reservation in Metro Manila.",
+  title: "C&J Pickleball • Events Place & Court Rental | Taytay, Rizal",
+  description: "Indoor pickleball and basketball courts, events place, and 5th-floor view deck dining in Taytay, Rizal. Fixed ₱300/hr court rate.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

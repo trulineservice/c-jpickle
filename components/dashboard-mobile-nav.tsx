@@ -14,7 +14,9 @@ import {
   ShieldAlert,
   Home,
   LogOut,
-  Users
+  Users,
+  Boxes,
+  TrendingDown
 } from 'lucide-react';
 import { logout } from '@/app/actions';
 
@@ -96,12 +98,21 @@ export function DashboardMobileNav({
               </Link>
 
               <Link
-                href="/cashier/schedule"
+                href="/cashier/inventory"
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
               >
-                <Calendar className="w-4 h-4" />
-                Daily Court Schedule
+                <Boxes className="w-4 h-4" />
+                Inventory Table
+              </Link>
+
+              <Link
+                href="/cashier/expenses"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
+              >
+                <TrendingDown className="w-4 h-4" />
+                Daily Expenses &amp; Margins
               </Link>
 
               <Link
@@ -111,6 +122,15 @@ export function DashboardMobileNav({
               >
                 <ShoppingCart className="w-4 h-4" />
                 Shift Reports
+              </Link>
+
+              <Link
+                href="/cashier/schedule"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
+              >
+                <Calendar className="w-4 h-4" />
+                Daily Court Schedule
               </Link>
 
               {isOwnerOrAdmin && (

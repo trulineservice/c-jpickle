@@ -66,15 +66,17 @@ export function PosCartPanel({
   ];
 
   return (
-    <div className="border border-[#e5e5e5] rounded-2xl p-5 bg-white shadow-sm flex flex-col h-full space-y-4">
+    <div className="border border-[#E2E8F0] dark:border-white/10 rounded-3xl p-5 bg-white dark:bg-[#071E4B]/40 shadow-sm flex flex-col h-full space-y-4">
       {/* Panel Header */}
-      <div className="flex items-center justify-between border-b border-[#f0f0f0] pb-3">
+      <div className="flex items-center justify-between border-b border-[#E2E8F0] dark:border-white/10 pb-3.5">
         <div className="flex items-center gap-2">
-          <ShoppingCart className="w-4 h-4 text-[#111111]" />
-          <h3 className="font-bold text-sm uppercase tracking-wider text-[#111111]">
+          <div className="w-8 h-8 rounded-xl bg-[#0B2A67] dark:bg-[#FFD21C] text-white dark:text-[#0B2A67] flex items-center justify-center font-bold">
+            <ShoppingCart className="w-4 h-4" />
+          </div>
+          <h3 className="font-black text-sm uppercase tracking-wider text-[#0B2A67] dark:text-white">
             Active Order
           </h3>
-          <span className="text-xs bg-[#f5f5f5] text-[#707072] px-2 py-0.5 rounded-full font-bold">
+          <span className="text-xs bg-[#FFD21C] text-[#0B2A67] px-2.5 py-0.5 rounded-full font-black">
             {cart.reduce((total, i) => total + i.quantity, 0)}
           </span>
         </div>
@@ -82,7 +84,7 @@ export function PosCartPanel({
           <button
             type="button"
             onClick={onClearCart}
-            className="text-xs text-[#707072] hover:text-[#d30005] font-semibold transition-colors"
+            className="text-xs text-[#bf050b] hover:text-[#d30005] font-extrabold transition-colors cursor-pointer"
           >
             Clear All
           </button>
@@ -92,20 +94,22 @@ export function PosCartPanel({
       {/* Cart Items List */}
       <div className="flex-1 overflow-y-auto space-y-2.5 max-h-[320px] pr-1">
         {cart.length === 0 ? (
-          <div className="h-44 border border-dashed border-[#e5e5e5] rounded-xl flex flex-col items-center justify-center text-xs text-[#707072] gap-1">
-            <ShoppingCart className="w-6 h-6 text-[#cacacb]" />
-            <p>Cart is empty</p>
-            <span className="text-[11px] text-[#a0a0a2]">Click items on the left to add</span>
+          <div className="h-44 border-2 border-dashed border-[#E2E8F0] dark:border-white/15 rounded-2xl flex flex-col items-center justify-center text-xs text-[#64748B] dark:text-white/60 gap-1.5 p-4 text-center">
+            <div className="w-10 h-10 rounded-full bg-[#EDF4FC] dark:bg-white/10 text-[#0B2A67] dark:text-[#FFD21C] flex items-center justify-center">
+              <ShoppingCart className="w-5 h-5" />
+            </div>
+            <p className="font-extrabold text-[#0B2A67] dark:text-white">Order cart is empty</p>
+            <span className="text-[11px] text-[#64748B] dark:text-white/50">Click catalog items on the left to add to order</span>
           </div>
         ) : (
           cart.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between p-3 rounded-xl border border-[#f0f0f0] bg-[#fcfcfc] hover:border-[#e5e5e5] transition-colors"
+              className="flex items-center justify-between p-3.5 rounded-2xl border border-[#E2E8F0] dark:border-white/15 bg-[#F8FAFC] dark:bg-[#030F28] hover:border-[#0B2A67] transition-all shadow-2xs"
             >
               <div className="flex-1 min-w-0 pr-2">
-                <h5 className="font-bold text-xs text-[#111111] truncate">{item.name}</h5>
-                <span className="text-[11px] text-[#707072]">₱{item.price} each</span>
+                <h5 className="font-black text-xs text-[#0B2A67] dark:text-white truncate">{item.name}</h5>
+                <span className="text-[11px] font-bold text-[#64748B] dark:text-white/60">₱{item.price.toFixed(2)} each</span>
               </div>
 
               {/* Quantity Adjusters */}
@@ -113,24 +117,24 @@ export function PosCartPanel({
                 <button
                   type="button"
                   onClick={() => onUpdateQuantity(item.id, -1)}
-                  className="w-7 h-7 rounded-lg border border-[#e5e5e5] bg-white flex items-center justify-center text-[#111111] hover:bg-[#f5f5f5]"
+                  className="w-7 h-7 rounded-xl border border-[#E2E8F0] dark:border-white/20 bg-white dark:bg-white/10 flex items-center justify-center text-[#0B2A67] dark:text-white hover:bg-[#EDF4FC] active:scale-[0.95] cursor-pointer"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="w-6 text-center text-xs font-bold text-[#111111]">
+                <span className="w-6 text-center text-xs font-black text-[#0B2A67] dark:text-white">
                   {item.quantity}
                 </span>
                 <button
                   type="button"
                   onClick={() => onUpdateQuantity(item.id, 1)}
-                  className="w-7 h-7 rounded-lg border border-[#e5e5e5] bg-white flex items-center justify-center text-[#111111] hover:bg-[#f5f5f5]"
+                  className="w-7 h-7 rounded-xl border border-[#E2E8F0] dark:border-white/20 bg-white dark:bg-white/10 flex items-center justify-center text-[#0B2A67] dark:text-white hover:bg-[#EDF4FC] active:scale-[0.95] cursor-pointer"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
                 <button
                   type="button"
                   onClick={() => onRemoveItem(item.id)}
-                  className="w-7 h-7 rounded-lg text-[#707072] hover:text-[#d30005] flex items-center justify-center ml-1"
+                  className="w-7 h-7 rounded-xl text-[#bf050b] hover:bg-[#bf050b]/10 flex items-center justify-center ml-1 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -141,11 +145,11 @@ export function PosCartPanel({
       </div>
 
       {/* Payment Channel Selector */}
-      <div className="space-y-2 pt-2 border-t border-[#f0f0f0]">
-        <label className="text-xs font-bold uppercase tracking-wider text-[#707072] block">
-          Payment Method
+      <div className="space-y-2 pt-2 border-t border-[#E2E8F0] dark:border-white/10">
+        <label className="text-[11px] font-black uppercase tracking-wider text-[#0B2A67] dark:text-[#FFD21C] block">
+          Payment Channel
         </label>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-3 gap-2">
           {paymentMethods.map((pm) => {
             const Icon = pm.icon;
             const isSelected = paymentMethod === pm.id;
@@ -154,13 +158,13 @@ export function PosCartPanel({
                 key={pm.id}
                 type="button"
                 onClick={() => onPaymentMethodChange(pm.id)}
-                className={`py-2 px-1.5 rounded-lg border text-[11px] font-bold flex flex-col items-center gap-1 transition-all ${
+                className={`py-2.5 px-2 rounded-xl border text-[11px] font-black flex flex-col items-center gap-1 transition-all cursor-pointer active:scale-[0.97] ${
                   isSelected
-                    ? "bg-[#111111] text-white border-[#111111] shadow-xs"
-                    : "bg-white text-[#707072] border-[#e5e5e5] hover:border-[#111111]"
+                    ? "bg-[#0B2A67] text-white border-[#0B2A67] shadow-md ring-2 ring-[#FFD21C]"
+                    : "bg-white dark:bg-white/5 text-[#64748B] dark:text-white/70 border-[#E2E8F0] dark:border-white/10 hover:border-[#0B2A67] hover:text-[#0B2A67]"
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className={`w-4 h-4 ${isSelected ? "text-[#FFD21C]" : "text-[#64748B] dark:text-white/60"}`} />
                 <span className="truncate">{pm.id}</span>
               </button>
             );
@@ -169,30 +173,30 @@ export function PosCartPanel({
       </div>
 
       {/* Financial Summary & Total */}
-      <div className="border-t border-[#f0f0f0] pt-3 space-y-1.5 text-xs">
-        <div className="flex justify-between text-[#707072]">
+      <div className="border-t border-[#E2E8F0] dark:border-white/10 pt-3.5 space-y-2 text-xs">
+        <div className="flex justify-between text-[#64748B] dark:text-white/70 font-semibold">
           <span>Gross Subtotal:</span>
-          <span>₱{grossSubtotal.toFixed(2)}</span>
+          <span className="font-extrabold text-[#0B2A67] dark:text-white">₱{grossSubtotal.toFixed(2)}</span>
         </div>
         {isStatutory && (
-          <div className="flex justify-between text-[#007d48] font-semibold">
+          <div className="flex justify-between text-[#007d48] font-bold">
             <span>20% Senior/PWD Discount:</span>
             <span>-₱{discountAmount.toFixed(2)}</span>
           </div>
         )}
-        <div className="flex justify-between text-[#707072] text-[11px]">
+        <div className="flex justify-between text-[#64748B] dark:text-white/60 text-[11px]">
           <span>{isStatutory ? "VAT-Exempt Base:" : "Vatable Sales:"}</span>
           <span>₱{(isStatutory ? vatExemptSales : vatableSales).toFixed(2)}</span>
         </div>
         {!isStatutory && (
-          <div className="flex justify-between text-[#707072] text-[11px]">
+          <div className="flex justify-between text-[#64748B] dark:text-white/60 text-[11px]">
             <span>12% VAT:</span>
             <span>₱{vatAmount.toFixed(2)}</span>
           </div>
         )}
-        <div className="flex justify-between items-baseline pt-2 border-t border-[#f0f0f0] text-sm font-black text-[#111111]">
+        <div className="flex justify-between items-baseline pt-2.5 border-t border-[#E2E8F0] dark:border-white/10 text-sm font-black text-[#0B2A67] dark:text-white">
           <span>NET PAYABLE:</span>
-          <span className="text-xl">₱{netPayable.toFixed(2)}</span>
+          <span className="text-2xl font-black text-[#0B2A67] dark:text-[#FFD21C]">₱{netPayable.toFixed(2)}</span>
         </div>
       </div>
 
@@ -201,15 +205,18 @@ export function PosCartPanel({
         type="button"
         disabled={cart.length === 0 || isProcessing}
         onClick={onCheckout}
-        className="w-full h-12 rounded-full bg-[#111111] text-white hover:bg-[#222222] font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
+        className="w-full h-13 rounded-2xl bg-[#0B2A67] hover:bg-[#123A82] text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-xl transition-all cursor-pointer active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-[#FFD21C]/30"
       >
         {isProcessing ? (
           <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Generating Invoice...
+            <Loader2 className="w-4 h-4 animate-spin text-[#FFD21C]" />
+            <span>Processing Invoice...</span>
           </>
         ) : (
-          `Complete & Print Invoice (₱${netPayable.toFixed(2)})`
+          <>
+            <ShoppingCart className="w-4 h-4 text-[#FFD21C]" />
+            <span>Complete &amp; Print Invoice (₱{netPayable.toFixed(2)})</span>
+          </>
         )}
       </Button>
     </div>

@@ -288,14 +288,14 @@ export function generateBookingEmailHtml(details: BookingEmailDetails, qrDataUrl
   <div class="container">
     <div class="header">
       <h1>C&J PICKLEBALL ARENA</h1>
-      <p>Tournament Play • Indoor Cushioned Courts</p>
+      <p>Events Place & Court Rental • Indoor Cushioned Courts</p>
     </div>
     
     <div class="content">
       <div class="badge">Booking Confirmed • Paid</div>
       <h2 style="margin: 0 0 16px 0; font-size: 20px; color: #ffffff;">See you on the court, ${details.customerName}!</h2>
       <p style="margin: 0 0 20px 0; font-size: 14px; color: #94a3b8; line-height: 1.6;">
-        Your tournament-grade court reservation at C&J Court has been locked and confirmed. Present your ticket QR code at the counter check-in desk upon arrival.
+        Your court reservation at C&J Court has been locked and confirmed. Present your ticket QR code at the counter check-in desk upon arrival.
       </p>
 
       <div class="card">
@@ -355,8 +355,8 @@ export function generateBookingEmailHtml(details: BookingEmailDetails, qrDataUrl
     </div>
 
     <div class="footer">
-      <p style="margin: 0;">C&J Court • Tomas Morato, Quezon City</p>
-      <p style="margin: 4px 0 0 0;">Operating Daily: 6:00 AM – 10:00 PM • Inquiries: +63 (917) 555-CJCOURT</p>
+      <p style="margin: 0;">C&J's Events Place & Sports Arena • 25 Bologna Muzon, Taytay, Rizal, 1920</p>
+      <p style="margin: 4px 0 0 0;">Daily: 6:00 AM – 10:00 PM • Court Inquiries: 0917-318-8720 • Events: 0917-123-0382 • Cafe: 0976-662-3453</p>
     </div>
   </div>
 </body>
@@ -558,7 +558,7 @@ export function generatePasswordResetEmailHtml({
     </div>
 
     <div class="footer">
-      <p style="margin: 0;">C&J Court • Tomas Morato, Quezon City</p>
+      <p style="margin: 0;">C&J's Events Place & Sports Arena • 25 Bologna Muzon, Taytay, Rizal, 1920</p>
       <p style="margin: 4px 0 0 0;">Dedicated Member Support: support@cjcourt.com</p>
     </div>
   </div>

@@ -1,131 +1,83 @@
 import React from "react";
+import Image from "next/image";
 
 interface BrandLogoProps {
   className?: string;
   size?: "sm" | "md" | "lg" | "xl";
   withSubtitle?: boolean;
   inverted?: boolean;
+  variant?: "default" | "badge" | "inverted";
 }
 
 export function BrandLogo({
   className = "",
   size = "md",
-  withSubtitle = false,
   inverted = false,
+  variant,
 }: BrandLogoProps) {
+  // If variant="badge", render white pill card with the red C&J's logo
+  if (variant === "badge") {
+    return (
+      <div
+        className={`inline-flex items-center justify-center bg-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-1.5 shadow-sm border border-white/80 hover:shadow-md transition-all duration-200 select-none ${className}`}
+      >
+        <Image
+          src="/cj-logo.png"
+          alt="C&J's Events Place Rentals"
+          width={size === "sm" ? 95 : size === "lg" ? 140 : 115}
+          height={size === "sm" ? 38 : size === "lg" ? 56 : 46}
+          className="h-7 sm:h-9 w-auto object-contain"
+          priority
+        />
+      </div>
+    );
+  }
+
+  // Aspect ratio is 726/314 ~ 2.31
   const sizeMap = {
-    sm: { scale: 0.75, height: 28, textClass: "text-lg", subClass: "text-[8px]" },
-    md: { scale: 1, height: 36, textClass: "text-2xl", subClass: "text-[9px]" },
-    lg: { scale: 1.25, height: 48, textClass: "text-3xl", subClass: "text-[11px]" },
-    xl: { scale: 1.6, height: 60, textClass: "text-4xl", subClass: "text-xs" },
+    sm: { width: 92, height: 40 },
+    md: { width: 125, height: 54 },
+    lg: { width: 160, height: 69 },
+    xl: { width: 195, height: 84 },
   };
 
-  const current = sizeMap[size];
-  const primaryStroke = inverted ? "#ffffff" : "currentColor";
-  const secondaryColor = inverted ? "#cacacb" : undefined;
+  const { width, height } = sizeMap[size];
+
+  if (inverted || variant === "inverted") {
+    return (
+      <div className={`inline-flex items-center select-none ${className}`}>
+        <Image
+          src="/logo-dark.png"
+          alt="C&J's Events Place Rentals"
+          width={width}
+          height={height}
+          className="h-auto w-auto object-contain transition-transform duration-200 hover:scale-105"
+          priority
+        />
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={`inline-flex items-center gap-2.5 select-none font-sans group ${
-        inverted ? "text-white" : "text-[#111111] dark:text-[#f4f4f5]"
-      } ${className}`}
-      role="img"
-      aria-label="C&J Pickleball Logo"
-    >
-      {/* Athletic Geometric Monogram Badge */}
-      <div className="relative shrink-0 flex items-center justify-center">
-        <svg
-          width={current.height}
-          height={current.height}
-          viewBox="0 0 44 44"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="transition-transform duration-200 group-hover:scale-105"
-        >
-          {/* Outer Court Boundary */}
-          <rect
-            x="2"
-            y="2"
-            width="40"
-            height="40"
-            stroke={primaryStroke}
-            strokeWidth="3.5"
-            fill="none"
-          />
-          {/* Net Line */}
-          <line
-            x1="2"
-            y1="22"
-            x2="42"
-            y2="22"
-            stroke={primaryStroke}
-            strokeWidth="2.5"
-          />
-          {/* Kitchen / Non-Volley Boundary Lines */}
-          <line
-            x1="2"
-            y1="15"
-            x2="42"
-            y2="15"
-            stroke={primaryStroke}
-            strokeWidth="1.5"
-            strokeDasharray="2 2"
-          />
-          <line
-            x1="2"
-            y1="29"
-            x2="42"
-            y2="29"
-            stroke={primaryStroke}
-            strokeWidth="1.5"
-            strokeDasharray="2 2"
-          />
-          {/* Dynamic Strike Slash / Ball Contact Vector */}
-          <path
-            d="M 12 34 L 32 10"
-            stroke={primaryStroke}
-            strokeWidth="4"
-            strokeLinecap="square"
-          />
-          {/* Center Sweetspot Dot */}
-          <circle
-            cx="22"
-            cy="22"
-            r="3.5"
-            fill={primaryStroke}
-          />
-        </svg>
-      </div>
-
-      {/* Modern High-Impact Athletic Typography */}
-      <div className="flex flex-col leading-none">
-        <div className="flex items-baseline gap-1">
-          <span
-            className={`font-black tracking-tighter uppercase font-display ${current.textClass}`}
-            style={{ letterSpacing: "-0.03em" }}
-          >
-            C&amp;J
-          </span>
-          <span
-            className={`font-black tracking-tight uppercase ${current.textClass}`}
-            style={{ letterSpacing: "0.02em" }}
-          >
-            COURTS
-          </span>
-        </div>
-
-        {withSubtitle && (
-          <span
-            className={`font-bold tracking-[0.25em] uppercase mt-0.5 ${
-              inverted
-                ? "text-[#cacacb]"
-                : "text-[#707072] dark:text-[#8a8a93]"
-            } ${current.subClass}`}
-          >
-            PICKLEBALL ARENA
-          </span>
-        )}
-      </div>
+    <div className={`inline-flex items-center select-none ${className}`}>
+      {/* Light Mode Logo */}
+      <Image
+        src="/logo-light.png"
+        alt="C&J's Events Place Rentals"
+        width={width}
+        height={height}
+        className="h-auto w-auto object-contain block dark:hidden transition-transform duration-200 hover:scale-105"
+        priority
+      />
+      {/* Dark Mode Logo */}
+      <Image
+        src="/logo-dark.png"
+        alt="C&J's Events Place Rentals"
+        width={width}
+        height={height}
+        className="h-auto w-auto object-contain hidden dark:block transition-transform duration-200 hover:scale-105"
+      />
     </div>
   );
 }
+

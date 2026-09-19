@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { verifyPayMongoSignature } from '@/lib/paymongo';
 import { sendBookingConfirmationEmail } from '@/lib/email';
+import { pushBookingToGoogleCalendar } from '@/lib/google-calendar-sync-engine';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,6 +110,13 @@ export async function POST(request: NextRequest) {
         paymentMethod: 'PayMongo (Online)',
         notes: booking.notes,
       });
+
+      // Automatically sync booking event to Google Calendar
+      try {
+        await pushBookingToGoogleCalendar(booking.id);
+      } catch (calSyncErr) {
+        console.error('[PayMongo Webhook] Google Calendar auto-sync error:', calSyncErr);
+      }
     }
 
     return NextResponse.json({ received: true });

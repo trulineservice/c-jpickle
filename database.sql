@@ -219,6 +219,7 @@ CREATE TABLE IF NOT EXISTS public.pos_categories (
 CREATE TABLE IF NOT EXISTS public.pos_products (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   category_id uuid REFERENCES public.pos_categories(id) ON DELETE SET NULL,
+  sku text,
   name text NOT NULL UNIQUE,
   category text NOT NULL,
   price numeric(10, 2) NOT NULL CHECK (price >= 0),

@@ -47,15 +47,15 @@ export function ResetPasswordForm({
       <input type="hidden" name="token" value={token} />
 
       {(initialErrorMessage || validationError) && (
-        <div className="p-3 border border-[#d30005] bg-white dark:bg-[#18181c] text-[#d30005] text-xs flex items-center gap-2 rounded-lg">
+        <div className="p-3.5 rounded-xl border border-[#bf050b]/30 bg-[#bf050b]/10 text-[#bf050b] text-xs flex items-center gap-2.5 shadow-xs animate-in fade-in duration-200">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          <p>{validationError || initialErrorMessage}</p>
+          <p className="font-semibold leading-relaxed">{validationError || initialErrorMessage}</p>
         </div>
       )}
 
       {email && (
         <div className="text-center">
-          <span className="inline-block px-3 py-1 bg-[#f5f5f5] dark:bg-[#18181c] text-xs font-mono font-semibold text-foreground rounded-full border border-[#cacacb] dark:border-[#27272a]">
+          <span className="inline-block px-4 py-1.5 bg-[#EDF4FC] text-xs font-mono font-bold text-[#0B2A67] rounded-xl border border-[#0B2A67]/20 shadow-xs">
             {email}
           </span>
         </div>
@@ -66,12 +66,15 @@ export function ResetPasswordForm({
         <div className="space-y-1.5">
           <Label
             htmlFor="password"
-            className="text-xs font-bold uppercase tracking-wider text-foreground"
+            className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] block"
           >
             New Password
           </Label>
-          <div className="relative">
-            <Input
+          <div className="relative flex items-center">
+            <div className="absolute left-3.5 text-[#64748B] pointer-events-none">
+              <Lock className="w-4 h-4" />
+            </div>
+            <input
               id="password"
               name="password"
               type={showPassword ? "text" : "password"}
@@ -79,12 +82,12 @@ export function ResetPasswordForm({
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-11 px-4 pr-11 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-sm text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-[#111111] dark:focus-visible:border-white"
+              className="w-full h-11 pl-10 pr-11 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0B2A67] font-medium placeholder:text-[#94A3B8] focus:bg-white focus:border-[#0B2A67] focus:ring-2 focus:ring-[#FFD21C]/50 focus:outline-none transition-all"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#707072] hover:text-foreground transition-colors p-1"
+              className="absolute right-3 p-1.5 rounded-lg text-[#64748B] hover:text-[#0B2A67] hover:bg-[#EDF4FC] transition-colors cursor-pointer"
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -96,12 +99,15 @@ export function ResetPasswordForm({
         <div className="space-y-1.5">
           <Label
             htmlFor="confirmPassword"
-            className="text-xs font-bold uppercase tracking-wider text-foreground"
+            className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] block"
           >
             Confirm New Password
           </Label>
-          <div className="relative">
-            <Input
+          <div className="relative flex items-center">
+            <div className="absolute left-3.5 text-[#64748B] pointer-events-none">
+              <Lock className="w-4 h-4" />
+            </div>
+            <input
               id="confirmPassword"
               name="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}
@@ -109,20 +115,20 @@ export function ResetPasswordForm({
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="h-11 px-4 pr-11 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-sm text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-[#111111] dark:focus-visible:border-white"
+              className="w-full h-11 pl-10 pr-11 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0B2A67] font-medium placeholder:text-[#94A3B8] focus:bg-white focus:border-[#0B2A67] focus:ring-2 focus:ring-[#FFD21C]/50 focus:outline-none transition-all"
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#707072] hover:text-foreground transition-colors p-1"
+              className="absolute right-3 p-1.5 rounded-lg text-[#64748B] hover:text-[#0B2A67] hover:bg-[#EDF4FC] transition-colors cursor-pointer"
               aria-label={showConfirmPassword ? "Hide password" : "Show password"}
             >
               {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
           {passwordsMatch && (
-            <p className="text-[11px] text-[#007d48] dark:text-[#10b981] flex items-center gap-1 mt-1 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Passwords match
+            <p className="text-[11px] text-[#007d48] flex items-center gap-1.5 mt-1 font-bold">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Passwords match!
             </p>
           )}
         </div>
@@ -132,7 +138,8 @@ export function ResetPasswordForm({
         <AuthSubmitButton
           label="Save New Password"
           loadingLabel="Updating Password..."
-          className="w-full h-12 bg-[#111111] text-white hover:bg-[#222222] dark:bg-white dark:text-[#111111] dark:hover:bg-[#e5e5e5] font-medium text-sm rounded-full transition-colors"
+          variant="yellow"
+          className="w-full h-12 bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-md active:scale-[0.98] transition-all cursor-pointer"
         />
       </div>
     </form>

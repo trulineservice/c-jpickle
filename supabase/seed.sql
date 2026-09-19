@@ -8,7 +8,7 @@
 INSERT INTO public.courts (id, name, type, hourly_rate, is_active)
 VALUES 
   ('80d4920a-34d9-47f3-8f1b-4627f5b289de', 'Court 1 — Indoor (Pro Cushion)', 'indoor', 300.00, true),
-  ('052becb1-e01d-4cd9-88ae-3d6e419259fd', 'Court 2 — Indoor (Tournament Spec)', 'indoor', 300.00, true)
+  ('052becb1-e01d-4cd9-88ae-3d6e419259fd', 'Court 2 — Indoor (Pickleball / Basketball)', 'indoor', 300.00, true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   hourly_rate = EXCLUDED.hourly_rate,

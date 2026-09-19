@@ -9,7 +9,19 @@ import type { AvailabilitySlot, Court } from '@/types/database';
 import { CourtSelector } from '@/components/booking/court-selector';
 import { TimeSlotGrid } from '@/components/booking/time-slot-grid';
 import { BookingSummaryCard } from '@/components/booking/booking-summary-card';
-import { AlertCircle, Lock } from 'lucide-react';
+import {
+  AlertCircle,
+  Lock,
+  Sparkles,
+  CalendarDays,
+  Clock,
+  Trophy,
+  ArrowRight,
+  Flame,
+  CheckCircle2,
+  Zap,
+} from 'lucide-react';
+import { playHapticSound } from '@/lib/motion-feedback';
 
 interface DaySummary {
   date: string;
@@ -30,7 +42,7 @@ const DEFAULT_COURTS: Court[] = [
   },
   {
     id: '052becb1-e01d-4cd9-88ae-3d6e419259fd',
-    name: 'Court 2 — Indoor (Tournament Spec)',
+    name: 'Court 2 — Indoor (Pickleball / Basketball)',
     type: 'indoor',
     hourly_rate: 300,
     is_active: true,
@@ -80,7 +92,9 @@ export default function BookPage() {
     async function loadInitialData() {
       const supabase = createClient();
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           setIsAuthenticated(true);
           const { data: profile } = await supabase
@@ -110,12 +124,28 @@ export default function BookPage() {
 
       if (dbCourts && dbCourts.length > 0) {
         const activeCourts = dbCourts
-          .filter((c: any) => c.is_active !== false && c.status !== 'inactive')
+          .filter((c: any) => {
+            if (c.is_active === false || c.status === 'inactive') return false;
+            const nameLower = (c.name || '').toLowerCase();
+            // Exclude private venue rentals (Events Place Banquet Hall & View Deck Lounge) from court booking
+            if (
+              nameLower.includes('events place') ||
+              nameLower.includes('view deck') ||
+              nameLower.includes('banquet') ||
+              nameLower.includes('lounge') ||
+              nameLower.includes('3rd flr') ||
+              nameLower.includes('5th flr')
+            ) {
+              return false;
+            }
+            return true;
+          })
           .map((c: any) => ({
             id: c.id,
             name: c.name,
             type: c.type || (c.name?.toLowerCase().includes('outdoor') ? 'outdoor' : 'indoor'),
-            hourly_rate: c.hourly_rate !== undefined && c.hourly_rate !== null ? Number(c.hourly_rate) : 300,
+            hourly_rate:
+              c.hourly_rate !== undefined && c.hourly_rate !== null ? Number(c.hourly_rate) : 300,
             is_active: c.is_active ?? true,
             created_at: c.created_at || new Date().toISOString(),
           }));
@@ -178,8 +208,26 @@ export default function BookPage() {
     fetchAvailability();
   }, [fetchAvailability]);
 
+  // Refresh entire month density whenever visible month or selected court changes
+  useEffect(() => {
+    if (!selectedCourt?.id) return;
+    const yearNum = visibleMonth.getFullYear();
+    const monthNum = String(visibleMonth.getMonth() + 1).padStart(2, '0');
+    const monthStr = `${yearNum}-${monthNum}`;
+
+    fetch(`/api/availability?courtId=${selectedCourt.id}&month=${monthStr}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.monthOverview) {
+          setMonthOverview((prev) => ({ ...prev, ...data.monthOverview }));
+        }
+      })
+      .catch((err) => console.warn('Failed to load month overview for court switch:', err));
+  }, [selectedCourt?.id, visibleMonth]);
+
   const handleMonthChange = useCallback(
     async (newMonth: Date) => {
+      playHapticSound('tap');
       setVisibleMonth(newMonth);
       if (!selectedCourt?.id) return;
 
@@ -234,8 +282,50 @@ export default function BookPage() {
     if (!date) return;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (date < today) return;
+    if (date < today) {
+      playHapticSound('error');
+      return;
+    }
+    playHapticSound('tap');
     setSelectedDate(date);
+    setSelectedSlots([]);
+  };
+
+  // Helper: Find next date that has open slots
+  const findNextAvailableDate = useCallback(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 1; i <= 30; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const ymd = formatDateToYMD(d);
+      const summary = monthOverview[ymd];
+      if (!summary || summary.status === 'available' || summary.status === 'almost_full') {
+        return d;
+      }
+    }
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    return tomorrow;
+  }, [monthOverview]);
+
+  const handleJumpNextAvailable = () => {
+    playHapticSound('tap');
+    const nextDate = findNextAvailableDate();
+    setSelectedDate(nextDate);
+    setVisibleMonth(nextDate);
+    setSelectedSlots([]);
+  };
+
+  const otherCourt = useMemo(() => {
+    return courts.find((c) => c.id !== selectedCourt?.id);
+  }, [courts, selectedCourt?.id]);
+
+  const handleSwitchToOtherCourt = () => {
+    if (!otherCourt) return;
+    playHapticSound('tap');
+    setSelectedCourt(otherCourt);
     setSelectedSlots([]);
   };
 
@@ -302,50 +392,99 @@ export default function BookPage() {
       })
     : 'No Date Selected';
 
+  const todayDate = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  }, []);
+
+  const tomorrowDate = useMemo(() => {
+    const tomorrow = new Date(todayDate);
+    tomorrow.setDate(todayDate.getDate() + 1);
+    return tomorrow;
+  }, [todayDate]);
+
+  const todaySummary = monthOverview[formatDateToYMD(todayDate)];
+  const tomorrowSummary = monthOverview[formatDateToYMD(tomorrowDate)];
+
+  const selectedDateSummary = rawDateStr ? monthOverview[rawDateStr] : null;
+  const isSelectedDateFullyBooked = selectedDateSummary?.status === 'fully_booked';
+  const isSelectedDateAlmostFull = selectedDateSummary?.status === 'almost_full';
+
   return (
-    <div className="max-w-[1440px] mx-auto w-full px-4 sm:px-8 py-8 md:py-12 font-sans bg-background text-foreground">
+    <div className="max-w-7xl mx-auto w-full px-4 sm:px-8 py-8 md:py-12 font-sans bg-[#F5F7FA] text-[#102A56]">
       {/* Header Bar */}
-      <div className="border-b border-[#cacacb] dark:border-[#27272a] pb-6 mb-8 flex flex-col md:flex-row md:items-baseline justify-between gap-4">
+      <div className="border-b border-[#E2E8F0] pb-6 mb-8 flex flex-col md:flex-row md:items-baseline justify-between gap-4">
         <div>
-          <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#a1a1aa] block mb-1">
-            Live Reservation
-          </span>
-          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-foreground">
-            SELECT COURT &amp; SCHEDULE
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#0B2A67] mb-1">
+            <Sparkles className="w-3.5 h-3.5 text-[#FFD21C]" />
+            <span>Live Court Reservation</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#0B2A67] uppercase">
+            Select Court &amp; Schedule
           </h1>
         </div>
 
-        <div className="flex items-center gap-3 text-xs font-medium text-[#707072] dark:text-[#a1a1aa]">
-          <span className="text-foreground font-bold">₱300 / hr Flat Rate</span>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-bold text-[#64748B]">
+          <span className="text-[#0B2A67] font-extrabold">₱300 / hr Flat Rate</span>
           <span>•</span>
           <span>PayMongo Instant Lock</span>
           <span>•</span>
-          <span className="text-[#007d48] dark:text-[#10b981] font-semibold">24h Cancellation Guarantee</span>
+          <span className="text-[#007d48]">24h Refundable Guarantee</span>
         </div>
+      </div>
+
+      {/* Events Place & View Deck Banner Link */}
+      <div className="p-4 sm:p-5 bg-gradient-to-r from-amber-50 to-amber-100/60 dark:from-amber-950/40 dark:to-amber-900/20 border border-amber-300 dark:border-amber-800 rounded-2xl mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Sparkles className="w-5 h-5 text-amber-200 fill-current" />
+          </div>
+          <div>
+            <strong className="text-amber-950 dark:text-amber-200 block font-extrabold text-sm">
+              Planning a Wedding, Birthday, Debut or Private Party?
+            </strong>
+            <span className="text-amber-800 dark:text-amber-300">
+              Book our 3rd Floor Banquet Hall (180 Pax) or 5th Floor View Deck Private Lounge (25 Pax) on our dedicated Venue Rental page.
+            </span>
+          </div>
+        </div>
+        <Link href="/book-events">
+          <Button size="sm" className="bg-amber-700 hover:bg-amber-800 text-white text-xs px-5 font-bold h-10 rounded-xl shrink-0 cursor-pointer shadow-sm">
+            <span>🎉 Reserve Events Place &amp; Lounge</span>
+            <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Button>
+        </Link>
       </div>
 
       {/* Account Required Banner */}
       {!isAuthLoading && !isAuthenticated && (
-        <div className="p-4 bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+        <div className="p-4 sm:p-5 bg-[#EDF4FC] border border-[#E2E8F0] rounded-2xl mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs shadow-xs">
           <div className="flex items-center gap-3">
-            <Lock className="w-4 h-4 text-foreground shrink-0" />
+            <div className="w-9 h-9 rounded-full bg-[#0B2A67] text-white flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
             <div>
-              <strong className="text-foreground block font-bold text-xs uppercase tracking-wide">
+              <strong className="text-[#0B2A67] block font-extrabold text-sm">
                 Account Required to Reserve
               </strong>
-              <span className="text-[#707072] dark:text-[#a1a1aa]">
-                Please sign in or register to secure your court reservation.
+              <span className="text-[#64748B]">
+                Please sign in or create an account to secure your court reservation and receive digital QR passes.
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Link href="/login?next=/book">
-              <Button size="sm" className="bg-[#111111] hover:bg-[#222222] text-white dark:bg-white dark:text-[#111111] dark:hover:bg-[#e5e5e5] text-xs px-4">
+              <Button size="sm" variant="yellow" className="text-xs px-5 font-bold h-9 cursor-pointer">
                 Sign In
               </Button>
             </Link>
             <Link href="/signup?next=/book">
-              <Button size="sm" variant="secondary" className="text-xs px-4 dark:bg-[#27272a] dark:text-white dark:hover:bg-[#323238]">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs px-4 font-bold h-9 bg-white border-[#E2E8F0] text-[#0B2A67] cursor-pointer"
+              >
                 Create Account
               </Button>
             </Link>
@@ -355,18 +494,18 @@ export default function BookPage() {
 
       {/* Error Alert */}
       {errorMessage && (
-        <div className="p-4 border border-[#d30005] bg-white dark:bg-[#18181c] text-[#d30005] text-xs mb-8 flex items-center gap-2">
+        <div className="p-4 rounded-xl border border-[#d30005]/20 bg-[#d30005]/5 text-[#d30005] text-xs mb-8 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{errorMessage}</span>
+          <span className="font-semibold">{errorMessage}</span>
         </div>
       )}
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Court Selection, Calendar, Slots */}
         <div className="lg:col-span-7 space-y-8">
-          {/* Step 1: Court Selection */}
-          <div className="border border-[#cacacb] dark:border-[#27272a] p-6 bg-white dark:bg-[#121215]">
+          {/* Step 1: Court Selection & Surface Specification */}
+          <div className="border border-[#E2E8F0] p-6 sm:p-8 rounded-2xl sm:rounded-3xl bg-white shadow-sm">
             <CourtSelector
               courts={courts}
               selectedCourt={selectedCourt}
@@ -377,48 +516,183 @@ export default function BookPage() {
             />
           </div>
 
-          {/* Step 2: Calendar Card */}
-          <div className="border border-[#cacacb] dark:border-[#27272a] p-6 space-y-4 bg-white dark:bg-[#121215]">
-            <div className="flex items-baseline justify-between border-b border-[#cacacb] dark:border-[#27272a] pb-3">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#a1a1aa]">
-                2. Select Date ({formattedDisplayDate})
-              </span>
-              <div className="flex items-center gap-2">
+          {/* Step 2: Enhanced Athletic Calendar Card */}
+          <div className="border border-[#E2E8F0] p-6 sm:p-8 space-y-5 rounded-2xl sm:rounded-3xl bg-white shadow-sm">
+            {/* Header: Label & Quick Shortcuts */}
+            <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-[#E2E8F0] pb-4 gap-3">
+              <div>
+                <label className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] flex items-center gap-1.5">
+                  <CalendarDays className="w-3.5 h-3.5 text-[#FFD21C]" />
+                  <span>2. Select Match Date</span>
+                </label>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-sm font-black text-[#0B2A67]">
+                    {formattedDisplayDate}
+                  </span>
+                  {isSelectedDateFullyBooked && (
+                    <span className="px-2 py-0.5 rounded-full bg-[#bf050b] text-white text-[9px] font-black uppercase tracking-wider">
+                      Fully Scheduled
+                    </span>
+                  )}
+                  {isSelectedDateAlmostFull && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-bold uppercase tracking-wider">
+                      Filling Fast
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Date Shortcut Pills */}
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
                   size="xs"
                   onClick={() => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    setSelectedDate(today);
-                    setVisibleMonth(today);
+                    playHapticSound('tap');
+                    setSelectedDate(todayDate);
+                    setVisibleMonth(todayDate);
                     setSelectedSlots([]);
                   }}
-                  className="text-xs px-3 rounded-full border-[#cacacb] dark:border-[#27272a] text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
+                  className={`text-xs px-3 rounded-full border transition-all cursor-pointer active:scale-95 ${
+                    formatDateToYMD(selectedDate) === formatDateToYMD(todayDate)
+                      ? 'border-[#0B2A67] bg-[#0B2A67] text-white shadow-xs'
+                      : 'border-[#E2E8F0] text-[#0B2A67] hover:bg-[#EDF4FC]'
+                  }`}
                 >
-                  Today
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                      todaySummary?.status === 'fully_booked'
+                        ? 'bg-[#bf050b]'
+                        : todaySummary?.status === 'almost_full'
+                        ? 'bg-amber-500'
+                        : 'bg-[#007d48]'
+                    }`}
+                  />
+                  <span>Today</span>
                 </Button>
+
                 <Button
                   type="button"
                   variant="outline"
                   size="xs"
                   onClick={() => {
-                    const tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(0, 0, 0, 0);
-                    setSelectedDate(tomorrow);
-                    setVisibleMonth(tomorrow);
+                    playHapticSound('tap');
+                    setSelectedDate(tomorrowDate);
+                    setVisibleMonth(tomorrowDate);
                     setSelectedSlots([]);
                   }}
-                  className="text-xs px-3 rounded-full border-[#cacacb] dark:border-[#27272a] text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
+                  className={`text-xs px-3 rounded-full border transition-all cursor-pointer active:scale-95 ${
+                    formatDateToYMD(selectedDate) === formatDateToYMD(tomorrowDate)
+                      ? 'border-[#0B2A67] bg-[#0B2A67] text-white shadow-xs'
+                      : 'border-[#E2E8F0] text-[#0B2A67] hover:bg-[#EDF4FC]'
+                  }`}
                 >
-                  Tomorrow
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                      tomorrowSummary?.status === 'fully_booked'
+                        ? 'bg-[#bf050b]'
+                        : tomorrowSummary?.status === 'almost_full'
+                        ? 'bg-amber-500'
+                        : 'bg-[#007d48]'
+                    }`}
+                  />
+                  <span>Tomorrow</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={handleJumpNextAvailable}
+                  className="text-xs px-3 rounded-full border-[#E2E8F0] text-[#0B2A67] hover:bg-[#EDF4FC] hover:border-[#0B2A67] transition-all cursor-pointer active:scale-95"
+                >
+                  <Sparkles className="w-3 h-3 text-[#FFD21C] mr-1" />
+                  <span>Next Open Date</span>
                 </Button>
               </div>
             </div>
 
-            <div className="pt-2">
+            {/* Selected Date Real-Time Status Notification Banner */}
+            {isSelectedDateFullyBooked ? (
+              <div className="p-4 rounded-2xl bg-[#bf050b]/8 border border-[#bf050b]/25 text-[#bf050b] space-y-3 animate-in fade-in duration-150">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#bf050b] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <AlertCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-sm uppercase tracking-tight text-[#bf050b]">
+                        Fully Scheduled on {formattedDisplayDate}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-[#bf050b] text-white text-[9px] font-black uppercase tracking-wider">
+                        0 Slots Open
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#64748B] mt-0.5 leading-relaxed">
+                      All 16 court hours (6:00 AM – 10:00 PM) on {selectedCourt.name} are reserved. Switch courts or jump to the next available date below.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#bf050b]/15">
+                  {otherCourt && (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      onClick={handleSwitchToOtherCourt}
+                      className="text-xs font-bold bg-white text-[#0B2A67] border-[#0B2A67]/30 hover:bg-[#EDF4FC] rounded-full px-3.5 py-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <span>Check {otherCourt.name.includes('1') ? 'Court 1' : 'Court 2'}</span>
+                      <ArrowRight className="w-3 h-3 ml-1" />
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="yellow"
+                    onClick={handleJumpNextAvailable}
+                    className="text-xs font-black rounded-full px-3.5 py-1.5 active:scale-95 shadow-xs cursor-pointer"
+                  >
+                    <span>Jump to Next Open Date</span>
+                    <ArrowRight className="w-3 h-3 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            ) : isSelectedDateAlmostFull ? (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-950 flex items-center justify-between gap-3 text-xs animate-in fade-in duration-150">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 shadow-xs" />
+                  <div>
+                    <span className="font-extrabold block text-amber-900">
+                      High Demand Date &bull; Limited Slots Remaining
+                    </span>
+                    <span className="text-amber-800/80 text-[11px]">
+                      Hours for {formattedDisplayDate} are filling fast. Book your consecutive slots now.
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-200/80 text-amber-950 font-black text-[10px] uppercase tracking-wider shrink-0">
+                  Few Slots Left
+                </span>
+              </div>
+            ) : (
+              <div className="p-3 rounded-2xl bg-[#007d48]/5 border border-[#007d48]/20 text-[#007d48] flex items-center justify-between gap-3 text-xs animate-in fade-in duration-150">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#007d48] shrink-0" />
+                  <span className="font-bold text-[#0B2A67]">
+                    Open Court Availability &bull; Prime hours available on {formattedDisplayDate}.
+                  </span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-[#007d48]/15 text-[#007d48] font-bold text-[10px] uppercase tracking-wider shrink-0">
+                  Open
+                </span>
+              </div>
+            )}
+
+            {/* Interactive Athletic Calendar Grid */}
+            <div className="pt-1">
               <Calendar
                 mode="single"
                 month={visibleMonth}
@@ -426,7 +700,7 @@ export default function BookPage() {
                 selected={selectedDate}
                 modifiers={calendarModifiers}
                 onSelect={handleDateSelect}
-                className="w-full text-foreground"
+                className="w-full text-[#102A56]"
                 disabled={(d) => {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
@@ -434,10 +708,35 @@ export default function BookPage() {
                 }}
               />
             </div>
+
+            {/* Clear Athletic Calendar Legend */}
+            <div className="pt-3 border-t border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3 text-xs text-[#64748B] font-semibold">
+              <span className="text-[10px] uppercase tracking-wider font-black text-[#0B2A67]">
+                Availability Legend:
+              </span>
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-[11px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#007d48]" />
+                  <span>Available</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span>Filling Fast</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#bf050b]" />
+                  <span className="text-[#bf050b] font-bold">Fully Scheduled</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-md bg-[#0B2A67] ring-1 ring-[#FFD21C]" />
+                  <span className="text-[#0B2A67] font-bold">Selected</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Step 3: Time Slot Availability Grid (Multi-Select) */}
-          <div className="border border-[#cacacb] dark:border-[#27272a] p-6 space-y-4 bg-white dark:bg-[#121215]">
+          <div className="border border-[#E2E8F0] p-6 sm:p-8 space-y-4 rounded-2xl sm:rounded-3xl bg-white shadow-sm">
             <TimeSlotGrid
               slots={filteredSlots}
               selectedSlots={selectedSlots}

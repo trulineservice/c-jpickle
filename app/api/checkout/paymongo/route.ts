@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       court = {
         id: courtId,
         name: courtId === '052becb1-e01d-4cd9-88ae-3d6e419259fd' 
-          ? 'Court 2 - Indoor (Tournament Spec)' 
+          ? 'Court 2 — Indoor (Pickleball / Basketball)' 
           : 'Court 1 - Indoor (Pro Cushion)',
         hourly_rate: 300,
         type: 'indoor',

@@ -44,13 +44,25 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --radius-3xl: 0px;
-  --radius-4xl: 0px;
+  --color-brand-navy: #0B2A67;
+  --color-brand-navy-deep: #071E4B;
+  --color-brand-navy-light: #123A82;
+  --color-brand-yellow: #FFD21C;
+  --color-brand-yellow-hover: #E8BA00;
+  --color-brand-surface: #F5F7FA;
+  --color-brand-surface-blue: #EDF4FC;
+  --color-brand-text: #102A56;
+  --color-brand-muted: #64748B;
+  --color-brand-border: #E2E8F0;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  --radius-4xl: 40px;
+  --radius-full: 9999px;
 }
 
 :root {

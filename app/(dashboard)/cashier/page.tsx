@@ -18,13 +18,27 @@ export default async function CashierDashboard() {
     redirect('/dashboard');
   }
 
-  // Fetch Inventory Only
-  const { data: products } = await supabase
-    .from('pos_products')
-    .select('*')
-    .order('category', { ascending: true });
+  // Fetch Inventory Products and recent POS transactions concurrently
+  const [
+    { data: products },
+    { data: recentTransactions }
+  ] = await Promise.all([
+    supabase
+      .from('pos_products')
+      .select('*')
+      .order('category', { ascending: true })
+      .order('sku', { ascending: true }),
+    supabase
+      .from('pos_transactions')
+      .select('id, invoice_number, customer_name, total_amount, gross_amount, payment_method, status, created_at, void_reason, voided_at')
+      .order('created_at', { ascending: false })
+      .limit(25)
+  ]);
 
   return (
-    <CashierClient initialProducts={products || []} />
+    <CashierClient 
+      initialProducts={products || []} 
+      initialRecentTransactions={recentTransactions || []}
+    />
   );
 }

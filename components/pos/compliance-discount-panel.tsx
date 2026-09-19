@@ -31,14 +31,14 @@ export function ComplianceDiscountPanel({
   const isStatutory = discountType === "senior_citizen" || discountType === "pwd";
 
   return (
-    <div className="border border-[#e5e5e5] rounded-xl p-4 bg-[#fcfcfc] space-y-3">
+    <div className="border border-[#e5e5e5] dark:border-white/10 rounded-2xl p-4 bg-[#fcfcfc] dark:bg-[#071E4B]/30 shadow-xs space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-bold uppercase tracking-wider text-[#111111] flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#007d48]" />
+        <label className="text-xs font-black uppercase tracking-wider text-[#0B2A67] dark:text-white flex items-center gap-1.5">
+          <ShieldCheck className="w-4 h-4 text-[#007d48] dark:text-[#10b981]" />
           Philippine BIR EOPT &amp; Statutory Discounts
         </label>
         {isStatutory && (
-          <span className="text-[10px] font-bold text-[#007d48] bg-[#007d48]/10 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-black text-[#007d48] dark:text-emerald-300 bg-[#007d48]/10 dark:bg-emerald-950/60 border border-[#007d48]/20 dark:border-emerald-800 px-2.5 py-0.5 rounded-full">
             20% Discount + 12% VAT Exempt
           </span>
         )}
@@ -55,10 +55,10 @@ export function ComplianceDiscountPanel({
             key={btn.id}
             type="button"
             onClick={() => onDiscountTypeChange(btn.id as any)}
-            className={`py-2 px-2 text-center rounded-lg border text-xs font-bold transition-all ${
+            className={`py-2 px-2 text-center rounded-xl border text-xs font-black transition-all cursor-pointer active:scale-[0.98] ${
               discountType === btn.id
-                ? "bg-[#111111] text-white border-[#111111] shadow-xs"
-                : "bg-white text-[#707072] border-[#e5e5e5] hover:border-[#111111] hover:text-[#111111]"
+                ? "bg-[#0B2A67] text-white border-[#0B2A67] shadow-sm ring-2 ring-[#FFD21C]"
+                : "bg-white dark:bg-white/5 text-[#707072] dark:text-white/70 border-[#e5e5e5] dark:border-white/10 hover:border-[#0B2A67] dark:hover:border-[#FFD21C] hover:text-[#0B2A67] dark:hover:text-white"
             }`}
           >
             {btn.label}
@@ -68,35 +68,35 @@ export function ComplianceDiscountPanel({
 
       {/* Conditional Statutory Input Fields */}
       {isStatutory && (
-        <div className="space-y-2 pt-2 border-t border-[#f0f0f0] animate-in fade-in duration-200">
+        <div className="space-y-2.5 pt-2.5 border-t border-[#f0f0f0] dark:border-white/10 animate-in fade-in duration-200">
           <div>
-            <Label htmlFor="custName" className="text-[11px] font-bold uppercase text-[#707072] dark:text-[#a1a1aa]">
-              Customer Full Name <span className="text-[#d30005]">*</span>
+            <Label htmlFor="custName" className="text-[11px] font-black uppercase text-[#0B2A67] dark:text-white/80">
+              Customer Full Name <span className="text-[#bf050b]">*</span>
             </Label>
             <Input
               id="custName"
               value={customerName}
               onChange={(e) => onCustomerNameChange(e.target.value)}
               placeholder="Full Name as shown on Senior / PWD ID"
-              className="h-9 text-xs rounded-lg mt-1"
+              className="h-9 text-xs rounded-xl mt-1 bg-white dark:bg-black/40 border-[#e5e5e5] dark:border-white/15 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
-              <Label htmlFor="discId" className="text-[11px] font-bold uppercase text-[#707072] dark:text-[#a1a1aa]">
-                Senior / PWD ID Number <span className="text-[#d30005]">*</span>
+              <Label htmlFor="discId" className="text-[11px] font-black uppercase text-[#0B2A67] dark:text-white/80">
+                Senior / PWD ID Number <span className="text-[#bf050b]">*</span>
               </Label>
               <Input
                 id="discId"
                 value={discountIdNumber}
                 onChange={(e) => onDiscountIdNumberChange(e.target.value)}
                 placeholder="e.g. SC-104928"
-                className="h-9 text-xs rounded-lg mt-1 font-mono"
+                className="h-9 text-xs rounded-xl mt-1 font-mono bg-white dark:bg-black/40 border-[#e5e5e5] dark:border-white/15 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
               />
             </div>
             <div>
-              <Label htmlFor="custTin" className="text-[11px] font-bold uppercase text-[#707072] dark:text-[#a1a1aa]">
+              <Label htmlFor="custTin" className="text-[11px] font-black uppercase text-[#0B2A67] dark:text-white/80">
                 Customer TIN (Optional)
               </Label>
               <Input
@@ -104,20 +104,20 @@ export function ComplianceDiscountPanel({
                 value={customerTin}
                 onChange={(e) => onCustomerTinChange(e.target.value)}
                 placeholder="000-000-000-000"
-                className="h-9 text-xs rounded-lg mt-1 font-mono"
+                className="h-9 text-xs rounded-xl mt-1 font-mono bg-white dark:bg-black/40 border-[#e5e5e5] dark:border-white/15 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
               />
             </div>
           </div>
 
-          <p className="text-[10px] text-[#707072]">
+          <p className="text-[10px] text-[#707072] dark:text-white/60 font-medium">
             Mandated under RA 9994 (Senior Citizens) &amp; RA 10754 (PWDs). Required for BIR audit compliance.
           </p>
         </div>
       )}
 
       {complianceError && (
-        <div className="p-2.5 rounded-lg border border-[#d30005]/20 bg-[#d30005]/5 text-[11px] text-[#d30005] flex items-center gap-1.5">
-          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+        <div className="p-2.5 rounded-xl border border-[#bf050b]/30 bg-[#bf050b]/10 text-[11px] text-[#bf050b] dark:text-red-300 font-bold flex items-center gap-1.5">
+          <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{complianceError}</span>
         </div>
       )}

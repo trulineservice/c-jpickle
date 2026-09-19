@@ -5,6 +5,19 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "date-fns",
+      "@base-ui/react",
+    ],
+  },
+  images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 86400,
+  },
+  compress: true,
+  poweredByHeader: false,
   async headers() {
     return [
       {

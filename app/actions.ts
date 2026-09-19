@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
+import { pushBookingToGoogleCalendar, testGoogleCalendarConnection, normalizePrivateKey } from '@/lib/google-calendar-sync-engine';
 
 /**
  * ============================================================================
@@ -863,15 +864,156 @@ export async function createCashierAccount(formData: FormData): Promise<void> {
 }
 
 /**
- * Void a POS transaction.
+ * Helper to fetch POS Master PIN code.
  */
-export async function voidTransaction(transactionId: string): Promise<void> {
+async function getPosMasterPin(): Promise<string> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'pos_master_pin')
+      .single();
+    if (data?.value) return data.value.trim();
+  } catch (err) {
+    console.warn('[Get Master PIN fallback]:', err);
+  }
+  return process.env.POS_MASTER_PIN || '8888';
+}
+
+/**
+ * Verify POS Master PIN for supervisor overrides and cart void actions.
+ */
+export async function verifyPosMasterPin(pin: string): Promise<{ success: boolean; error?: string }> {
+  if (!pin || typeof pin !== 'string') {
+    return { success: false, error: 'PIN code is required.' };
+  }
+  const masterPin = await getPosMasterPin();
+  if (pin.trim() !== masterPin) {
+    return { success: false, error: 'Invalid Master PIN code. Authorization denied.' };
+  }
+  return { success: true };
+}
+
+/**
+ * Void a POS transaction with Master PIN authorization, reason auditing, and stock reversal.
+ */
+export async function voidPosTransactionWithPin(payload: {
+  transactionId: string;
+  pin: string;
+  reason: string;
+}): Promise<{ success: boolean; error?: string; message?: string }> {
+  const { transactionId, pin, reason } = payload;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return redirect('/login');
+  if (!user) {
+    return { success: false, error: 'Unauthorized: Staff login required.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || !['owner', 'admin', 'cashier'].includes(profile.role)) {
+    return { success: false, error: 'Unauthorized: Staff access required.' };
+  }
+
+  if (!pin) {
+    return { success: false, error: 'Master PIN code is required to void transactions.' };
+  }
+
+  const masterPin = await getPosMasterPin();
+  if (pin.trim() !== masterPin) {
+    return { success: false, error: 'Invalid Master PIN code. Void authorization failed.' };
+  }
+
+  // 1. Fetch transaction and verify it's not already voided
+  const { data: tx, error: fetchErr } = await supabase
+    .from('pos_transactions')
+    .select('id, invoice_number, status, total_amount')
+    .eq('id', transactionId)
+    .single();
+
+  if (fetchErr || !tx) {
+    return { success: false, error: 'Transaction not found.' };
+  }
+
+  if (tx.status === 'voided') {
+    return { success: false, error: 'Transaction has already been voided.' };
+  }
+
+  // 2. Fetch line items to restore inventory stock
+  const { data: lineItems } = await supabase
+    .from('pos_transaction_items')
+    .select('product_id, quantity')
+    .eq('transaction_id', transactionId);
+
+  if (lineItems && lineItems.length > 0) {
+    for (const item of lineItems) {
+      if (item.product_id) {
+        const { data: prod } = await supabase
+          .from('pos_products')
+          .select('id, stock_level')
+          .eq('id', item.product_id)
+          .single();
+
+        if (prod) {
+          const restoredStock = Number(prod.stock_level ?? 0) + Number(item.quantity ?? 0);
+          await supabase
+            .from('pos_products')
+            .update({ stock_level: restoredStock })
+            .eq('id', prod.id);
+        }
+      }
+    }
+  }
+
+  // 3. Mark transaction as voided
+  const voidReason = reason?.trim() || 'Cashier / Supervisor Void';
+  const { error: updateErr } = await supabase
+    .from('pos_transactions')
+    .update({
+      status: 'voided',
+      void_reason: voidReason,
+      voided_at: new Date().toISOString(),
+      voided_by: user.id,
+    })
+    .eq('id', transactionId);
+
+  if (updateErr) {
+    console.error('[Void POS Transaction Error]:', updateErr);
+    return { success: false, error: 'Failed to update transaction status.' };
+  }
+
+  revalidatePath('/cashier');
+  revalidatePath('/cashier/reports');
+  revalidatePath('/admin');
+
+  return {
+    success: true,
+    message: `Invoice ${tx.invoice_number || `#${tx.id.slice(0, 8)}`} voided successfully. Inventory stock has been restored.`,
+  };
+}
+
+/**
+ * Update POS Master PIN code (Owner / Admin only).
+ */
+export async function updatePosMasterPin(payload: {
+  currentPin: string;
+  newPin: string;
+}): Promise<{ success: boolean; error?: string; message?: string }> {
+  const { currentPin, newPin } = payload;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: 'Unauthorized' };
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -880,20 +1022,47 @@ export async function voidTransaction(transactionId: string): Promise<void> {
     .single();
 
   if (!profile || !['owner', 'admin'].includes(profile.role)) {
-    throw new Error('Unauthorized: Owner or Admin access required.');
+    return { success: false, error: 'Unauthorized: Only Owner or Admin can modify Master PIN.' };
+  }
+
+  const existingPin = await getPosMasterPin();
+  if (currentPin.trim() !== existingPin) {
+    return { success: false, error: 'Current Master PIN is incorrect.' };
+  }
+
+  const cleanNew = newPin?.trim();
+  if (!cleanNew || cleanNew.length < 4 || cleanNew.length > 8 || !/^\d+$/.test(cleanNew)) {
+    return { success: false, error: 'New PIN must be between 4 and 8 numeric digits.' };
   }
 
   const { error } = await supabase
-    .from('pos_transactions')
-    .update({ status: 'voided' })
-    .eq('id', transactionId);
+    .from('system_settings')
+    .upsert({
+      key: 'pos_master_pin',
+      value: cleanNew,
+      description: 'Master PIN code required for POS item voiding, order cancellation, and sales invoice voiding',
+      updated_at: new Date().toISOString(),
+    });
 
   if (error) {
-    console.error('[Void Transaction Error]:', error);
-    throw new Error('Failed to void transaction.');
+    console.error('[Update Master PIN Error]:', error);
+    return { success: false, error: 'Failed to save new Master PIN.' };
   }
 
   revalidatePath('/admin');
+  return { success: true, message: 'Master PIN successfully updated.' };
+}
+
+/**
+ * Void a POS transaction (legacy alias).
+ */
+export async function voidTransaction(transactionId: string): Promise<void> {
+  const masterPin = await getPosMasterPin();
+  await voidPosTransactionWithPin({
+    transactionId,
+    pin: masterPin,
+    reason: 'Admin Dashboard Quick Void',
+  });
 }
 
 /**
@@ -1150,3 +1319,456 @@ export async function updateUserPassword(formData: FormData): Promise<{ success?
 
   return { success: true };
 }
+
+// ============================================================================
+// 6. DAILY EXPENSES & INVENTORY MANAGEMENT
+// ============================================================================
+
+export interface AddDailyExpenseParams {
+  expenseDate?: string;
+  category: string;
+  title: string;
+  amount: number;
+  paymentMethod?: string;
+  receiptReference?: string;
+  notes?: string;
+}
+
+/**
+ * Record a new daily operational expense (utilities, supplies, maintenance, petty cash).
+ */
+export async function addDailyExpense(params: AddDailyExpenseParams): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'Authentication required.' };
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!profile || !['owner', 'admin', 'cashier'].includes(profile.role)) {
+      return { success: false, error: 'Unauthorized: Staff access required to log expenses.' };
+    }
+
+    if (!params.title || !params.title.trim()) {
+      return { success: false, error: 'Expense description/title is required.' };
+    }
+
+    const numAmount = Number(params.amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return { success: false, error: 'Valid expense amount greater than 0 is required.' };
+    }
+
+    const { error } = await supabase
+      .from('daily_expenses')
+      .insert({
+        expense_date: params.expenseDate || new Date().toISOString().split('T')[0],
+        category: params.category || 'supplies',
+        title: params.title.trim(),
+        amount: numAmount,
+        payment_method: params.paymentMethod || 'cash',
+        receipt_reference: params.receiptReference?.trim() || null,
+        notes: params.notes?.trim() || null,
+        recorded_by: user.id,
+      });
+
+    if (error) {
+      console.error('[Add Daily Expense Error]:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/cashier/expenses');
+    revalidatePath('/cashier/reports');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[Add Daily Expense Exception]:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to record expense.' };
+  }
+}
+
+/**
+ * Delete an operational expense record (Admin/Owner only).
+ */
+export async function deleteDailyExpense(expenseId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'Authentication required.' };
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!profile || !['owner', 'admin'].includes(profile.role)) {
+      return { success: false, error: 'Unauthorized: Admin or Owner privileges required to delete expenses.' };
+    }
+
+    const { error } = await supabase
+      .from('daily_expenses')
+      .delete()
+      .eq('id', expenseId);
+
+    if (error) {
+      console.error('[Delete Expense Error]:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/cashier/expenses');
+    revalidatePath('/cashier/reports');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[Delete Expense Exception]:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete expense.' };
+  }
+}
+
+export interface UpdateInventoryItemParams {
+  id: string;
+  costPrice?: number;
+  price?: number;
+  stockLevel?: number;
+  reorderThreshold?: number;
+  isActive?: boolean;
+}
+
+/**
+ * Update POS Product inventory metrics, selling price, and unit cost price.
+ */
+export async function updateInventoryItem(params: UpdateInventoryItemParams): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: 'Authentication required.' };
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!profile || !['owner', 'admin', 'cashier'].includes(profile.role)) {
+      return { success: false, error: 'Unauthorized: Staff access required.' };
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (params.costPrice !== undefined) {
+      const c = Number(params.costPrice);
+      if (isNaN(c) || c < 0) return { success: false, error: 'Cost price must be >= 0.' };
+      updatePayload.cost_price = c;
+    }
+
+    if (params.price !== undefined) {
+      const p = Number(params.price);
+      if (isNaN(p) || p <= 0) return { success: false, error: 'Selling price must be > 0.' };
+      updatePayload.price = p;
+    }
+
+    if (params.stockLevel !== undefined) {
+      const s = Number(params.stockLevel);
+      if (isNaN(s) || s < 0) return { success: false, error: 'Stock level cannot be negative.' };
+      updatePayload.stock_level = s;
+    }
+
+    if (params.reorderThreshold !== undefined) {
+      const r = Number(params.reorderThreshold);
+      if (isNaN(r) || r < 0) return { success: false, error: 'Threshold must be >= 0.' };
+      updatePayload.reorder_threshold = r;
+    }
+
+    if (params.isActive !== undefined) {
+      updatePayload.is_active = Boolean(params.isActive);
+    }
+
+    const { error } = await supabase
+      .from('pos_products')
+      .update(updatePayload)
+      .eq('id', params.id);
+
+    if (error) {
+      console.error('[Update Inventory Error]:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/cashier');
+    revalidatePath('/cashier/inventory');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[Update Inventory Exception]:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update inventory.' };
+  }
+}
+
+/**
+ * Record a down payment / deposit on a booking (e.g. 50% deposit for venue rental).
+ * Automatically updates status to 'paid', sets down_payment_amount, and triggers
+ * instant server-side push to Google Calendar.
+ */
+export async function recordDownPayment(params: {
+  bookingId: string;
+  downPaymentAmount: number;
+  paymentMethod: string;
+  notes?: string;
+}): Promise<{ success: boolean; googleSynced?: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'Unauthorized.' };
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, full_name')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || !['owner', 'admin', 'cashier'].includes(profile.role)) {
+      return { success: false, error: 'Forbidden. Staff permissions required.' };
+    }
+
+    const { data: existingBooking, error: fetchErr } = await supabase
+      .from('bookings')
+      .select('id, total_price, notes')
+      .eq('id', params.bookingId)
+      .single();
+
+    if (fetchErr || !existingBooking) {
+      return { success: false, error: 'Booking not found.' };
+    }
+
+    const amount = Number(params.downPaymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      return { success: false, error: 'Please specify a valid down payment amount > 0.' };
+    }
+
+    const combinedNotes = [
+      existingBooking.notes,
+      `Down payment of ₱${amount.toFixed(2)} received via ${params.paymentMethod.toUpperCase()} (Recorded by ${profile.full_name || 'Staff'})`,
+      params.notes,
+    ]
+      .filter(Boolean)
+      .join(' | ');
+
+    const { error: updateErr } = await supabase
+      .from('bookings')
+      .update({
+        down_payment_amount: amount,
+        status: 'paid',
+        payment_method: params.paymentMethod,
+        notes: combinedNotes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', params.bookingId);
+
+    if (updateErr) {
+      console.error('[Record Down Payment Error]:', updateErr);
+      return { success: false, error: updateErr.message };
+    }
+
+    revalidatePath('/cashier/schedule');
+    revalidatePath('/admin');
+
+    // Automatically trigger Google Calendar push
+    let googleSynced = false;
+    try {
+      const syncRes = await pushBookingToGoogleCalendar(params.bookingId);
+      googleSynced = Boolean(syncRes.success);
+    } catch (gErr) {
+      console.warn('[Record Down Payment] Google sync warning:', gErr);
+    }
+
+    return { success: true, googleSynced };
+  } catch (err: unknown) {
+    console.error('[Record Down Payment Exception]:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to record down payment.' };
+  }
+}
+
+/**
+ * Manual trigger to push or refresh an individual booking on Google Calendar.
+ */
+export async function triggerManualGoogleCalendarSync(bookingId: string): Promise<{
+  success: boolean;
+  googleEventId?: string;
+  error?: string;
+}> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    const result = await pushBookingToGoogleCalendar(bookingId);
+    revalidatePath('/cashier/schedule');
+    revalidatePath('/admin');
+    return result;
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Sync failed' };
+  }
+}
+
+/**
+ * Save Google Calendar API configuration keys into system_settings.
+ */
+export async function saveGoogleCalendarSettings(params: {
+  calendarId: string;
+  serviceAccountEmail?: string;
+  privateKey?: string;
+  autoSyncEnabled: boolean;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'Unauthorized.' };
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || !['owner', 'admin'].includes(profile.role)) {
+      return { success: false, error: 'Admin permissions required.' };
+    }
+
+    let serviceEmail = params.serviceAccountEmail ? params.serviceAccountEmail.trim() : '';
+    let privKey = params.privateKey ? normalizePrivateKey(params.privateKey) : '';
+
+    // Check if user pasted full JSON into serviceAccountEmail or privateKey
+    if (params.privateKey && params.privateKey.includes('client_email')) {
+      try {
+        const parsed = JSON.parse(params.privateKey.trim());
+        if (parsed.client_email) serviceEmail = parsed.client_email.trim();
+        if (parsed.private_key) privKey = normalizePrivateKey(parsed.private_key);
+      } catch {
+        // ignore
+      }
+    }
+
+    const updates = [
+      { key: 'google_calendar_id', value: params.calendarId.trim(), description: 'Target Google Calendar ID' },
+      { key: 'google_calendar_auto_sync_enabled', value: params.autoSyncEnabled ? 'true' : 'false', description: 'Auto sync enabled' },
+    ];
+
+    if (serviceEmail) {
+      updates.push({
+        key: 'google_service_account_email',
+        value: serviceEmail,
+        description: 'Google Cloud Service Account client email',
+      });
+    }
+
+    if (privKey) {
+      updates.push({
+        key: 'google_private_key',
+        value: privKey,
+        description: 'Google Cloud Service Account RSA Private Key',
+      });
+    }
+
+    for (const item of updates) {
+      await supabase
+        .from('system_settings')
+        .upsert({
+          key: item.key,
+          value: item.value,
+          description: item.description,
+          updated_at: new Date().toISOString(),
+        });
+    }
+
+    revalidatePath('/admin');
+    revalidatePath('/cashier/schedule');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to save settings.' };
+  }
+}
+
+/**
+ * Server action to test Google Calendar direct push.
+ */
+export async function testGoogleCalendarSyncAction(): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { success: false, error: 'Unauthorized' };
+
+    return await testGoogleCalendarConnection();
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Test failed' };
+  }
+}
+
+/**
+ * Server action to fetch current Google Calendar settings.
+ */
+export async function getGoogleCalendarSettingsAction(): Promise<{
+  success: boolean;
+  calendarId?: string;
+  serviceAccountEmail?: string;
+  autoSyncEnabled?: boolean;
+  hasPrivateKey?: boolean;
+  error?: string;
+}> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('key, value')
+      .in('key', [
+        'google_calendar_id',
+        'google_service_account_email',
+        'google_private_key',
+        'google_calendar_auto_sync_enabled',
+      ]);
+
+    if (error) return { success: false, error: error.message };
+
+    const map = new Map((data || []).map((row) => [row.key, row.value]));
+    return {
+      success: true,
+      calendarId: map.get('google_calendar_id') || '',
+      serviceAccountEmail: map.get('google_service_account_email') || '',
+      autoSyncEnabled: map.get('google_calendar_auto_sync_enabled') !== 'false',
+      hasPrivateKey: !!map.get('google_private_key'),
+    };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to load settings' };
+  }
+}
+
+

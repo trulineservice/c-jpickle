@@ -234,11 +234,18 @@ export async function GET(request: NextRequest) {
 
     // If monthParam was requested alone without specific single date
     if (!dateStr) {
-      return NextResponse.json({
-        courtId: targetCourtId,
-        month: activeMonthStr,
-        monthOverview,
-      });
+      return NextResponse.json(
+        {
+          courtId: targetCourtId,
+          month: activeMonthStr,
+          monthOverview,
+        },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=60',
+          },
+        }
+      );
     }
 
     // Single Date Slots calculation
@@ -308,17 +315,24 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      courtId: targetCourtId,
-      date: dateStr,
-      durationHours,
-      operatingHours: {
-        start: formatHourDisplay(START_OPERATIONAL_HOUR),
-        end: formatHourDisplay(END_OPERATIONAL_HOUR),
+    return NextResponse.json(
+      {
+        courtId: targetCourtId,
+        date: dateStr,
+        durationHours,
+        operatingHours: {
+          start: formatHourDisplay(START_OPERATIONAL_HOUR),
+          end: formatHourDisplay(END_OPERATIONAL_HOUR),
+        },
+        slots,
+        monthOverview,
       },
-      slots,
-      monthOverview,
-    });
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
+        },
+      }
+    );
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error('Error in availability endpoint:', errorMsg);

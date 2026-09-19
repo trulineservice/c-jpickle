@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ShieldAlert, Sparkles } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { Button } from "@/components/ui/button";
 import { ResetPasswordForm } from "@/components/reset-password-form";
+import { AuthLayoutShell } from "@/components/auth-layout-shell";
 import { createClient } from "@/utils/supabase/server";
 
 export default async function ResetPasswordPage({
@@ -51,16 +53,25 @@ export default async function ResetPasswordPage({
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center px-4 py-16 sm:px-6 lg:px-8 font-sans bg-background text-foreground">
-      <div className="w-full max-w-md border border-[#cacacb] dark:border-[#27272a] p-8 sm:p-10 bg-white dark:bg-[#121215] space-y-6">
-        <div className="text-center space-y-2">
-          <div className="flex justify-center pb-2">
+    <AuthLayoutShell
+      heroTagline="Credential Security"
+      heroHeadline="Set New Account Password"
+      heroDescription="Choose a strong, secure passphrase to protect your C&J Pickleball court reservations, digital passes, and saved payment profiles."
+    >
+      <div className="space-y-6">
+        {/* Form Header */}
+        <div className="text-center space-y-2 pb-2 border-b border-[#E2E8F0]">
+          <div className="flex justify-center pb-1">
             <BrandLogo size="md" withSubtitle />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#FFD21C]/20 text-[#0B2A67] text-[11px] font-extrabold uppercase tracking-wider">
+            <Sparkles className="w-3 h-3 text-[#bf050b]" />
+            <span>Security Credentials</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#0B2A67] uppercase">
             Change Password
           </h1>
-          <p className="text-xs text-[#707072] dark:text-[#a1a1aa]">
+          <p className="text-xs text-[#64748B]">
             Set a new secure password for your C&amp;J Pickleball Arena account.
           </p>
         </div>
@@ -73,35 +84,39 @@ export default async function ResetPasswordPage({
           />
         ) : (
           <div className="space-y-6 text-center">
-            <div className="p-4 border border-amber-500/30 bg-amber-500/10 rounded-xl text-left space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-200">
-                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-500" />
+            <div className="p-4 border border-amber-500/30 bg-amber-500/10 rounded-2xl text-left space-y-2 shadow-xs">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-900">
+                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" />
                 <span>{token ? "Link Expired or Invalid" : "Reset Link Required"}</span>
               </div>
-              <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+              <p className="text-xs text-amber-800 leading-relaxed">
                 {tokenErrorMessage ||
-                  "To change your password, please request a secure password change link through our Forgot Password page."}
+                  "To change your password, please request a secure password reset link through our Forgot Password page."}
               </p>
             </div>
 
             <div className="pt-2 space-y-3">
               <Link href="/forgot-password" className="block">
-                <button className="w-full h-12 bg-[#111111] text-white hover:bg-[#222222] dark:bg-white dark:text-[#111111] dark:hover:bg-[#e5e5e5] font-medium text-sm rounded-full transition-colors">
+                <Button
+                  variant="yellow"
+                  size="lg"
+                  className="w-full h-12 bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-md cursor-pointer active:scale-[0.98] transition-all"
+                >
                   Request New Password Reset Link
-                </button>
+                </Button>
               </Link>
               <div>
                 <Link
                   href="/login"
-                  className="text-xs font-semibold text-foreground hover:underline inline-flex items-center gap-1"
+                  className="text-xs font-bold text-[#0B2A67] hover:text-[#bf050b] hover:underline inline-flex items-center gap-1.5 transition-colors"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back to Login
+                  <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
                 </Link>
               </div>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </AuthLayoutShell>
   );
 }

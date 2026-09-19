@@ -2,7 +2,8 @@
 
 import React, { useMemo } from "react";
 import type { AvailabilitySlot } from "@/types/database";
-import { Loader2, Clock, AlertCircle, Check, X } from "lucide-react";
+import { Loader2, Clock, AlertCircle, Check, X, Sparkles } from "lucide-react";
+import { playHapticSound } from "@/lib/motion-feedback";
 
 interface TimeSlotGridProps {
   slots: AvailabilitySlot[];
@@ -91,8 +92,12 @@ export function TimeSlotGrid({
       : null;
 
   const handleSlotClick = (slot: AvailabilitySlot) => {
-    if (!slot.available) return;
+    if (!slot.available) {
+      playHapticSound("error");
+      return;
+    }
 
+    playHapticSound("tap");
     if (onSelectSlots) {
       const nextSelection = computeManualToggleSelection(slot, effectiveSelected);
       onSelectSlots(nextSelection);
@@ -102,6 +107,7 @@ export function TimeSlotGrid({
   };
 
   const handleClear = () => {
+    playHapticSound("tap");
     if (onClearSelection) {
       onClearSelection();
     } else if (onSelectSlots) {
@@ -109,11 +115,14 @@ export function TimeSlotGrid({
     }
   };
 
-  // Time range summary
   const rangeDisplay = useMemo(() => {
     if (effectiveSelected.length === 0) return null;
+    if (effectiveSelected.length === 1) {
+      const h = effectiveSelected[0].hour24;
+      return `${formatHourDisplay(h)} - ${formatHourDisplay(h + 1)}`;
+    }
     if (!isConsecutive) {
-      return `${effectiveSelected.length} separate hours selected`;
+      return `${effectiveSelected.length} separate slots selected`;
     }
     const startH = effectiveSelected[0].hour24;
     const endH = effectiveSelected[effectiveSelected.length - 1].hour24 + 1;
@@ -125,26 +134,26 @@ export function TimeSlotGrid({
       {/* Header and Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <label className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-foreground" />
-            3. Select Playing Time
+          <label className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-[#FFD21C]" />
+            <span>3. Select Playing Time</span>
           </label>
-          <p className="text-[11px] text-[#707072] dark:text-[#a1a1aa] mt-0.5">
-            Click each time slot to select or unselect. Multiple consecutive slots extend your playing duration.
+          <p className="text-xs text-[#64748B] mt-0.5">
+            Click each time slot to select or unselect. Multiple contiguous slots extend your duration.
           </p>
         </div>
 
         {/* Time Segment Filter */}
-        <div className="inline-flex rounded-lg border border-[#e5e5e5] dark:border-[#27272a] p-0.5 bg-[#f5f5f5] dark:bg-[#18181c] text-xs font-semibold self-start sm:self-auto">
+        <div className="inline-flex rounded-full border border-[#E2E8F0] p-1 bg-[#EDF4FC] text-xs font-bold self-start sm:self-auto">
           {(["all", "morning", "afternoon", "night"] as const).map((filter) => (
             <button
               key={filter}
               type="button"
               onClick={() => onFilterChange(filter)}
-              className={`px-2.5 py-1 rounded-md capitalize transition-all ${
+              className={`px-3 py-1 rounded-full capitalize transition-all duration-150 ${
                 timeFilter === filter
-                  ? "bg-white dark:bg-[#27272a] text-foreground shadow-xs font-bold"
-                  : "text-[#707072] dark:text-[#a1a1aa] hover:text-foreground"
+                  ? "bg-[#0B2A67] text-white shadow-xs font-extrabold"
+                  : "text-[#64748B] hover:text-[#0B2A67]"
               }`}
             >
               {filter}
@@ -155,16 +164,16 @@ export function TimeSlotGrid({
 
       {/* Live Selection Multi-Hour Banner */}
       {effectiveSelected.length > 0 && rangeDisplay && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 border border-[#111111] dark:border-white bg-[#f5f5f5] dark:bg-[#18181c] text-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-2.5">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full font-bold text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111]">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-[#0B2A67]/20 bg-[#EDF4FC] text-xs animate-in fade-in duration-200">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full font-extrabold text-xs bg-[#FFD21C] text-[#0B2A67] shadow-xs">
               {effectiveSelected.length}
             </span>
             <div>
-              <span className="font-bold text-foreground text-sm block">
+              <span className="font-extrabold text-[#0B2A67] text-sm block">
                 {rangeDisplay}
               </span>
-              <span className="text-[11px] text-[#707072] dark:text-[#a1a1aa]">
+              <span className="text-[11px] text-[#64748B] font-medium">
                 {effectiveSelected.length} hour{effectiveSelected.length > 1 ? "s" : ""} selected • ₱{(effectiveSelected.length * hourlyRate).toFixed(2)} Court Subtotal
               </span>
             </div>
@@ -172,30 +181,46 @@ export function TimeSlotGrid({
           <button
             type="button"
             onClick={handleClear}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#707072] dark:text-[#a1a1aa] hover:text-[#d30005] dark:hover:text-[#ef4444] transition-colors px-2.5 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5"
+            className="inline-flex items-center gap-1 text-xs font-bold text-[#64748B] hover:text-[#d30005] transition-colors px-3 py-1.5 rounded-full hover:bg-white/80"
           >
-            <X className="w-3.5 h-3.5" /> Clear All
+            <X className="w-3.5 h-3.5" />
+            <span>Clear All</span>
           </button>
         </div>
       )}
 
       {isLoading ? (
-        <div className="h-44 border border-[#e5e5e5] dark:border-[#27272a] flex flex-col items-center justify-center gap-2 bg-[#fcfcfc] dark:bg-[#121215] text-[#707072] dark:text-[#a1a1aa]">
-          <Loader2 className="w-6 h-6 animate-spin text-foreground" />
-          <p className="text-xs font-medium">Checking live arena court availability...</p>
+        <div className="h-44 border border-[#E2E8F0] rounded-2xl flex flex-col items-center justify-center gap-2 bg-[#F5F7FA] text-[#64748B]">
+          <Loader2 className="w-6 h-6 animate-spin text-[#0B2A67]" />
+          <p className="text-xs font-bold">Checking live court availability...</p>
         </div>
       ) : errorMessage ? (
-        <div className="p-4 border border-[#d30005]/20 bg-[#d30005]/5 text-xs text-[#d30005] flex items-center gap-2">
+        <div className="p-4 border border-[#d30005]/20 rounded-xl bg-[#d30005]/5 text-xs text-[#d30005] flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <p>{errorMessage}</p>
         </div>
       ) : slots.length === 0 ? (
-        <div className="h-40 border border-dashed border-[#e5e5e5] dark:border-[#27272a] flex items-center justify-center text-xs text-[#707072] dark:text-[#a1a1aa]">
+        <div className="h-40 border border-dashed border-[#E2E8F0] rounded-2xl flex items-center justify-center text-xs text-[#64748B]">
           No time slots found for the selected filter.
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-          {slots.map((slot) => {
+        <div className="space-y-4">
+          {!slots.some((s) => s.available) && (
+            <div className="p-4 rounded-2xl bg-[#bf050b]/8 border border-[#bf050b]/25 text-[#bf050b] flex items-center gap-3 text-xs">
+              <AlertCircle className="w-5 h-5 shrink-0 text-[#bf050b]" />
+              <div>
+                <span className="font-black text-sm block uppercase tracking-tight">
+                  All Hours Fully Scheduled on This Date
+                </span>
+                <span className="text-[#64748B]">
+                  Every operational court hour on this date is currently reserved. Please choose another date on the calendar above.
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {slots.map((slot) => {
             const isSelected = selectedHours.has(slot.hour24);
             const isAvailable = slot.available;
             const isFirst = minHour !== null && slot.hour24 === minHour;
@@ -207,26 +232,26 @@ export function TimeSlotGrid({
                 type="button"
                 disabled={!isAvailable}
                 onClick={() => handleSlotClick(slot)}
-                className={`py-3 px-3 border text-center transition-all relative flex flex-col items-center justify-center cursor-pointer ${
+                className={`py-3.5 px-3 rounded-xl border text-center transition-all duration-200 relative flex flex-col items-center justify-center cursor-pointer ${
                   !isAvailable
-                    ? "border-[#f0f0f0] dark:border-[#222226] bg-[#fafafa] dark:bg-[#18181c] text-[#b0b0b2] dark:text-[#52525b] cursor-not-allowed line-through"
+                    ? "border-[#E2E8F0] bg-[#F5F7FA] text-[#94A3B8] cursor-not-allowed line-through"
                     : isSelected
-                    ? "border-[#111111] dark:border-white bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-sm ring-1 ring-[#111111] dark:ring-white"
-                    : "border-[#e5e5e5] dark:border-[#27272a] bg-white dark:bg-[#121215] text-foreground hover:border-[#111111] dark:hover:border-white"
+                    ? "border-[#0B2A67] bg-[#0B2A67] text-white shadow-md ring-2 ring-[#FFD21C] -translate-y-0.5"
+                    : "border-[#E2E8F0] bg-white text-[#102A56] hover:border-[#0B2A67]/50 hover:shadow-xs"
                 }`}
               >
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-xs sm:text-sm">{slot.time}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                  <span className="font-extrabold text-xs sm:text-sm">{slot.time}</span>
+                  {isSelected && <Check className="w-3.5 h-3.5 stroke-[3] text-[#FFD21C]" />}
                 </div>
 
                 <span
-                  className={`text-[10px] mt-0.5 font-medium ${
+                  className={`text-[10px] mt-0.5 font-bold ${
                     !isAvailable
-                      ? "text-[#b0b0b2] dark:text-[#52525b]"
+                      ? "text-[#94A3B8]"
                       : isSelected
-                      ? "text-white/80 dark:text-[#111111]/80"
-                      : "text-[#007d48] dark:text-[#10b981]"
+                      ? "text-[#FFD21C]"
+                      : "text-[#007d48]"
                   }`}
                 >
                   {!isAvailable
@@ -246,6 +271,7 @@ export function TimeSlotGrid({
               </button>
             );
           })}
+          </div>
         </div>
       )}
     </div>

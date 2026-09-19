@@ -19,6 +19,9 @@ interface RawScheduleBooking {
   guest_email: string | null;
   notes: string | null;
   expires_at?: string | null;
+  down_payment_amount?: number;
+  google_calendar_event_id?: string | null;
+  google_calendar_synced_at?: string | null;
   profiles: { full_name: string | null } | { full_name: string | null }[] | null;
   courts: { id: string; name: string } | { id: string; name: string }[] | null;
 }
@@ -84,6 +87,9 @@ export default async function CashierSchedulePage({ searchParams }: PageProps) {
       guest_email,
       notes,
       expires_at,
+      down_payment_amount,
+      google_calendar_event_id,
+      google_calendar_synced_at,
       profiles:profiles!bookings_user_id_fkey ( full_name ),
       courts ( id, name )
     `)
@@ -113,6 +119,9 @@ export default async function CashierSchedulePage({ searchParams }: PageProps) {
       guest_email: b.guest_email,
       notes: b.notes,
       expires_at: b.expires_at,
+      down_payment_amount: b.down_payment_amount ? Number(b.down_payment_amount) : 0,
+      google_calendar_event_id: b.google_calendar_event_id || null,
+      google_calendar_synced_at: b.google_calendar_synced_at || null,
       profiles: singleProfile || null,
       courts: singleCourt || null,
     };

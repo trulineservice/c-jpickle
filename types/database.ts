@@ -110,6 +110,7 @@ export interface PosCategory {
 
 export interface PosProduct {
   id: string;
+  sku?: string | null;
   category_id?: string | null;
   name: string;
   price: number;

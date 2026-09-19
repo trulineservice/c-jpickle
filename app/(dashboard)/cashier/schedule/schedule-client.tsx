@@ -16,7 +16,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/utils/supabase/client';
-import { checkInBooking } from '@/app/actions';
+import { checkInBooking, recordDownPayment, triggerManualGoogleCalendarSync } from '@/app/actions';
+import { GoogleCalendarSyncModal } from '@/components/google-calendar-sync-modal';
+import { getGoogleCalendarOneClickAddUrl } from '@/lib/google-calendar';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -44,6 +46,8 @@ import {
   LayoutGrid,
   ListTodo,
   Eye,
+  Zap,
+  AlertCircle,
 } from 'lucide-react';
 
 export interface ScheduleBooking {
@@ -60,6 +64,9 @@ export interface ScheduleBooking {
   guest_email?: string | null;
   notes?: string | null;
   expires_at?: string | null;
+  down_payment_amount?: number;
+  google_calendar_event_id?: string | null;
+  google_calendar_synced_at?: string | null;
   profiles?: { full_name?: string | null } | null;
   courts?: { id?: string; name?: string } | null;
 }
@@ -116,6 +123,14 @@ export default function ScheduleClient({
   const [isLoading, setIsLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
+  const [isGCalModalOpen, setIsGCalModalOpen] = useState(false);
+
+  // Down Payment & Google Calendar states
+  const [downPaymentAmountInput, setDownPaymentAmountInput] = useState<string>('');
+  const [downPaymentMethodInput, setDownPaymentMethodInput] = useState<'cash' | 'gcash' | 'counter_qr'>('cash');
+  const [isRecordingDP, setIsRecordingDP] = useState(false);
+  const [isSyncingGCal, setIsSyncingGCal] = useState(false);
+  const [dpFeedback, setDpFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Realtime clock for live marker (updates every 30s)
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
@@ -157,6 +172,9 @@ export default function ScheduleClient({
           guest_email,
           notes,
           expires_at,
+          down_payment_amount,
+          google_calendar_event_id,
+          google_calendar_synced_at,
           profiles:profiles!bookings_user_id_fkey ( full_name ),
           courts ( id, name )
         `)
@@ -179,6 +197,9 @@ export default function ScheduleClient({
             ...b,
             status: isExpiredHold ? 'expired' : b.status,
             guest_name: b.guest_name || singleProfile?.full_name || 'Walk-in Client',
+            down_payment_amount: b.down_payment_amount ? Number(b.down_payment_amount) : 0,
+            google_calendar_event_id: b.google_calendar_event_id || null,
+            google_calendar_synced_at: b.google_calendar_synced_at || null,
             profiles: singleProfile || null,
             courts: singleCourt || null,
           };
@@ -260,6 +281,9 @@ export default function ScheduleClient({
           guest_email,
           notes,
           expires_at,
+          down_payment_amount,
+          google_calendar_event_id,
+          google_calendar_synced_at,
           profiles:profiles!bookings_user_id_fkey ( full_name ),
           courts ( id, name )
         `)
@@ -282,6 +306,9 @@ export default function ScheduleClient({
             ...b,
             status: isExpiredHold ? 'expired' : b.status,
             guest_name: b.guest_name || singleProfile?.full_name || 'Walk-in Client',
+            down_payment_amount: b.down_payment_amount ? Number(b.down_payment_amount) : 0,
+            google_calendar_event_id: b.google_calendar_event_id || null,
+            google_calendar_synced_at: b.google_calendar_synced_at || null,
             profiles: singleProfile || null,
             courts: singleCourt || null,
           };
@@ -345,6 +372,76 @@ export default function ScheduleClient({
       fetchMonthAllBookings(currentMonthStr);
     });
   };
+
+  const handleRecordDownPayment = async () => {
+    if (!selectedBooking) return;
+    const amount = parseFloat(downPaymentAmountInput);
+    if (!amount || amount <= 0) {
+      setDpFeedback({ type: 'error', message: 'Please enter a valid deposit/payment amount.' });
+      return;
+    }
+
+    setIsRecordingDP(true);
+    setDpFeedback(null);
+    try {
+      const res = await recordDownPayment({
+        bookingId: selectedBooking.id,
+        downPaymentAmount: amount,
+        paymentMethod: downPaymentMethodInput,
+      });
+
+      if (res.success) {
+        setDpFeedback({
+          type: 'success',
+          message: `Down payment of ₱${amount.toFixed(2)} recorded! ${res.googleSynced ? '✓ Auto-synced to Google Calendar.' : ''}`,
+        });
+        setDownPaymentAmountInput('');
+        setSelectedBooking((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'paid',
+                down_payment_amount: (prev.down_payment_amount || 0) + amount,
+                google_calendar_event_id: res.googleSynced ? 'synced' : prev.google_calendar_event_id,
+              }
+            : null
+        );
+        fetchBookingsForDate(currentDate);
+        fetchMonthAllBookings(currentMonthStr);
+      } else {
+        setDpFeedback({ type: 'error', message: res.error || 'Failed to record down payment.' });
+      }
+    } catch (err: unknown) {
+      setDpFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Error recording payment' });
+    } finally {
+      setIsRecordingDP(false);
+    }
+  };
+
+  const handleManualGCalSync = async () => {
+    if (!selectedBooking) return;
+    setIsSyncingGCal(true);
+    setDpFeedback(null);
+    try {
+      const res = await triggerManualGoogleCalendarSync(selectedBooking.id);
+      if (res.success) {
+        setDpFeedback({ type: 'success', message: '✓ Event successfully pushed to your Google Calendar!' });
+        setSelectedBooking((prev) =>
+          prev ? { ...prev, google_calendar_event_id: res.googleEventId || 'synced' } : null
+        );
+      } else {
+        setDpFeedback({
+          type: 'error',
+          message: res.error || 'Failed to push to Google Calendar. Check Direct API Settings in calendar modal.',
+        });
+      }
+    } catch (err: unknown) {
+      setDpFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Sync failed' });
+    } finally {
+      setIsSyncingGCal(false);
+    }
+  };
+
 
   const openWalkInForSlot = (courtId: string, hour: number, targetDate?: string) => {
     setWalkInCourtId(courtId);
@@ -645,6 +742,19 @@ export default function ScheduleClient({
             Sync
           </Button>
 
+          {/* Live Google Calendar Sync Trigger */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsGCalModalOpen(true)}
+            className="border-emerald-300 dark:border-emerald-800/80 text-[#007d48] dark:text-[#10b981] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-full h-10 px-4 text-xs font-semibold cursor-pointer shadow-xs"
+          >
+            <CalendarIcon className="w-3.5 h-3.5 mr-1.5 text-[#007d48] dark:text-[#10b981]" />
+            <span>Google Calendar Live</span>
+            <span className="w-2 h-2 rounded-full bg-[#007d48] dark:bg-[#10b981] animate-pulse ml-1.5" />
+          </Button>
+
           {/* Quick Walk-in Modal Trigger */}
           <Dialog
             open={isWalkInOpen}
@@ -752,11 +862,14 @@ export default function ScheduleClient({
                         onChange={(e) => setWalkInDuration(parseInt(e.target.value, 10))}
                         className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent dark:border-[#27272a] text-[#111111] dark:text-foreground text-xs font-medium focus:border-[#111111] dark:focus:border-white outline-none"
                       >
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                          <option key={h} value={h} className="dark:bg-[#18181c] dark:text-foreground">
-                            {h} Hour{h > 1 ? 's' : ''} (₱{(300 * h).toLocaleString()})
-                          </option>
-                        ))}
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => {
+                          const currentRate = Number(courts.find((c) => c.id === walkInCourtId)?.hourly_rate ?? 300);
+                          return (
+                            <option key={h} value={h} className="dark:bg-[#18181c] dark:text-foreground">
+                              {h} Hour{h > 1 ? 's' : ''} (₱{(currentRate * h).toLocaleString()})
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   </div>
@@ -1303,7 +1416,16 @@ export default function ScheduleClient({
       {/* ========================================================================= */}
       {/* DETAILED BOOKING MODAL WITH CLIENT DETAILS & 1-CLICK CHECK-IN */}
       {/* ========================================================================= */}
-      <Dialog open={!!selectedBooking} onOpenChange={(open) => !open && setSelectedBooking(null)}>
+      <Dialog
+        open={!!selectedBooking}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedBooking(null);
+            setDpFeedback(null);
+            setDownPaymentAmountInput('');
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-lg bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground rounded-none p-6 sm:p-8 shadow-2xl">
           <DialogHeader>
             <div className="flex items-center justify-between pb-2">
@@ -1393,6 +1515,160 @@ export default function ScheduleClient({
                 </div>
               </div>
 
+              {/* Down Payment & Google Calendar Direct Sync Card */}
+              {(() => {
+                const totalPrice = Number(selectedBooking.total_price || 0);
+                const downPaymentPaid = Number(
+                  selectedBooking.down_payment_amount ||
+                    (['paid', 'checked_in'].includes(selectedBooking.status) ? totalPrice : 0)
+                );
+                const remainingBalance = Math.max(0, totalPrice - downPaymentPaid);
+                const isSynced = !!selectedBooking.google_calendar_event_id;
+
+                return (
+                  <div className="p-4 border border-[#cacacb] dark:border-[#27272a] bg-[#f9f9fa] dark:bg-[#151518] rounded-2xl space-y-3">
+                    {/* Status row */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+                          Payment &amp; Google Calendar
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-[#111111] dark:text-foreground">
+                            Paid: <strong className="text-[#007d48] dark:text-[#10b981]">₱{downPaymentPaid.toFixed(2)}</strong>
+                          </span>
+                          {remainingBalance > 0 && (
+                            <span className="text-xs font-semibold text-[#d30005]">
+                              Due: <strong>₱{remainingBalance.toFixed(2)}</strong>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Google Calendar Direct Push Badge / Trigger */}
+                      <div className="flex items-center gap-1.5">
+                        {isSynced ? (
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-[#007d48] dark:text-[#10b981] border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>G-Cal Synced</span>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={handleManualGCalSync}
+                            disabled={isSyncingGCal}
+                            className="h-7 px-2.5 text-[10px] font-bold rounded-full border-emerald-300 dark:border-emerald-800 text-[#007d48] dark:text-[#10b981] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                          >
+                            {isSyncingGCal ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                Syncing...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="w-3 h-3 mr-1" />
+                                Push to G-Cal
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Feedback message if any */}
+                    {dpFeedback && (
+                      <div
+                        className={`p-2.5 rounded-xl text-[11px] font-medium flex items-center gap-2 ${
+                          dpFeedback.type === 'success'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-[#007d48] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900'
+                            : 'bg-red-50 dark:bg-red-950/40 text-[#d30005] border border-red-200 dark:border-red-900'
+                        }`}
+                      >
+                        {dpFeedback.type === 'success' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        )}
+                        <span>{dpFeedback.message}</span>
+                      </div>
+                    )}
+
+                    {/* Record Down Payment Form if balance due */}
+                    {remainingBalance > 0 && (
+                      <div className="pt-2 border-t border-[#cacacb] dark:border-[#27272a] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-bold text-[#111111] dark:text-foreground">
+                            Record Down Payment / Deposit
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setDownPaymentAmountInput((remainingBalance * 0.5).toFixed(0))}
+                              className="px-2 py-0.5 rounded-md bg-[#e5e5e5] dark:bg-[#27272a] text-[10px] font-bold hover:bg-[#cacacb] cursor-pointer"
+                            >
+                              50% (₱{(remainingBalance * 0.5).toFixed(0)})
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDownPaymentAmountInput(remainingBalance.toFixed(0))}
+                              className="px-2 py-0.5 rounded-md bg-[#e5e5e5] dark:bg-[#27272a] text-[10px] font-bold hover:bg-[#cacacb] cursor-pointer"
+                            >
+                              Full (₱{remainingBalance.toFixed(0)})
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#707072] font-bold">
+                              ₱
+                            </span>
+                            <Input
+                              type="number"
+                              min="1"
+                              max={remainingBalance}
+                              placeholder="Amount"
+                              value={downPaymentAmountInput}
+                              onChange={(e) => setDownPaymentAmountInput(e.target.value)}
+                              className="h-9 pl-7 pr-2 rounded-xl text-xs bg-white dark:bg-black font-semibold"
+                            />
+                          </div>
+
+                          <select
+                            value={downPaymentMethodInput}
+                            onChange={(e) => setDownPaymentMethodInput(e.target.value as any)}
+                            className="h-9 px-2.5 rounded-xl border border-[#cacacb] dark:border-[#3f3f46] text-xs font-semibold bg-white dark:bg-black text-foreground outline-none cursor-pointer"
+                          >
+                            <option value="cash">Cash</option>
+                            <option value="gcash">GCash</option>
+                            <option value="counter_qr">QR Ph</option>
+                          </select>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isRecordingDP || !downPaymentAmountInput}
+                            onClick={handleRecordDownPayment}
+                            className="h-9 px-3 rounded-xl text-xs font-bold bg-[#007d48] hover:bg-[#006037] text-white shrink-0 cursor-pointer"
+                          >
+                            {isRecordingDP ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <>
+                                <Zap className="w-3.5 h-3.5 mr-1" />
+                                Record &amp; Sync
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {selectedBooking.notes && (
                 <div className="p-3 border border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-[#111111] dark:text-foreground">
                   <strong>Special Note:</strong> {selectedBooking.notes}
@@ -1401,14 +1677,41 @@ export default function ScheduleClient({
             </div>
           )}
 
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => setSelectedBooking(null)}
-              className="border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
-            >
-              Close
-            </Button>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 items-center justify-between">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setSelectedBooking(null)}
+                className="border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
+              >
+                Close
+              </Button>
+              {selectedBooking && (
+                <a
+                  href={getGoogleCalendarOneClickAddUrl({
+                    id: selectedBooking.id,
+                    courtId: selectedBooking.court_id || selectedBooking.courts?.id || '',
+                    courtName: selectedBooking.courts?.name || 'C&J Arena Venue',
+                    guestName: selectedBooking.guest_name || selectedBooking.profiles?.full_name || 'Guest',
+                    guestPhone: selectedBooking.guest_phone,
+                    guestEmail: selectedBooking.guest_email,
+                    startTime: selectedBooking.start_time,
+                    endTime: selectedBooking.end_time,
+                    durationHours: selectedBooking.duration_hours || 1,
+                    totalPrice: Number(selectedBooking.total_price || 0),
+                    status: selectedBooking.status || 'confirmed',
+                    paymentMethod: selectedBooking.payment_method || 'cash',
+                    notes: selectedBooking.notes,
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-full border border-emerald-300 dark:border-emerald-800 text-[#007d48] dark:text-[#10b981] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-xs font-semibold cursor-pointer"
+                >
+                  <CalendarIcon className="w-3.5 h-3.5 text-[#007d48] dark:text-[#10b981]" />
+                  <span>Add to Google Calendar</span>
+                </a>
+              )}
+            </div>
             {selectedBooking?.status !== 'checked_in' && selectedBooking?.status !== 'cancelled' && (
               <Button
                 onClick={handleCheckIn}
@@ -1426,6 +1729,12 @@ export default function ScheduleClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Google Calendar Live Sync Modal */}
+      <GoogleCalendarSyncModal
+        isOpen={isGCalModalOpen}
+        onClose={() => setIsGCalModalOpen(false)}
+      />
 
     </div>
   );

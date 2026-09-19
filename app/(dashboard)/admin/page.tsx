@@ -1,7 +1,13 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import AdminDashboardClient from './admin-dashboard-client';
-import type { AdminBookingRecord, AdminMetrics } from './admin-dashboard-client';
+import type { 
+  AdminBookingRecord, 
+  AdminMetrics, 
+  AdminPosProductRecord, 
+  AdminPosTransactionRecord,
+  AdminExpenseRecord
+} from './admin-dashboard-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,47 +49,116 @@ export default async function AdminOverviewPage() {
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   if (!profile || !['owner', 'admin'].includes(profile.role)) {
     redirect('/dashboard');
   }
 
-  // 2. Fetch All Bookings
-  const { data: rawData } = await supabase
-    .from('bookings')
-    .select(`
-      id,
-      court_id,
-      start_time,
-      end_time,
-      duration_hours,
-      total_price,
-      status,
-      payment_method,
-      guest_name,
-      guest_email,
-      guest_phone,
-      created_at,
-      refund_wallet_type,
-      refund_account_name,
-      refund_account_number,
-      refund_reason,
-      refund_status,
-      refund_reference,
-      refund_processed_at,
-      profiles:profiles!bookings_user_id_fkey ( full_name, phone ),
-      courts ( name )
-    `)
-    .order('created_at', { ascending: false });
+  // 2. Fetch All Data in Parallel (eliminates sequential network waterfall)
+  const [
+    { data: rawData },
+    { data: rawPosTransactions },
+    { data: rawProducts },
+    { data: settingData },
+    { data: rawExpenses },
+  ] = await Promise.all([
+    supabase
+      .from('bookings')
+      .select(`
+        id,
+        court_id,
+        start_time,
+        end_time,
+        duration_hours,
+        total_price,
+        status,
+        payment_method,
+        guest_name,
+        guest_email,
+        guest_phone,
+        created_at,
+        refund_wallet_type,
+        refund_account_name,
+        refund_account_number,
+        refund_reason,
+        refund_status,
+        refund_reference,
+        refund_processed_at,
+        profiles:profiles!bookings_user_id_fkey ( full_name, phone ),
+        courts ( name )
+      `)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('pos_transactions')
+      .select(`
+        id,
+        invoice_number,
+        customer_name,
+        total_amount,
+        gross_amount,
+        vatable_sales,
+        vat_amount,
+        vat_exempt_sales,
+        discount_amount,
+        discount_type,
+        payment_method,
+        status,
+        created_at,
+        void_reason,
+        voided_at
+      `)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('pos_products')
+      .select('*')
+      .order('category', { ascending: true })
+      .order('sku', { ascending: true }),
+    supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'pos_master_pin')
+      .maybeSingle(),
+    supabase
+      .from('daily_expenses')
+      .select(`
+        id,
+        expense_date,
+        category,
+        title,
+        amount,
+        payment_method,
+        receipt_reference,
+        notes,
+        recorded_by,
+        created_at,
+        profiles:recorded_by ( full_name )
+      `)
+      .order('expense_date', { ascending: false })
+      .order('created_at', { ascending: false }),
+  ]);
 
   const rawBookings = (rawData as unknown as RawAdminBooking[]) || [];
+  const posTransactions = (rawPosTransactions || []) as AdminPosTransactionRecord[];
+  const posProducts = (rawProducts || []) as AdminPosProductRecord[];
+  const masterPin = settingData?.value || process.env.POS_MASTER_PIN || '8888';
 
-  // 3. Fetch POS transactions (pro-shop sales, rentals & equipment)
-  const { data: posTransactions } = await supabase
-    .from('pos_transactions')
-    .select('id, invoice_number, total_amount, gross_amount, vatable_sales, vat_amount, vat_exempt_sales, discount_amount, discount_type, payment_method, status, created_at')
-    .neq('status', 'voided');
+  const adminExpenses: AdminExpenseRecord[] = (rawExpenses || []).map((e) => {
+    const prof = Array.isArray(e.profiles) ? e.profiles[0] : e.profiles;
+    return {
+      id: e.id,
+      expense_date: e.expense_date,
+      category: e.category,
+      title: e.title,
+      amount: Number(e.amount) || 0,
+      payment_method: e.payment_method || 'cash',
+      receipt_reference: e.receipt_reference,
+      notes: e.notes,
+      recorded_by: e.recorded_by,
+      recorder_name: prof?.full_name || 'Staff Member',
+      created_at: e.created_at,
+    };
+  });
 
   const activeBookings = rawBookings.filter(
     (b) => !['cancelled', 'expired'].includes(b.status)
@@ -92,6 +167,7 @@ export default async function AdminOverviewPage() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
+  const todayStr = now.toISOString().split('T')[0];
 
   // Start of this month and last month
   const startOfThisMonth = new Date(currentYear, currentMonth, 1);
@@ -140,8 +216,10 @@ export default async function AdminOverviewPage() {
     }
   }
 
-  // Include completed POS shop sales into revenue & tax metrics
-  for (const tx of posTransactions || []) {
+  // Include only active (non-voided) completed POS shop sales into revenue & tax metrics
+  for (const tx of posTransactions) {
+    if (tx.status === 'voided') continue;
+
     const txDate = new Date(tx.created_at);
     const txAmount = Number(tx.total_amount) || 0;
 
@@ -159,6 +237,39 @@ export default async function AdminOverviewPage() {
     posVatAmount += Number(tx.vat_amount || 0);
     posVatExemptSales += Number(tx.vat_exempt_sales || 0);
     posDiscounts += Number(tx.discount_amount || 0);
+  }
+
+  // Calculate Operational Expenses & Financial Margins
+  let thisMonthExpenses = 0;
+  let ytdExpenses = 0;
+  let todayExpenses = 0;
+
+  for (const exp of adminExpenses) {
+    const expDate = new Date(exp.expense_date);
+    const amount = Number(exp.amount) || 0;
+
+    if (exp.expense_date === todayStr) {
+      todayExpenses += amount;
+    }
+    if (expDate >= startOfYear) {
+      ytdExpenses += amount;
+    }
+    if (expDate >= startOfThisMonth) {
+      thisMonthExpenses += amount;
+    }
+  }
+
+  const netOperatingProfit = thisMonthRevenue - thisMonthExpenses;
+  const profitMarginPct = thisMonthRevenue > 0 ? (netOperatingProfit / thisMonthRevenue) * 100 : 0;
+
+  let totalInventoryCostValuation = 0;
+  let totalInventoryRetailValuation = 0;
+  for (const p of posProducts) {
+    const stock = Number(p.stock_level) || 0;
+    const cost = Number(p.cost_price) || 0;
+    const price = Number(p.price) || 0;
+    totalInventoryCostValuation += stock * cost;
+    totalInventoryRetailValuation += stock * price;
   }
 
   // Calculate Month-over-Month Growth
@@ -205,6 +316,8 @@ export default async function AdminOverviewPage() {
     };
   });
 
+  const activePosCount = posTransactions.filter((tx) => tx.status !== 'voided').length;
+
   const metrics: AdminMetrics = {
     thisMonthRevenue,
     lastMonthRevenue,
@@ -215,12 +328,28 @@ export default async function AdminOverviewPage() {
     courtOccupancyRate,
     paymongoRevenue,
     cashRevenue,
-    totalTransactionsCount: activeBookings.length + (posTransactions?.length || 0),
+    totalTransactionsCount: activeBookings.length + activePosCount,
     posVatableSales,
     posVatAmount,
     posVatExemptSales,
     posDiscounts,
+    thisMonthExpenses,
+    ytdExpenses,
+    todayExpenses,
+    netOperatingProfit,
+    profitMarginPct,
+    totalInventoryCostValuation,
+    totalInventoryRetailValuation,
   };
 
-  return <AdminDashboardClient metrics={metrics} bookings={formattedBookings} />;
+  return (
+    <AdminDashboardClient 
+      metrics={metrics} 
+      bookings={formattedBookings} 
+      products={posProducts}
+      posTransactions={posTransactions}
+      expenses={adminExpenses}
+      initialMasterPin={masterPin}
+    />
+  );
 }

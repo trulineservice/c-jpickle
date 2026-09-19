@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, CheckCircle2, KeyRound } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, KeyRound, Mail, Sparkles } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/brand-logo";
 import { AuthSubmitButton } from "@/components/auth-submit-button";
+import { AuthLayoutShell } from "@/components/auth-layout-shell";
 import { requestPasswordReset } from "@/app/actions";
 
 export default async function ForgotPasswordPage({
@@ -14,113 +15,143 @@ export default async function ForgotPasswordPage({
   const { message, success, email, dev_link } = await searchParams;
 
   return (
-    <div className="flex-1 flex items-center justify-center px-4 py-16 sm:px-6 lg:px-8 font-sans bg-background text-foreground">
-      <div className="w-full max-w-md border border-[#cacacb] dark:border-[#27272a] p-8 sm:p-10 bg-white dark:bg-[#121215] space-y-6">
-        {success ? (
-          <div className="space-y-6 text-center">
-            <div className="flex justify-center pb-2">
-              <CheckCircle2 className="h-12 w-12 text-[#007d48] dark:text-[#10b981]" />
+    <AuthLayoutShell
+      heroTagline="Account Recovery"
+      heroHeadline="Recover Your Member Account"
+      heroDescription="Enter your registered player email to receive a secure, encrypted one-time link to update your password and regain court booking access."
+    >
+      {success ? (
+        <div className="space-y-6 text-center py-4 animate-in fade-in duration-300">
+          <div className="flex justify-center pb-1">
+            <BrandLogo size="md" withSubtitle />
+          </div>
+
+          <div className="w-16 h-16 rounded-2xl bg-[#007d48]/10 text-[#007d48] border border-[#007d48]/25 flex items-center justify-center mx-auto shadow-xs">
+            <CheckCircle2 className="h-8 w-8 text-[#007d48]" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#007d48]/10 text-[#007d48] text-[11px] font-extrabold uppercase tracking-wider">
+              <span>Instructions Sent</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-[#0B2A67] uppercase">
               Check Your Email
-            </h1>
+            </h2>
             {email && (
-              <div className="inline-block px-3 py-1 bg-[#f5f5f5] dark:bg-[#18181c] text-xs font-mono font-semibold text-foreground rounded-full border border-[#cacacb] dark:border-[#27272a]">
+              <div className="inline-block px-4 py-2 bg-[#EDF4FC] text-xs sm:text-sm font-mono font-bold text-[#0B2A67] rounded-xl border border-[#0B2A67]/20 shadow-xs">
                 {email}
               </div>
             )}
-            <p className="text-sm text-[#707072] dark:text-[#a1a1aa] leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#64748B] leading-relaxed max-w-sm mx-auto">
               {success}
             </p>
-
-            {/* Sandbox Notice & Direct Link (if in dev mode) */}
-            {dev_link && (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-left space-y-2.5">
-                <div className="flex items-center justify-between text-xs font-bold text-amber-900 dark:text-amber-200">
-                  <span className="flex items-center gap-1.5">
-                    <KeyRound className="w-3.5 h-3.5" /> Direct Reset Link
-                  </span>
-                  <span className="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded-full font-mono">Dev Mode</span>
-                </div>
-                <div className="pt-1">
-                  <a
-                    href={dev_link}
-                    className="block w-full text-center py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-lg transition-colors shadow-sm"
-                  >
-                    Click Here to Change Password Directly
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {!dev_link && (
-              <div className="p-3 bg-[#f8fafc] dark:bg-[#18181c] border border-[#e2e8f0] dark:border-[#27272a] rounded-lg text-xs text-[#64748b] dark:text-[#a1a1aa] text-left space-y-1">
-                <p className="font-semibold text-[#334155] dark:text-foreground">Didn&apos;t see the message?</p>
-                <p>Check your Spam or Promotions folder. The password reset link remains valid for 1 hour.</p>
-              </div>
-            )}
-
-            <div className="pt-2">
-              <Link href="/login">
-                <button className="w-full h-12 bg-[#111111] text-white hover:bg-[#222222] dark:bg-white dark:text-[#111111] dark:hover:bg-[#e5e5e5] font-medium text-sm rounded-full transition-colors">
-                  Return to Login
-                </button>
-              </Link>
-            </div>
           </div>
-        ) : (
-          <form action={requestPasswordReset} className="space-y-6">
-            <div className="text-center space-y-2">
-              <div className="flex justify-center pb-2">
-                <BrandLogo size="md" withSubtitle />
+
+          {/* Sandbox Notice & Direct Link (if in dev mode) */}
+          {dev_link && (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-left space-y-2.5 max-w-sm mx-auto shadow-xs">
+              <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+                <span className="flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5" /> Direct Reset Link
+                </span>
+                <span className="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded-full font-mono">Dev Mode</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
-                Forgot Password
-              </h1>
-              <p className="text-xs text-[#707072] dark:text-[#a1a1aa]">
-                Enter your account email below and we&apos;ll send you a link to change your password.
-              </p>
+              <div className="pt-1">
+                <a
+                  href={dev_link}
+                  className="block w-full text-center py-2.5 px-4 bg-amber-500 hover:bg-amber-600 text-[#071E4B] font-black text-xs rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  Click Here to Change Password Directly
+                </a>
+              </div>
             </div>
+          )}
 
-            {message && (
-              <div className="p-3 border border-[#d30005] bg-white dark:bg-[#18181c] text-[#d30005] text-xs flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <p>{message}</p>
-              </div>
-            )}
+          {!dev_link && (
+            <div className="p-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl text-xs text-[#64748B] text-left space-y-1 max-w-sm mx-auto">
+              <p className="font-bold text-[#0B2A67]">Didn&apos;t see the message?</p>
+              <p className="text-[11px]">Check your Spam or Promotions folder. The password reset link remains valid for 1 hour.</p>
+            </div>
+          )}
 
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-foreground">
-                  Email Address
-                </Label>
-                <Input 
-                  id="email" 
-                  name="email" 
-                  type="email" 
-                  placeholder="player@example.com" 
-                  required 
-                  className="h-11 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-sm text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus-visible:ring-1 focus-visible:ring-foreground focus-visible:border-[#111111] dark:focus-visible:border-white"
+          <div className="pt-2 max-w-sm mx-auto">
+            <Link href="/login" className="block w-full">
+              <Button
+                variant="yellow"
+                size="lg"
+                className="w-full h-12 bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-md cursor-pointer active:scale-[0.98] transition-all"
+              >
+                Return to Member Sign In
+              </Button>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <form action={requestPasswordReset} className="space-y-6">
+          {/* Form Header */}
+          <div className="text-center space-y-2 pb-2 border-b border-[#E2E8F0]">
+            <div className="flex justify-center pb-1">
+              <BrandLogo size="md" withSubtitle />
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#FFD21C]/20 text-[#0B2A67] text-[11px] font-extrabold uppercase tracking-wider">
+              <Sparkles className="w-3 h-3 text-[#bf050b]" />
+              <span>Password Recovery</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#0B2A67] uppercase">
+              Forgot Password
+            </h1>
+            <p className="text-xs text-[#64748B]">
+              Enter your account email below and we&apos;ll send you a link to reset your credentials.
+            </p>
+          </div>
+
+          {message && (
+            <div className="p-3.5 rounded-xl border border-[#bf050b]/30 bg-[#bf050b]/10 text-[#bf050b] text-xs flex items-center gap-2.5 shadow-xs animate-in fade-in duration-200">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <p className="font-semibold leading-relaxed">{message}</p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] block">
+                Registered Email Address
+              </Label>
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 text-[#64748B] pointer-events-none">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="player@example.com"
+                  required
+                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0B2A67] font-medium placeholder:text-[#94A3B8] focus:bg-white focus:border-[#0B2A67] focus:ring-2 focus:ring-[#FFD21C]/50 focus:outline-none transition-all"
                 />
               </div>
             </div>
+          </div>
 
-            <div className="pt-2 space-y-4">
-              <AuthSubmitButton 
-                label="Send Password Reset Link"
-                loadingLabel="Sending Link..."
-                className="w-full h-12 bg-[#111111] text-white hover:bg-[#222222] dark:bg-white dark:text-[#111111] dark:hover:bg-[#e5e5e5] font-medium text-sm rounded-full transition-colors"
-              />
-              
-              <div className="text-xs text-center text-[#707072] dark:text-[#a1a1aa]">
-                <Link href="/login" className="font-semibold text-foreground hover:underline flex items-center justify-center gap-1">
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back to Login
-                </Link>
-              </div>
+          <div className="pt-2 space-y-4">
+            <AuthSubmitButton
+              label="Send Password Reset Link"
+              loadingLabel="Sending Link..."
+              variant="yellow"
+              className="w-full h-12 bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-md active:scale-[0.98] transition-all cursor-pointer"
+            />
+
+            <div className="pt-2 border-t border-[#E2E8F0] text-center text-xs text-[#64748B]">
+              <Link
+                href="/login"
+                className="font-extrabold text-[#0B2A67] hover:text-[#bf050b] hover:underline transition-colors inline-flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
+              </Link>
             </div>
-          </form>
-        )}
-      </div>
-    </div>
+          </div>
+        </form>
+      )}
+    </AuthLayoutShell>
   );
 }

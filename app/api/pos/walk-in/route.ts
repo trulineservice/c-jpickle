@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { pushBookingToGoogleCalendar } from '@/lib/google-calendar-sync-engine';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,6 +116,13 @@ export async function POST(request: NextRequest) {
     if (insertError || !newBooking) {
       console.error('Walk-in booking error:', insertError);
       return NextResponse.json({ error: 'Failed to record walk-in booking.' }, { status: 500 });
+    }
+
+    // Automatically sync confirmed booking to Google Calendar
+    try {
+      await pushBookingToGoogleCalendar(newBooking.id);
+    } catch (calErr) {
+      console.error('[POS Walk-in] Google Calendar auto-sync error:', calErr);
     }
 
     return NextResponse.json({
