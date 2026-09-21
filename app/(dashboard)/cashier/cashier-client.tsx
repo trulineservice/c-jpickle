@@ -121,6 +121,7 @@ export default function CashierClient({
     discountIdNumber,
     setDiscountIdNumber,
     clearCart,
+    removeItem,
     addToCart: storeAddToCart,
     updateQuantity: storeUpdateQuantity,
   } = usePosCartStore();
@@ -219,28 +220,23 @@ export default function CashierClient({
     playHapticSound("scan");
   };
 
-  // Quantity updates (if decremented to zero, prompt for Master PIN)
+  // Quantity updates (item removal from active draft cart requires NO pin)
   const updateQuantity = (id: string, delta: number) => {
-    const res = storeUpdateQuantity(id, delta);
-    if (res.requiresPin && res.item) {
-      // Prompt for Master PIN to void this item
-      requestVoidItem(res.item.id, res.item.name);
-      return;
-    }
+    storeUpdateQuantity(id, delta);
     playHapticSound("tap");
   };
 
-  // Request Master PIN to void item from active cart
-  const requestVoidItem = (id: string, name: string) => {
-    setPendingPinAction({ type: "void_cart_item", itemId: id, itemName: name });
-    setPinModalOpen(true);
+  // Direct remove item from active draft cart (no PIN prompt required)
+  const handleRemoveItem = (id: string) => {
+    removeItem(id);
+    playHapticSound("tap");
   };
 
-  // Request Master PIN to clear entire active order
-  const requestClearCart = () => {
+  // Direct clear active draft cart (no PIN prompt required)
+  const handleClearCart = () => {
     if (cart.length === 0) return;
-    setPendingPinAction({ type: "clear_cart" });
-    setPinModalOpen(true);
+    clearCart();
+    playHapticSound("tap");
   };
 
   // Request Master PIN to void a completed sales invoice
@@ -1022,11 +1018,8 @@ export default function CashierClient({
           <PosCartPanel
             cart={cart}
             onUpdateQuantity={updateQuantity}
-            onRemoveItem={(id) => {
-              const item = cart.find((i) => i.id === id);
-              if (item) requestVoidItem(item.id, item.name);
-            }}
-            onClearCart={requestClearCart}
+            onRemoveItem={handleRemoveItem}
+            onClearCart={handleClearCart}
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
             discountType={discountType}

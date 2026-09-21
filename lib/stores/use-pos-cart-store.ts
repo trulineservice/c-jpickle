@@ -147,7 +147,10 @@ export const usePosCartStore = create<PosCartStore>()(
         if (!item) return { requiresPin: false };
 
         if (item.quantity + delta <= 0) {
-          return { requiresPin: true, item };
+          set((state) => ({
+            cart: state.cart.filter((i) => i.id !== id),
+          }));
+          return { requiresPin: false };
         }
 
         set((state) => ({

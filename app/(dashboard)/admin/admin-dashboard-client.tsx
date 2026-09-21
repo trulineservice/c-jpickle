@@ -837,28 +837,28 @@ export default function AdminDashboardClient({
   const cashPercent = 100 - paymongoPercent;
 
   return (
-    <div className="p-6 sm:p-10 max-w-[1440px] mx-auto space-y-8 text-foreground font-sans bg-background">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto space-y-6 text-foreground font-sans">
       {/* Header & Actions */}
-      <div className="flex flex-col md:flex-row items-start md:items-baseline justify-between gap-4 border-b border-[#cacacb] dark:border-[#222226] pb-6">
+      <div className="border-b border-slate-300 dark:border-white/15 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93]">
-              Administration
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#0B2A67] dark:text-[#FFD21C] bg-[#EDF4FC] dark:bg-[#0c1a3b] px-2.5 py-0.5 border border-[#0B2A67]/20 dark:border-[#FFD21C]/30">
+              ADMIN • EXECUTIVE OPERATIONS
             </span>
-            <span className="text-xs text-[#cacacb] dark:text-[#27272a]">•</span>
-            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a]">
-              Executive Center
+            <span className="text-xs text-slate-400">•</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              C&amp;J Arena Executive Center
             </span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-[#0B2A67] dark:text-white">
             FINANCIAL &amp; OPERATIONS AUDIT
           </h1>
-          <p className="text-xs text-[#707072] dark:text-[#8a8a93] mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Real-time revenue metrics, occupancy utilization, POS product inventory, and master booking registry.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {/* Change Master Void PIN Button */}
           <Button
             type="button"
@@ -869,9 +869,9 @@ export default function AdminDashboardClient({
             }}
             variant="outline"
             size="sm"
-            className="border-amber-300 dark:border-amber-800/80 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 h-10 px-4 text-xs font-semibold cursor-pointer shadow-xs"
+            className="rounded-none border border-amber-400 dark:border-amber-700/80 bg-amber-50/50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 h-9 px-3.5 text-xs font-black cursor-pointer shadow-xs"
           >
-            <KeyRound className="w-4 h-4 mr-1.5 text-amber-600 dark:text-amber-400" />
+            <KeyRound className="w-3.5 h-3.5 mr-1.5 text-amber-600 dark:text-amber-400" />
             <span>Master Void PIN</span>
           </Button>
 
@@ -881,45 +881,47 @@ export default function AdminDashboardClient({
             onClick={() => setIsGCalModalOpen(true)}
             variant="outline"
             size="sm"
-            className="border-emerald-300 dark:border-emerald-800/80 text-[#007d48] dark:text-[#10b981] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 h-10 px-4 text-xs font-semibold cursor-pointer shadow-xs"
+            className="rounded-none border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/50 dark:bg-emerald-950/40 text-[#007d48] dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 h-9 px-3.5 text-xs font-black cursor-pointer shadow-xs"
           >
-            <Calendar className="w-4 h-4 mr-1.5 text-[#007d48] dark:text-[#10b981]" />
+            <Calendar className="w-3.5 h-3.5 mr-1.5 text-[#007d48] dark:text-emerald-400" />
             <span>Google Calendar Live</span>
-            <span className="w-2 h-2 rounded-full bg-[#007d48] dark:bg-[#10b981] animate-pulse ml-1.5" />
+            <span className="w-2 h-2 rounded-full bg-[#007d48] dark:bg-emerald-400 animate-pulse ml-1.5" />
           </Button>
 
           <Button
             onClick={handleExportCSV}
             variant="outline"
             size="sm"
-            className="border-[#cacacb] dark:border-[#27272a] text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] h-10 px-4 text-xs font-medium cursor-pointer"
+            className="rounded-none border-slate-300 dark:border-white/15 text-[#0B2A67] dark:text-white hover:bg-[#EDF4FC] dark:hover:bg-white/10 h-9 px-3.5 text-xs font-black cursor-pointer shadow-xs"
           >
-            <Download className="w-4 h-4 mr-2" /> Export CSV
+            <Download className="w-3.5 h-3.5 mr-1.5 text-[#0B2A67] dark:text-[#FFD21C]" />
+            <span>Export CSV</span>
           </Button>
 
           {/* Add Staff Account Modal */}
           <Dialog>
             <DialogTrigger
               render={
-                <Button size="sm" className="bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 h-10 px-5 text-xs font-medium cursor-pointer">
-                  <UserPlus className="h-4 w-4 mr-2" /> Add Staff Account
+                <Button size="sm" className="rounded-none bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black h-9 px-4 text-xs shadow-xs transition-all active:scale-[0.98] cursor-pointer">
+                  <UserPlus className="h-3.5 w-3.5 mr-1.5 stroke-[2.5]" />
+                  <span>Add Staff Account</span>
                 </Button>
               }
             />
-            <DialogContent className="sm:max-w-md bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-foreground rounded-none p-6 sm:p-8 shadow-2xl">
+            <DialogContent className="sm:max-w-md bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 text-foreground rounded-none p-6 sm:p-8 shadow-2xl">
               <form action={createCashierAccount}>
                 <DialogHeader className="space-y-1 pb-2">
-                  <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight text-[#0B2A67] dark:text-white">
                     Provision Staff Account
                   </DialogTitle>
-                  <DialogDescription className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
                     Create a new user account with Cashier or Manager permissions at C&amp;J Arena.
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 py-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="fullName" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="fullName" className="text-xs font-black uppercase tracking-wider text-[#0B2A67] dark:text-white">
                       Staff Full Name
                     </Label>
                     <Input
@@ -927,11 +929,11 @@ export default function AdminDashboardClient({
                       name="fullName"
                       placeholder="Jane Doe"
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46] placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus:border-[#111111] dark:focus:border-white"
+                      className="h-10 px-3 rounded-none bg-white dark:bg-[#0c1a3b] text-xs font-medium text-foreground border border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="email" className="text-xs font-black uppercase tracking-wider text-[#0B2A67] dark:text-white">
                       Email Address
                     </Label>
                     <Input
@@ -940,25 +942,25 @@ export default function AdminDashboardClient({
                       type="email"
                       placeholder="staff@cjcourt.com"
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46] placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus:border-[#111111] dark:focus:border-white"
+                      className="h-10 px-3 rounded-none bg-white dark:bg-[#0c1a3b] text-xs font-medium text-foreground border border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="role" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="role" className="text-xs font-black uppercase tracking-wider text-[#0B2A67] dark:text-white">
                       System Role
                     </Label>
                     <select
                       id="role"
                       name="role"
-                      className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-foreground text-xs font-medium outline-none focus:border-[#111111] dark:focus:border-white cursor-pointer"
+                      className="w-full h-10 px-3 rounded-none bg-white dark:bg-[#0c1a3b] border border-slate-300 dark:border-white/20 text-foreground text-xs font-bold outline-none focus:border-[#0B2A67] dark:focus:border-[#FFD21C] cursor-pointer"
                     >
-                      <option value="cashier" className="dark:bg-black">Cashier Staff</option>
-                      <option value="coordinator" className="dark:bg-black">Scheduling Coordinator (Daily Schedule Only)</option>
-                      <option value="owner" className="dark:bg-black">Owner / Co-Admin</option>
+                      <option value="cashier" className="dark:bg-[#071E4B]">Cashier Staff</option>
+                      <option value="coordinator" className="dark:bg-[#071E4B]">Scheduling Coordinator (Daily Schedule Only)</option>
+                      <option value="owner" className="dark:bg-[#071E4B]">Owner / Co-Admin</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="password" className="text-xs font-black uppercase tracking-wider text-[#0B2A67] dark:text-white">
                       Temporary Password
                     </Label>
                     <Input
@@ -966,7 +968,7 @@ export default function AdminDashboardClient({
                       name="password"
                       type="password"
                       required
-                      className="h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46] placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] focus:border-[#111111] dark:focus:border-white"
+                      className="h-10 px-3 rounded-none bg-white dark:bg-[#0c1a3b] text-xs font-mono text-foreground border border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
                 </div>
@@ -975,7 +977,7 @@ export default function AdminDashboardClient({
                   <SubmitButton
                     size="lg"
                     loadingText="Creating Staff Account..."
-                    className="w-full bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 font-medium text-sm h-11 cursor-pointer"
+                    className="w-full bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] rounded-none font-black text-xs h-10 shadow-xs cursor-pointer"
                   >
                     Create Account
                   </SubmitButton>
@@ -988,16 +990,17 @@ export default function AdminDashboardClient({
 
       {/* Pending Refund Banner */}
       {pendingRefunds.length > 0 && (
-        <div className="border border-[#111111] dark:border-zinc-700 bg-[#f5f5f5] dark:bg-[#18181c] p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-[#111111] dark:bg-white text-white dark:text-[#111111] flex items-center justify-center shrink-0">
-              <Wallet className="w-5 h-5" />
+        <div className="rounded-none border border-[#bf050b]/40 bg-red-50 dark:bg-red-950/40 p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-none bg-[#bf050b] text-white flex items-center justify-center shrink-0">
+              <Wallet className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-foreground uppercase tracking-wide">
-                Pending Refund Requests ({pendingRefunds.length})
+              <h4 className="text-xs font-black text-[#bf050b] dark:text-red-300 uppercase tracking-wider flex items-center gap-2">
+                <span>Pending Refund Requests ({pendingRefunds.length})</span>
+                <span className="w-2 h-2 rounded-full bg-[#bf050b] animate-ping" />
               </h4>
-              <p className="text-xs text-[#707072] dark:text-[#8a8a93] mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                 Players have submitted cancellation requests. Review details to release court slots and disburse e-wallet payouts.
               </p>
             </div>
@@ -1010,174 +1013,187 @@ export default function AdminDashboardClient({
               const el = document.getElementById('audit-table');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
             }}
-            className="bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 text-xs px-5 h-9 shrink-0 cursor-pointer"
+            className="rounded-none bg-[#bf050b] hover:bg-[#990409] text-white font-black text-xs px-4 h-9 shrink-0 shadow-xs cursor-pointer"
           >
-            Review Pending Requests
+            Review Pending Requests &rarr;
           </Button>
         </div>
       )}
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-2">
+      {/* Metrics Grid (4 Real-time KPI Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="rounded-none border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Monthly Gross Revenue
             </span>
-            <DollarSign className="h-4 w-4 text-foreground" />
+            <div className="w-7 h-7 rounded-none bg-emerald-50 dark:bg-emerald-950/60 text-[#007d48] dark:text-emerald-400 flex items-center justify-center border border-emerald-200 dark:border-emerald-800">
+              <DollarSign className="h-4 w-4" />
+            </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-            ₱{metrics.thisMonthRevenue.toFixed(2)}
+          <div className="my-2 text-2xl sm:text-3xl font-black font-mono tracking-tight text-[#007d48] dark:text-emerald-400">
+            ₱{metrics.thisMonthRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <p className="text-xs text-[#007d48] dark:text-[#10b981] flex items-center gap-1 font-semibold">
+          <p className="pt-2 border-t border-slate-100 dark:border-white/10 text-xs text-[#007d48] dark:text-emerald-400 flex items-center gap-1 font-bold">
             <TrendingUp className="w-3.5 h-3.5" />
-            {metrics.monthOverMonthGrowth >= 0 ? '+' : ''}
-            {metrics.monthOverMonthGrowth.toFixed(1)}% vs. Last Month
+            <span>{metrics.monthOverMonthGrowth >= 0 ? '+' : ''}{metrics.monthOverMonthGrowth.toFixed(1)}% vs. Last Month</span>
           </p>
         </div>
 
-        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-2">
+        <div className="rounded-none border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Year-To-Date Gross
             </span>
-            <Calendar className="h-4 w-4 text-foreground" />
+            <div className="w-7 h-7 rounded-none bg-blue-50 dark:bg-blue-950/60 text-[#0B2A67] dark:text-blue-300 flex items-center justify-center border border-blue-200 dark:border-blue-800">
+              <Calendar className="h-4 w-4" />
+            </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-            ₱{metrics.ytdRevenue.toFixed(2)}
+          <div className="my-2 text-2xl sm:text-3xl font-black font-mono tracking-tight text-[#0B2A67] dark:text-white">
+            ₱{metrics.ytdRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <p className="text-xs text-[#707072] dark:text-[#8a8a93]">Total bookings &amp; pro shop sales</p>
+          <p className="pt-2 border-t border-slate-100 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 font-medium">
+            Total bookings &amp; pro shop sales
+          </p>
         </div>
 
-        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-2">
+        <div className="rounded-none border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total Hours Booked
             </span>
-            <Clock className="h-4 w-4 text-foreground" />
+            <div className="w-7 h-7 rounded-none bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800">
+              <Clock className="h-4 w-4" />
+            </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+          <div className="my-2 text-2xl sm:text-3xl font-black font-mono tracking-tight text-foreground">
             {metrics.totalHoursBooked} hrs
           </div>
-          <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+          <p className="pt-2 border-t border-slate-100 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 font-medium">
             {metrics.monthlyHoursBooked} hrs booked this month
           </p>
         </div>
 
-        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-2">
+        <div className="rounded-none border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Court Utilization Rate
             </span>
-            <Percent className="h-4 w-4 text-foreground" />
+            <div className="w-7 h-7 rounded-none bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-[#FFD21C] flex items-center justify-center border border-[#0B2A67]/20 dark:border-white/20">
+              <Percent className="h-4 w-4" />
+            </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-[#007d48] dark:text-[#10b981]">
+          <div className="my-2 text-2xl sm:text-3xl font-black font-mono tracking-tight text-[#007d48] dark:text-emerald-400">
             {metrics.courtOccupancyRate.toFixed(1)}%
           </div>
-          <p className="text-xs text-[#707072] dark:text-[#8a8a93]">16 hrs/day × 2 indoor courts</p>
+          <p className="pt-2 border-t border-slate-100 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 font-medium">
+            16 hrs/day × 2 indoor courts
+          </p>
         </div>
       </div>
 
-      {/* BIR EOPT Strip */}
-      <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-[#fafafa] dark:bg-[#18181c] space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#cacacb] dark:border-[#222226] pb-3">
+      {/* BIR EOPT Strip (Box Type) */}
+      <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] shadow-xs">
+        <div className="p-3.5 bg-[#0B2A67] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#007d48] dark:text-[#10b981]" />
-            <h3 className="text-xs font-bold uppercase tracking-widest text-foreground">
+            <ShieldCheck className="w-4 h-4 text-[#FFD21C]" />
+            <h3 className="text-xs font-black uppercase tracking-wider text-white">
               Philippine Tax Compliance (BIR EOPT Act RA 11976 / RA 9994 / RA 10754)
             </h3>
           </div>
-          <span className="text-[11px] font-mono text-[#707072] dark:text-[#8a8a93]">
+          <span className="text-[11px] font-mono font-bold text-white/90">
             TIN: 432-891-002-00000 • MIN: MIN-260908-CJ01
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="p-4 bg-white dark:bg-[#121215] border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/50 dark:bg-black/20">
+          <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
               VATable Net Sales
             </span>
-            <div className="text-xl font-bold text-foreground">
-              ₱{(metrics.posVatableSales || 0).toFixed(2)}
+            <div className="text-lg sm:text-xl font-black font-mono text-foreground">
+              ₱{(metrics.posVatableSales || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">Subject to 12% standard output VAT</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">Subject to 12% standard output VAT</p>
           </div>
 
-          <div className="p-4 bg-white dark:bg-[#121215] border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+          <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
               12% Output VAT
             </span>
-            <div className="text-xl font-bold text-foreground">
-              ₱{(metrics.posVatAmount || 0).toFixed(2)}
+            <div className="text-lg sm:text-xl font-black font-mono text-foreground">
+              ₱{(metrics.posVatAmount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">Tax liabilities for BIR filing</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">Tax liabilities for BIR filing</p>
           </div>
 
-          <div className="p-4 bg-white dark:bg-[#121215] border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+          <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
               VAT-Exempt Sales
             </span>
-            <div className="text-xl font-bold text-foreground">
-              ₱{(metrics.posVatExemptSales || 0).toFixed(2)}
+            <div className="text-lg sm:text-xl font-black font-mono text-foreground">
+              ₱{(metrics.posVatExemptSales || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">Senior Citizen &amp; PWD base</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">Senior Citizen &amp; PWD base</p>
           </div>
 
-          <div className="p-4 bg-white dark:bg-[#121215] border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#007d48] dark:text-[#10b981]">
+          <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#007d48] dark:text-emerald-400">
               SC / PWD Discounts
             </span>
-            <div className="text-xl font-bold text-[#007d48] dark:text-[#10b981]">
-              ₱{(metrics.posDiscounts || 0).toFixed(2)}
+            <div className="text-lg sm:text-xl font-black font-mono text-[#007d48] dark:text-emerald-400">
+              ₱{(metrics.posDiscounts || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">20% statutory deductions granted</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">20% statutory deductions granted</p>
           </div>
         </div>
       </div>
 
       {/* Revenue Stream Breakdown Card */}
-      <div className="border border-[#cacacb] dark:border-[#222226] p-6 sm:p-8 bg-white dark:bg-[#121215] space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#e5e5e5] dark:border-[#222226] pb-4">
+      <div className="rounded-none border border-slate-300 dark:border-white/15 p-4 sm:p-5 bg-white dark:bg-[#071E4B] space-y-3 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-white/10 pb-3">
           <div>
-            <h3 className="text-lg font-bold tracking-tight text-foreground">
+            <h3 className="text-sm font-black uppercase tracking-wider text-[#0B2A67] dark:text-white">
               Revenue Stream Breakdown
             </h3>
-            <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               PayMongo Online Channels vs. Walk-In Cash POS Register
             </p>
           </div>
-          <div className="text-right">
-            <span className="text-xs text-[#707072] dark:text-[#8a8a93]">Total Volume: </span>
-            <span className="font-bold text-foreground">₱{(metrics.paymongoRevenue + metrics.cashRevenue).toFixed(2)}</span>
+          <div className="text-left sm:text-right">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Total Volume: </span>
+            <span className="font-black font-mono text-sm text-[#0B2A67] dark:text-[#FFD21C]">
+              ₱{(metrics.paymongoRevenue + metrics.cashRevenue).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
           </div>
         </div>
 
-        <div className="space-y-3 pt-2">
-          <div className="h-3 w-full rounded-full bg-[#f5f5f5] dark:bg-[#18181c] overflow-hidden flex border border-[#cacacb] dark:border-[#27272a]">
+        <div className="space-y-2.5 pt-1">
+          <div className="h-3.5 w-full rounded-none bg-slate-100 dark:bg-black/40 overflow-hidden flex border border-slate-300 dark:border-white/20">
             <div
               style={{ width: `${paymongoPercent}%` }}
-              className="bg-[#111111] dark:bg-white h-full transition-all duration-500"
+              className="bg-[#0B2A67] dark:bg-blue-500 h-full transition-all duration-500"
               title={`PayMongo: ${paymongoPercent}%`}
             />
             <div
               style={{ width: `${cashPercent}%` }}
-              className="bg-[#007d48] dark:bg-[#10b981] h-full transition-all duration-500"
+              className="bg-[#007d48] dark:bg-emerald-500 h-full transition-all duration-500"
               title={`Cash: ${cashPercent}%`}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-[#111111] dark:bg-white" />
-              <span className="text-[#707072] dark:text-[#8a8a93]">PayMongo Online:</span>
-              <span className="font-bold text-foreground">
+              <div className="w-3.5 h-3.5 rounded-none bg-[#0B2A67] dark:bg-blue-500 shrink-0" />
+              <span className="text-slate-500 dark:text-slate-400 font-semibold">PayMongo Online Channels:</span>
+              <span className="font-black font-mono text-foreground">
                 ₱{metrics.paymongoRevenue.toFixed(2)} ({paymongoPercent}%)
               </span>
             </div>
-            <div className="flex items-center gap-2 justify-end">
-              <div className="w-3 h-3 rounded-full bg-[#007d48] dark:bg-[#10b981]" />
-              <span className="text-[#707072] dark:text-[#8a8a93]">Cash / Counter POS:</span>
-              <span className="font-bold text-foreground">
+            <div className="flex items-center gap-2 sm:justify-end">
+              <div className="w-3.5 h-3.5 rounded-none bg-[#007d48] dark:bg-emerald-500 shrink-0" />
+              <span className="text-slate-500 dark:text-slate-400 font-semibold">Cash / Counter POS Register:</span>
+              <span className="font-black font-mono text-foreground">
                 ₱{metrics.cashRevenue.toFixed(2)} ({cashPercent}%)
               </span>
             </div>
@@ -1186,92 +1202,93 @@ export default function AdminDashboardClient({
       </div>
 
       {/* MAIN NAVIGATION TABS FOR AUDIT LOGS & MENU INVENTORY */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Tab Controls Bar */}
-        <div className="flex items-center gap-2 border-b border-[#cacacb] dark:border-[#222226] pb-2 overflow-x-auto">
+        <div className="flex items-center gap-1 border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-1.5 overflow-x-auto shadow-xs">
           <button
             type="button"
             onClick={() => setActiveTab('bookings')}
-            className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            className={`px-4 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 rounded-none ${
               activeTab === 'bookings'
-                ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
-                : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
+                ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
             }`}
           >
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-3.5 h-3.5" />
             <span>Court Bookings ({bookings.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('inventory')}
-            className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            className={`px-4 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 rounded-none ${
               activeTab === 'inventory'
-                ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
-                : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
+                ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
             }`}
           >
-            <Boxes className="w-4 h-4" />
-            <span>Inventory Table &amp; Margins ({productList.length})</span>
+            <Boxes className="w-3.5 h-3.5" />
+            <span>Inventory &amp; Margins ({productList.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('expenses_margin')}
-            className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            className={`px-4 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 rounded-none ${
               activeTab === 'expenses_margin'
-                ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
-                : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
+                ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
             }`}
           >
-            <TrendingDown className="w-4 h-4" />
+            <TrendingDown className="w-3.5 h-3.5" />
             <span>Daily Expenses &amp; Margins ({expenseList.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('pos_invoices')}
-            className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            className={`px-4 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 rounded-none ${
               activeTab === 'pos_invoices'
-                ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
-                : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
+                ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
             }`}
           >
-            <Receipt className="w-4 h-4" />
-            <span>POS Sales Invoices &amp; Audit ({txList.length})</span>
+            <Receipt className="w-3.5 h-3.5" />
+            <span>POS Sales Invoices ({txList.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('duty_roster')}
-            className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            className={`px-4 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 rounded-none ${
               activeTab === 'duty_roster'
-                ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
-                : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
+                ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
             }`}
           >
-            <Users className="w-4 h-4 text-emerald-500" />
-            <span>Staff on Duty &amp; Shifts ({activeOnDutyCount} Active)</span>
+            <Users className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Staff on Duty ({activeOnDutyCount} Active)</span>
           </button>
         </div>
 
         {/* TAB 1: COURT BOOKINGS AUDIT LOG */}
         {activeTab === 'bookings' && (
-          <div id="audit-table" className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] overflow-hidden">
-            <div className="p-6 border-b border-[#cacacb] dark:border-[#222226] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div id="audit-table" className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] overflow-x-auto shadow-xs rounded-none">
+            <div className="p-3.5 bg-slate-50 dark:bg-black/30 border-b border-slate-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
-                <h3 className="text-xl font-bold tracking-tight text-foreground">
-                  Master Court Booking Audit Log
+                <h3 className="text-xs font-black uppercase tracking-wider text-[#0B2A67] dark:text-white flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-[#0B2A67] dark:text-[#FFD21C]" />
+                  <span>Master Court Booking Audit Log</span>
                 </h3>
-                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                   Verified public reservations, walk-in register locks, and transaction statuses.
                 </p>
               </div>
 
               {/* Live Filter & Search Controls */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-60">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                   <Input
                     placeholder="Search player, email, ref..."
                     value={bookingSearch}
@@ -1279,7 +1296,7 @@ export default function AdminDashboardClient({
                       setBookingSearch(e.target.value);
                       setBookingPage(1);
                     }}
-                    className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus:border-[#111111] dark:focus:border-white"
+                    className="pl-9 h-9 rounded-none bg-white dark:bg-[#0c1a3b] text-xs font-bold text-foreground placeholder:text-slate-400 border border-slate-300 dark:border-white/20 focus:border-[#0B2A67]"
                   />
                 </div>
 
@@ -1289,7 +1306,7 @@ export default function AdminDashboardClient({
                     setBookingStatusFilter(e.target.value);
                     setBookingPage(1);
                   }}
-                  className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
+                  className="h-9 px-3 rounded-none bg-white dark:bg-[#0c1a3b] border border-slate-300 dark:border-white/20 text-xs font-bold text-[#0B2A67] dark:text-white outline-none cursor-pointer"
                 >
                   <option value="all">All Statuses</option>
                   <option value="paid">Paid</option>
@@ -1305,7 +1322,7 @@ export default function AdminDashboardClient({
                     setBookingMethodFilter(e.target.value);
                     setBookingPage(1);
                   }}
-                  className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
+                  className="h-9 px-3 rounded-none bg-white dark:bg-[#0c1a3b] border border-slate-300 dark:border-white/20 text-xs font-bold text-[#0B2A67] dark:text-white outline-none cursor-pointer"
                 >
                   <option value="all">All Channels</option>
                   <option value="paymongo">PayMongo</option>
@@ -1317,22 +1334,22 @@ export default function AdminDashboardClient({
 
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-[#f5f5f5] dark:bg-[#18181c] border-b border-[#cacacb] dark:border-[#222226]">
-                  <TableRow className="border-[#cacacb] dark:border-[#222226]">
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Ref ID</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Player</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Court</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Time Interval</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Channel</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Status</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Total</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Action</TableHead>
+                <TableHeader className="bg-[#0B2A67] text-white rounded-none">
+                  <TableRow className="border-none hover:bg-transparent">
+                    <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Ref ID</TableHead>
+                    <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Player</TableHead>
+                    <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Court</TableHead>
+                    <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Time Interval</TableHead>
+                    <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Channel</TableHead>
+                    <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Status</TableHead>
+                    <TableHead className="text-right text-xs font-black uppercase tracking-wider text-white py-3">Total</TableHead>
+                    <TableHead className="text-right text-xs font-black uppercase tracking-wider text-white py-3">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredBookings.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-12 text-[#707072] dark:text-[#8a8a93] text-xs font-medium">
+                      <TableCell colSpan={8} className="text-center py-12 text-slate-400 text-xs font-medium">
                         No bookings matched your filter criteria.
                       </TableCell>
                     </TableRow>
@@ -1344,71 +1361,71 @@ export default function AdminDashboardClient({
                       const isCancelled = b.status === 'cancelled';
 
                       return (
-                        <TableRow key={b.id} className="border-b border-[#e5e5e5] dark:border-[#222226] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] transition-colors">
-                          <TableCell className="font-mono text-xs font-bold text-foreground">
+                        <TableRow key={b.id} className="border-b border-slate-100 dark:border-white/10 hover:bg-[#EDF4FC]/40 dark:hover:bg-white/5 transition-colors">
+                          <TableCell className="font-mono text-xs font-black text-[#0B2A67] dark:text-[#FFD21C] py-3">
                             #{b.id.slice(0, 8).toUpperCase()}
                           </TableCell>
-                          <TableCell>
-                            <div className="font-semibold text-foreground text-xs">{b.guest_name || 'Player'}</div>
-                            <div className="text-[11px] text-[#707072] dark:text-[#8a8a93]">{b.guest_email || 'Walk-in client'}</div>
+                          <TableCell className="py-3">
+                            <div className="font-bold text-foreground text-xs">{b.guest_name || 'Player'}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400">{b.guest_email || 'Walk-in client'}</div>
                           </TableCell>
-                          <TableCell className="font-medium text-foreground text-xs">{b.court_name}</TableCell>
-                          <TableCell className="text-[#707072] dark:text-[#8a8a93] text-xs">
+                          <TableCell className="font-bold text-[#0B2A67] dark:text-slate-200 text-xs py-3">{b.court_name}</TableCell>
+                          <TableCell className="text-slate-600 dark:text-slate-300 text-xs font-medium py-3">
                             {formatDateTime(b.start_time)} ({b.duration_hours} hr{b.duration_hours > 1 ? 's' : ''})
                           </TableCell>
-                          <TableCell>
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a]">
+                          <TableCell className="py-3">
+                            <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-blue-300 border border-[#0B2A67]/20 dark:border-white/15">
                               {b.payment_method}
                             </span>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-3">
                             {isCheckedIn ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f5f5f5] dark:bg-[#18181c] text-[#007d48] dark:text-[#10b981] border border-[#cacacb] dark:border-[#27272a]">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-emerald-50 dark:bg-emerald-950/60 text-[#007d48] dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                 Checked In
                               </span>
                             ) : isPaid ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f5f5f5] dark:bg-[#18181c] text-[#007d48] dark:text-[#10b981] border border-[#cacacb] dark:border-[#27272a]">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-blue-50 dark:bg-blue-950/60 text-[#0B2A67] dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                                 Paid
                               </span>
                             ) : isRefundPending ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-white dark:bg-[#121215] text-[#d30005] dark:text-red-400 border border-[#d30005] dark:border-red-500/50">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-red-50 dark:bg-red-950/60 text-[#bf050b] border border-red-300 dark:border-red-800">
                                 Refund Queued
                               </span>
                             ) : isCancelled ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f5f5f5] dark:bg-[#18181c] text-[#707072] dark:text-[#8a8a93] border border-[#cacacb] dark:border-[#27272a]">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10">
                                 Cancelled
                               </span>
                             ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a]">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-[#EDF4FC] dark:bg-[#0c1a3b] text-foreground border border-slate-300 dark:border-white/15">
                                 {b.status}
                               </span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right font-bold text-sm text-foreground">
+                          <TableCell className="text-right font-black font-mono text-xs sm:text-sm text-[#0B2A67] dark:text-[#FFD21C] py-3">
                             ₱{Number(b.total_price).toFixed(2)}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right py-3">
                             {isRefundPending ? (
                               <Button
                                 size="xs"
                                 onClick={() => setVoidModalBooking(b)}
-                                className="bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 text-[11px] px-3 rounded-full cursor-pointer"
+                                className="bg-[#bf050b] hover:bg-[#990409] text-white text-[11px] font-black px-3 h-7 rounded-none shadow-xs cursor-pointer"
                               >
-                                <Wallet className="w-3.5 h-3.5 mr-1" />
+                                <Wallet className="w-3 h-3 mr-1" />
                                 Review
                               </Button>
                             ) : isCancelled ? (
                               <div className="text-right">
                                 {b.refund_reference ? (
                                   <span
-                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-[#007d48] dark:text-[#10b981] bg-[#f5f5f5] dark:bg-[#18181c] px-2 py-0.5 rounded-full border border-[#cacacb] dark:border-[#27272a]"
+                                    className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-[#007d48] dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-none border border-emerald-200 dark:border-emerald-800"
                                     title={`Refund Ref: ${b.refund_reference}`}
                                   >
                                     <CheckCircle2 className="w-3 h-3" />
                                     Refunded
                                   </span>
                                 ) : (
-                                  <span className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Voided</span>
+                                  <span className="text-[11px] text-slate-400 font-bold uppercase">Voided</span>
                                 )}
                               </div>
                             ) : (
@@ -1416,7 +1433,7 @@ export default function AdminDashboardClient({
                                 size="xs"
                                 variant="outline"
                                 onClick={() => setVoidModalBooking(b)}
-                                className="border-[#cacacb] dark:border-[#27272a] text-[#d30005] dark:text-red-400 hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] text-[11px] px-3 rounded-full cursor-pointer"
+                                className="border-slate-300 dark:border-white/20 text-[#bf050b] hover:bg-red-50 dark:hover:bg-red-950/30 text-[11px] px-3 h-7 rounded-none font-bold cursor-pointer"
                               >
                                 <Ban className="w-3 h-3 mr-1" />
                                 Void
@@ -1431,7 +1448,7 @@ export default function AdminDashboardClient({
               </Table>
             </div>
 
-            <div className="px-6 py-4 border-t border-[#cacacb] dark:border-[#222226]">
+            <div className="px-4 py-3 border-t border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-black/20">
               <PaginationBar
                 meta={buildPaginationMeta(bookingPage, bookingLimit, filteredBookings.length)}
                 onPageChange={setBookingPage}
@@ -1447,70 +1464,71 @@ export default function AdminDashboardClient({
 
         {/* TAB 2: INVENTORY MANAGEMENT & MARGINS TABLE */}
         {activeTab === 'inventory' && (
-          <div className="space-y-6">
-            {/* Inventory KPI Ribbon */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="border border-[#cacacb] dark:border-[#222226] p-4 bg-white dark:bg-[#121215] space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+          <div className="space-y-4">
+            {/* Inventory KPI Ribbon (5 Box-type Cards) */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+              <div className="rounded-none border border-slate-300 dark:border-white/15 p-3.5 bg-white dark:bg-[#071E4B] space-y-1 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Total SKUs
                 </span>
-                <div className="text-2xl font-bold text-foreground">{totalInventorySkus}</div>
-                <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Catalog products</p>
+                <div className="text-xl sm:text-2xl font-black font-mono text-[#0B2A67] dark:text-white">{totalInventorySkus}</div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Active catalog items</p>
               </div>
 
-              <div className="border border-[#cacacb] dark:border-[#222226] p-4 bg-white dark:bg-[#121215] space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#007d48] dark:text-[#10b981]">
+              <div className="rounded-none border border-slate-300 dark:border-white/15 p-3.5 bg-white dark:bg-[#071E4B] space-y-1 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#007d48] dark:text-emerald-400">
                   Healthy Stock
                 </span>
-                <div className="text-2xl font-bold text-[#007d48] dark:text-[#10b981]">{healthyInventoryCount}</div>
-                <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Above reorder level</p>
+                <div className="text-xl sm:text-2xl font-black font-mono text-[#007d48] dark:text-emerald-400">{healthyInventoryCount}</div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Above reorder level</p>
               </div>
 
-              <div className="border border-[#cacacb] dark:border-[#222226] p-4 bg-white dark:bg-[#121215] space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#eab308]">
+              <div className="rounded-none border border-slate-300 dark:border-white/15 p-3.5 bg-white dark:bg-[#071E4B] space-y-1 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
                   Low Stock Warning
                 </span>
-                <div className="text-2xl font-bold text-[#eab308]">{lowStockInventoryCount}</div>
-                <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Items &le; threshold</p>
+                <div className="text-xl sm:text-2xl font-black font-mono text-amber-600 dark:text-amber-400">{lowStockInventoryCount}</div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Items &le; threshold</p>
               </div>
 
-              <div className="border border-[#cacacb] dark:border-[#222226] p-4 bg-white dark:bg-[#121215] space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#d30005] dark:text-red-400">
+              <div className="rounded-none border border-slate-300 dark:border-white/15 p-3.5 bg-white dark:bg-[#071E4B] space-y-1 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#bf050b] dark:text-red-400">
                   Out of Stock
                 </span>
-                <div className="text-2xl font-bold text-[#d30005] dark:text-red-400">{outOfStockInventoryCount}</div>
-                <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Needs immediate PO</p>
+                <div className="text-xl sm:text-2xl font-black font-mono text-[#bf050b] dark:text-red-400">{outOfStockInventoryCount}</div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Needs immediate PO</p>
               </div>
 
-              <div className="border border-[#cacacb] dark:border-[#222226] p-4 bg-white dark:bg-[#121215] space-y-1 col-span-2 md:col-span-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+              <div className="rounded-none border border-slate-300 dark:border-white/15 p-3.5 bg-white dark:bg-[#071E4B] space-y-1 col-span-2 md:col-span-1 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Stock Value (Cost)
                 </span>
-                <div className="text-2xl font-bold font-mono text-foreground">
+                <div className="text-xl sm:text-2xl font-black font-mono text-[#0B2A67] dark:text-[#FFD21C]">
                   ₱{totalInventoryCostVal.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
                 </div>
-                <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Retail: ₱{totalInventoryRetailVal.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
                 </p>
               </div>
             </div>
 
             {/* Inventory Table Container */}
-            <div className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] overflow-hidden">
-              <div className="p-6 border-b border-[#cacacb] dark:border-[#222226] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] overflow-hidden rounded-none shadow-xs">
+              <div className="p-3.5 bg-slate-50 dark:bg-black/30 border-b border-slate-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-xl font-bold tracking-tight text-foreground">
-                    Physical Stock &amp; Margins Registry
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0B2A67] dark:text-white flex items-center gap-1.5">
+                    <Boxes className="w-4 h-4 text-[#0B2A67] dark:text-[#FFD21C]" />
+                    <span>Physical Stock &amp; Margins Registry</span>
                   </h3>
-                  <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     Manage stock levels, unit cost prices (COGS), menu prices, and gross margins per item.
                   </p>
                 </div>
 
                 {/* Filter and Actions Bar */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full sm:w-56">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                     <Input
                       placeholder="Search SKU, product..."
                       value={inventorySearch}
@@ -1518,7 +1536,7 @@ export default function AdminDashboardClient({
                         setInventorySearch(e.target.value);
                         setInventoryPage(1);
                       }}
-                      className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46]"
+                      className="pl-9 h-9 rounded-none bg-white dark:bg-[#0c1a3b] text-xs font-bold text-foreground border border-slate-300 dark:border-white/20 focus:border-[#0B2A67]"
                     />
                   </div>
 
@@ -1528,26 +1546,26 @@ export default function AdminDashboardClient({
                       setInventoryCategoryFilter(e.target.value);
                       setInventoryPage(1);
                     }}
-                    className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
+                    className="h-9 px-3 rounded-none bg-white dark:bg-[#0c1a3b] border border-slate-300 dark:border-white/20 text-xs font-bold text-[#0B2A67] dark:text-white outline-none cursor-pointer"
                   >
                     {inventoryCategories.map((c) => (
-                      <option key={c} value={c} className="dark:bg-black">
+                      <option key={c} value={c} className="dark:bg-[#071E4B]">
                         {c === 'All' ? 'All Categories' : c}
                       </option>
                     ))}
                   </select>
 
-                  <div className="flex items-center border border-[#cacacb] dark:border-[#27272a] rounded-full p-0.5 bg-[#f5f5f5] dark:bg-[#18181c]">
+                  <div className="flex items-center border border-slate-300 dark:border-white/20 rounded-none p-0.5 bg-slate-100 dark:bg-[#0c1a3b]">
                     <button
                       type="button"
                       onClick={() => {
                         setInventoryStockFilter('all');
                         setInventoryPage(1);
                       }}
-                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-black rounded-none transition-colors cursor-pointer uppercase ${
                         inventoryStockFilter === 'all'
-                          ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
-                          : 'text-[#707072] dark:text-[#8a8a93] hover:text-foreground'
+                          ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67]'
                       }`}
                     >
                       All ({totalInventorySkus})
@@ -1558,10 +1576,10 @@ export default function AdminDashboardClient({
                         setInventoryStockFilter('low');
                         setInventoryPage(1);
                       }}
-                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-black rounded-none transition-colors cursor-pointer uppercase ${
                         inventoryStockFilter === 'low'
-                          ? 'bg-white dark:bg-zinc-800 text-[#eab308] shadow-xs'
-                          : 'text-[#707072] dark:text-[#8a8a93] hover:text-foreground'
+                          ? 'bg-amber-500 text-white shadow-xs'
+                          : 'text-amber-700 dark:text-amber-400 hover:text-amber-900'
                       }`}
                     >
                       Low ({lowStockInventoryCount})
@@ -1572,10 +1590,10 @@ export default function AdminDashboardClient({
                         setInventoryStockFilter('out');
                         setInventoryPage(1);
                       }}
-                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-black rounded-none transition-colors cursor-pointer uppercase ${
                         inventoryStockFilter === 'out'
-                          ? 'bg-white dark:bg-zinc-800 text-[#d30005] dark:text-red-400 shadow-xs'
-                          : 'text-[#707072] dark:text-[#8a8a93] hover:text-foreground'
+                          ? 'bg-[#bf050b] text-white shadow-xs'
+                          : 'text-[#bf050b] dark:text-red-400 hover:text-red-800'
                       }`}
                     >
                       Out ({outOfStockInventoryCount})
@@ -1586,33 +1604,33 @@ export default function AdminDashboardClient({
                     size="sm"
                     variant="outline"
                     onClick={handleExportInventoryCSV}
-                    className="h-9 px-3.5 text-xs border-[#cacacb] dark:border-[#27272a] rounded-full cursor-pointer"
+                    className="h-9 px-3 text-xs border-slate-300 dark:border-white/15 text-[#0B2A67] dark:text-white hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none font-bold cursor-pointer"
                   >
-                    <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+                    <Download className="w-3.5 h-3.5 mr-1 text-[#0B2A67] dark:text-[#FFD21C]" /> Export CSV
                   </Button>
                 </div>
               </div>
 
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <Table>
-                  <TableHeader className="bg-[#f5f5f5] dark:bg-[#18181c] border-b border-[#cacacb] dark:border-[#222226] sticky top-0 z-10">
-                    <TableRow className="border-[#cacacb] dark:border-[#222226]">
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground py-3.5 w-24">SKU</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Product Name</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Category</TableHead>
-                      <TableHead className="text-center text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Stock Level</TableHead>
-                      <TableHead className="text-center text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Status</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Cost Price</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Selling Price</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Unit Margin</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Stock Value (Cost)</TableHead>
-                      <TableHead className="text-center text-xs font-bold uppercase tracking-wider text-foreground py-3.5 w-24">Action</TableHead>
+                  <TableHeader className="bg-[#0B2A67] text-white rounded-none sticky top-0 z-10">
+                    <TableRow className="border-none hover:bg-transparent">
+                      <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3 w-24">SKU</TableHead>
+                      <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Product Name</TableHead>
+                      <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Category</TableHead>
+                      <TableHead className="text-center text-xs font-black uppercase tracking-wider text-white py-3">Stock Level</TableHead>
+                      <TableHead className="text-center text-xs font-black uppercase tracking-wider text-white py-3">Status</TableHead>
+                      <TableHead className="text-right text-xs font-black uppercase tracking-wider text-white py-3">Cost Price</TableHead>
+                      <TableHead className="text-right text-xs font-black uppercase tracking-wider text-white py-3">Selling Price</TableHead>
+                      <TableHead className="text-right text-xs font-black uppercase tracking-wider text-white py-3">Unit Margin</TableHead>
+                      <TableHead className="text-right text-xs font-black uppercase tracking-wider text-white py-3">Stock Value (Cost)</TableHead>
+                      <TableHead className="text-center text-xs font-black uppercase tracking-wider text-white py-3 w-24">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredInventoryProducts.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-12 text-[#707072] text-xs font-medium">
+                        <TableCell colSpan={10} className="text-center py-12 text-slate-400 text-xs font-medium">
                           No inventory items matched your search criteria.
                         </TableCell>
                       </TableRow>
@@ -1628,59 +1646,59 @@ export default function AdminDashboardClient({
                         const stockValue = stock * cost;
 
                         return (
-                          <TableRow key={prod.id} className="border-b border-[#e5e5e5] dark:border-[#222226] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] transition-colors">
-                            <TableCell className="font-mono text-xs font-bold text-foreground py-3">
+                          <TableRow key={prod.id} className="border-b border-slate-100 dark:border-white/10 hover:bg-[#EDF4FC]/40 dark:hover:bg-white/5 transition-colors">
+                            <TableCell className="font-mono text-xs font-black text-[#0B2A67] dark:text-[#FFD21C] py-3">
                               {prod.sku ? (
-                                <span className="bg-[#ececee] dark:bg-[#27272a] px-2 py-0.5 rounded text-[11px]">
+                                <span className="bg-[#EDF4FC] dark:bg-[#0c1a3b] px-2 py-0.5 rounded-none text-[11px] border border-[#0B2A67]/20 dark:border-white/15">
                                   {prod.sku}
                                 </span>
                               ) : (
-                                <span className="text-[#707072]">—</span>
+                                <span className="text-slate-400">—</span>
                               )}
                             </TableCell>
-                            <TableCell className="py-3 font-semibold text-xs text-foreground">
+                            <TableCell className="py-3 font-bold text-xs text-foreground">
                               {prod.name}
                             </TableCell>
                             <TableCell className="py-3">
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a]">
+                              <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-blue-300 border border-[#0B2A67]/20 dark:border-white/15">
                                 {prod.category}
                               </span>
                             </TableCell>
-                            <TableCell className="text-center py-3 font-mono font-bold text-xs">
-                              <span className={isOut ? 'text-[#d30005]' : isLow ? 'text-[#eab308]' : 'text-foreground'}>
+                            <TableCell className="text-center py-3 font-mono font-black text-xs">
+                              <span className={isOut ? 'text-[#bf050b]' : isLow ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}>
                                 {stock} units
                               </span>
                             </TableCell>
                             <TableCell className="text-center py-3">
                               {isOut ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-50 dark:bg-red-950/40 text-[#d30005] border border-red-200 dark:border-red-900">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-red-50 dark:bg-red-950/60 text-[#bf050b] border border-red-200 dark:border-red-900">
                                   Out of Stock
                                 </span>
                               ) : isLow ? (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-yellow-50 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900">
                                   Low ({stock})
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-50 dark:bg-emerald-950/40 text-[#007d48] dark:text-[#10b981] border border-emerald-200 dark:border-emerald-900">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-emerald-50 dark:bg-emerald-950/60 text-[#007d48] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                                   In Stock
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell className="text-right font-mono text-xs text-[#707072] dark:text-[#8a8a93] py-3">
+                            <TableCell className="text-right font-mono text-xs text-slate-500 dark:text-slate-400 py-3">
                               ₱{cost.toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-xs text-foreground py-3">
+                            <TableCell className="text-right font-mono font-black text-xs text-[#0B2A67] dark:text-white py-3">
                               ₱{Number(prod.price).toFixed(2)}
                             </TableCell>
                             <TableCell className="text-right font-mono text-xs py-3">
-                              <span className="text-[#007d48] dark:text-[#10b981] font-bold">
+                              <span className="text-[#007d48] dark:text-emerald-400 font-black">
                                 +₱{unitMargin.toFixed(2)}
                               </span>
-                              <span className="block text-[10px] text-[#707072] dark:text-[#8a8a93]">
+                              <span className="block text-[10px] text-slate-500 dark:text-slate-400 font-bold">
                                 ({marginPct}%)
                               </span>
                             </TableCell>
-                            <TableCell className="text-right font-mono font-bold text-xs text-foreground py-3">
+                            <TableCell className="text-right font-mono font-black text-xs text-foreground py-3">
                               ₱{stockValue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="text-center py-3">
@@ -1688,7 +1706,7 @@ export default function AdminDashboardClient({
                                 size="xs"
                                 variant="outline"
                                 onClick={() => handleOpenInventoryAdj(prod)}
-                                className="h-7 px-2.5 text-[11px] font-semibold border-[#cacacb] dark:border-[#27272a] rounded-full hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] cursor-pointer"
+                                className="h-7 px-2.5 text-[11px] font-bold border-slate-300 dark:border-white/20 text-[#0B2A67] dark:text-[#FFD21C] hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none cursor-pointer"
                               >
                                 <Edit className="w-3 h-3 mr-1" /> Adjust
                               </Button>
@@ -1701,7 +1719,7 @@ export default function AdminDashboardClient({
                 </Table>
               </div>
 
-              <div className="px-6 py-4 border-t border-[#cacacb] dark:border-[#222226]">
+              <div className="px-4 py-3 border-t border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-black/20">
                 <PaginationBar
                   meta={buildPaginationMeta(inventoryPage, inventoryLimit, filteredInventoryProducts.length)}
                   onPageChange={setInventoryPage}
@@ -1715,13 +1733,13 @@ export default function AdminDashboardClient({
             </div>
 
             {/* Master PIN Tile at bottom of Inventory */}
-            <div className="border border-[#cacacb] dark:border-[#222226] p-5 bg-[#fbfbfb] dark:bg-[#18181c] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#707072] dark:text-[#8a8a93] flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-[#007d48]" />
-                  POS Master PIN Protection: <span className="text-[#007d48] font-bold">ACTIVE</span>
+            <div className="border border-amber-300 dark:border-amber-800/80 p-4 bg-amber-50/40 dark:bg-amber-950/20 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  POS Master PIN Protection: <span className="text-[#007d48] dark:text-emerald-400 font-bold">ACTIVE</span>
                 </span>
-                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                <p className="text-xs text-slate-600 dark:text-slate-300">
                   Supervisor Master PIN is enforced whenever cashiers void active order items, clear carts, or void past sales invoices.
                 </p>
               </div>
@@ -1732,7 +1750,7 @@ export default function AdminDashboardClient({
                   setPinChangeSuccess(null);
                   setPinChangeModalOpen(true);
                 }}
-                className="h-9 px-4 text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] rounded-full cursor-pointer font-bold shrink-0"
+                className="h-9 px-4 text-xs bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black rounded-none cursor-pointer shrink-0 shadow-xs"
               >
                 <KeyRound className="w-3.5 h-3.5 mr-1.5" />
                 Change Master PIN
@@ -1743,84 +1761,85 @@ export default function AdminDashboardClient({
 
         {/* TAB 3: DAILY EXPENSES & PROFIT MARGIN AUDIT */}
         {activeTab === 'expenses_margin' && (
-          <div className="space-y-6">
-            {/* Financial Margins Overview Ribbon */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="border border-[#cacacb] dark:border-[#222226] p-4 bg-white dark:bg-[#121215] space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#007d48] dark:text-[#10b981]">
+          <div className="space-y-4">
+            {/* Financial Margins Overview Ribbon (5 Box-type Cards) */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+              <div className="rounded-none border border-slate-300 dark:border-white/15 p-3.5 bg-white dark:bg-[#071E4B] space-y-1 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#007d48] dark:text-emerald-400">
                   This Month Gross Revenue
                 </span>
-                <div className="text-2xl font-bold font-mono text-[#007d48] dark:text-[#10b981]">
+                <div className="text-xl sm:text-2xl font-black font-mono text-[#007d48] dark:text-emerald-400">
                   ₱{metrics.thisMonthRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Courts + POS Sales</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Courts + POS Sales</p>
               </div>
 
-              <div className="border border-[#cacacb] dark:border-[#222226] p-4 bg-white dark:bg-[#121215] space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#d30005] dark:text-red-400">
+              <div className="rounded-none border border-slate-300 dark:border-white/15 p-3.5 bg-white dark:bg-[#071E4B] space-y-1 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#bf050b] dark:text-red-400">
                   This Month Expenses
                 </span>
-                <div className="text-2xl font-bold font-mono text-[#d30005] dark:text-red-400">
+                <div className="text-xl sm:text-2xl font-black font-mono text-[#bf050b] dark:text-red-400">
                   -₱{(metrics.thisMonthExpenses || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Operational disbursals</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Operational disbursals</p>
               </div>
 
-              <div className={`border p-4 space-y-1 ${
+              <div className={`rounded-none border p-3.5 space-y-1 shadow-xs ${
                 (metrics.netOperatingProfit ?? 0) >= 0
-                  ? 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-emerald-950/20'
-                  : 'border-red-200 dark:border-red-900/50 bg-red-50/40 dark:bg-red-950/20'
+                  ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20'
+                  : 'border-red-300 dark:border-red-800 bg-red-50/30 dark:bg-red-950/20'
               }`}>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
                   Net Operating Profit
                 </span>
-                <div className={`text-2xl font-bold font-mono ${
-                  (metrics.netOperatingProfit ?? 0) >= 0 ? 'text-[#007d48] dark:text-[#10b981]' : 'text-[#d30005]'
+                <div className={`text-xl sm:text-2xl font-black font-mono ${
+                  (metrics.netOperatingProfit ?? 0) >= 0 ? 'text-[#007d48] dark:text-emerald-400' : 'text-[#bf050b]'
                 }`}>
                   ₱{(metrics.netOperatingProfit || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <p className="text-[11px] font-semibold text-[#707072] dark:text-[#8a8a93]">
+                <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                   Revenue - Operating Expenses
                 </p>
               </div>
 
-              <div className="border border-[#cacacb] dark:border-[#222226] p-4 bg-white dark:bg-[#121215] space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+              <div className="rounded-none border border-slate-300 dark:border-white/15 p-3.5 bg-white dark:bg-[#071E4B] space-y-1 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Net Profit Margin
                 </span>
-                <div className="text-2xl font-bold font-mono text-foreground">
+                <div className="text-xl sm:text-2xl font-black font-mono text-[#0B2A67] dark:text-[#FFD21C]">
                   {(metrics.profitMarginPct || 0).toFixed(1)}%
                 </div>
-                <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Margin on gross income</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Margin on gross income</p>
               </div>
 
-              <div className="border border-[#cacacb] dark:border-[#222226] p-4 bg-white dark:bg-[#121215] space-y-1 col-span-2 md:col-span-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+              <div className="rounded-none border border-slate-300 dark:border-white/15 p-3.5 bg-white dark:bg-[#071E4B] space-y-1 col-span-2 md:col-span-1 shadow-xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   YTD Total Expenses
                 </span>
-                <div className="text-2xl font-bold font-mono text-foreground">
+                <div className="text-xl sm:text-2xl font-black font-mono text-foreground">
                   ₱{(metrics.ytdExpenses || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}
                 </div>
-                <p className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Cumulative operational costs</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">Cumulative operating costs</p>
               </div>
             </div>
 
             {/* Expenses Table Container */}
-            <div className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] overflow-hidden">
-              <div className="p-6 border-b border-[#cacacb] dark:border-[#222226] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] overflow-hidden rounded-none shadow-xs">
+              <div className="p-3.5 bg-slate-50 dark:bg-black/30 border-b border-slate-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-xl font-bold tracking-tight text-foreground">
-                    Facility Operating Expenses Ledger
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0B2A67] dark:text-white flex items-center gap-1.5">
+                    <TrendingDown className="w-4 h-4 text-[#bf050b]" />
+                    <span>Facility Operating Expenses Ledger</span>
                   </h3>
-                  <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     Detailed log of all arena disbursals: utilities, maintenance, supplies, and petty cash.
                   </p>
                 </div>
 
                 {/* Filter and Actions Bar */}
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="relative w-full sm:w-60">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="relative w-full sm:w-56">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                     <Input
                       placeholder="Search expense, ref #..."
                       value={expenseSearch}
@@ -1828,7 +1847,7 @@ export default function AdminDashboardClient({
                         setExpenseSearch(e.target.value);
                         setExpensePage(1);
                       }}
-                      className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46]"
+                      className="pl-9 h-9 rounded-none bg-white dark:bg-[#0c1a3b] text-xs font-bold text-foreground border border-slate-300 dark:border-white/20 focus:border-[#0B2A67]"
                     />
                   </div>
 
@@ -1838,7 +1857,7 @@ export default function AdminDashboardClient({
                       setExpenseCategoryFilter(e.target.value);
                       setExpensePage(1);
                     }}
-                    className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
+                    className="h-9 px-3 rounded-none bg-white dark:bg-[#0c1a3b] border border-slate-300 dark:border-white/20 text-xs font-bold text-[#0B2A67] dark:text-white outline-none cursor-pointer"
                   >
                     <option value="all">All Categories</option>
                     <option value="utilities">Utilities</option>
@@ -1849,17 +1868,17 @@ export default function AdminDashboardClient({
                     <option value="other">Miscellaneous</option>
                   </select>
 
-                  <div className="flex items-center border border-[#cacacb] dark:border-[#27272a] rounded-full p-0.5 bg-[#f5f5f5] dark:bg-[#18181c]">
+                  <div className="flex items-center border border-slate-300 dark:border-white/20 rounded-none p-0.5 bg-slate-100 dark:bg-[#0c1a3b]">
                     <button
                       type="button"
                       onClick={() => {
                         setExpenseDateFilter('today');
                         setExpensePage(1);
                       }}
-                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-black rounded-none transition-colors cursor-pointer uppercase ${
                         expenseDateFilter === 'today'
-                          ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
-                          : 'text-[#707072] dark:text-[#8a8a93] hover:text-foreground'
+                          ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67]'
                       }`}
                     >
                       Today
@@ -1870,10 +1889,10 @@ export default function AdminDashboardClient({
                         setExpenseDateFilter('7days');
                         setExpensePage(1);
                       }}
-                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-black rounded-none transition-colors cursor-pointer uppercase ${
                         expenseDateFilter === '7days'
-                          ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
-                          : 'text-[#707072] dark:text-[#8a8a93] hover:text-foreground'
+                          ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67]'
                       }`}
                     >
                       7 Days
@@ -1884,10 +1903,10 @@ export default function AdminDashboardClient({
                         setExpenseDateFilter('month');
                         setExpensePage(1);
                       }}
-                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-black rounded-none transition-colors cursor-pointer uppercase ${
                         expenseDateFilter === 'month'
-                          ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
-                          : 'text-[#707072] dark:text-[#8a8a93] hover:text-foreground'
+                          ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67]'
                       }`}
                     >
                       This Month
@@ -1898,10 +1917,10 @@ export default function AdminDashboardClient({
                         setExpenseDateFilter('all');
                         setExpensePage(1);
                       }}
-                      className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
+                      className={`px-2.5 py-1 text-[11px] font-black rounded-none transition-colors cursor-pointer uppercase ${
                         expenseDateFilter === 'all'
-                          ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
-                          : 'text-[#707072] dark:text-[#8a8a93] hover:text-foreground'
+                          ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
+                          : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67]'
                       }`}
                     >
                       All
@@ -1911,74 +1930,74 @@ export default function AdminDashboardClient({
                   <Button
                     size="sm"
                     onClick={() => setIsAddExpenseOpen(true)}
-                    className="h-9 px-4 text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] rounded-full cursor-pointer font-bold"
+                    className="h-9 px-4 text-xs bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black rounded-none cursor-pointer shadow-xs"
                   >
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Log Expense
+                    <Plus className="w-3.5 h-3.5 mr-1 stroke-[2.5]" /> Log Expense
                   </Button>
 
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={handleExportExpensesCSV}
-                    className="h-9 px-3 text-xs border-[#cacacb] dark:border-[#27272a] rounded-full cursor-pointer"
+                    className="h-9 px-3 text-xs border-slate-300 dark:border-white/15 text-[#0B2A67] dark:text-white hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none font-bold cursor-pointer"
                   >
-                    <Download className="w-3.5 h-3.5 mr-1" /> Export CSV
+                    <Download className="w-3.5 h-3.5 mr-1 text-[#0B2A67] dark:text-[#FFD21C]" /> Export CSV
                   </Button>
                 </div>
               </div>
 
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <Table>
-                  <TableHeader className="bg-[#f5f5f5] dark:bg-[#18181c] border-b border-[#cacacb] dark:border-[#222226] sticky top-0 z-10">
-                    <TableRow className="border-[#cacacb] dark:border-[#222226]">
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground py-3.5 w-28">Date</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Category</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Description / Purpose</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Payment Channel</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Receipt #</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Logged By</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground py-3.5">Amount (PHP)</TableHead>
-                      <TableHead className="text-center text-xs font-bold uppercase tracking-wider text-foreground py-3.5 w-20">Action</TableHead>
+                  <TableHeader className="bg-[#0B2A67] text-white rounded-none sticky top-0 z-10">
+                    <TableRow className="border-none hover:bg-transparent">
+                      <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3 w-28">Date</TableHead>
+                      <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Category</TableHead>
+                      <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Description / Purpose</TableHead>
+                      <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Payment Channel</TableHead>
+                      <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Receipt #</TableHead>
+                      <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Logged By</TableHead>
+                      <TableHead className="text-right text-xs font-black uppercase tracking-wider text-white py-3">Amount (PHP)</TableHead>
+                      <TableHead className="text-center text-xs font-black uppercase tracking-wider text-white py-3 w-20">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredExpenses.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-12 text-[#707072] text-xs font-medium">
+                        <TableCell colSpan={8} className="text-center py-12 text-slate-400 text-xs font-medium">
                           No expense records matched your filter.
                         </TableCell>
                       </TableRow>
                     ) : (
                       paginatedExpenses.map((exp) => (
-                        <TableRow key={exp.id} className="border-b border-[#e5e5e5] dark:border-[#222226] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] transition-colors">
-                          <TableCell className="font-mono text-xs font-medium py-3 text-foreground">
+                        <TableRow key={exp.id} className="border-b border-slate-100 dark:border-white/10 hover:bg-[#EDF4FC]/40 dark:hover:bg-white/5 transition-colors">
+                          <TableCell className="font-mono text-xs font-bold py-3 text-slate-600 dark:text-slate-300">
                             {exp.expense_date}
                           </TableCell>
                           <TableCell className="py-3">
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a]">
+                            <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-blue-300 border border-[#0B2A67]/20 dark:border-white/15">
                               {exp.category}
                             </span>
                           </TableCell>
                           <TableCell className="py-3 text-xs">
-                            <span className="font-semibold text-foreground">{exp.title}</span>
+                            <span className="font-bold text-foreground">{exp.title}</span>
                             {exp.notes && (
-                              <span className="block text-[11px] text-[#707072] dark:text-[#8a8a93] italic">
+                              <span className="block text-[11px] text-slate-500 dark:text-slate-400 italic">
                                 {exp.notes}
                               </span>
                             )}
                           </TableCell>
                           <TableCell className="py-3">
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a]">
+                            <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-slate-100 dark:bg-white/10 text-foreground border border-slate-300 dark:border-white/15">
                               {exp.payment_method}
                             </span>
                           </TableCell>
-                          <TableCell className="py-3 font-mono text-xs text-[#707072] dark:text-[#8a8a93]">
+                          <TableCell className="py-3 font-mono text-xs font-bold text-[#0B2A67] dark:text-[#FFD21C]">
                             {exp.receipt_reference || '—'}
                           </TableCell>
-                          <TableCell className="py-3 text-xs text-[#707072] dark:text-[#8a8a93]">
+                          <TableCell className="py-3 text-xs text-slate-600 dark:text-slate-300 font-medium">
                             {exp.recorder_name || 'Staff'}
                           </TableCell>
-                          <TableCell className="py-3 text-right font-mono font-bold text-xs text-[#d30005] dark:text-red-400">
+                          <TableCell className="py-3 text-right font-mono font-black text-xs text-[#bf050b] dark:text-red-400">
                             -₱{exp.amount.toFixed(2)}
                           </TableCell>
                           <TableCell className="py-3 text-center">
@@ -1986,7 +2005,7 @@ export default function AdminDashboardClient({
                               size="xs"
                               variant="ghost"
                               onClick={() => handleDeleteExpense(exp.id)}
-                              className="h-7 w-7 p-0 text-[#d30005] hover:bg-red-50 dark:hover:bg-red-950/40 rounded-full cursor-pointer"
+                              className="h-7 w-7 p-0 text-[#bf050b] hover:bg-red-50 dark:hover:bg-red-950/40 rounded-none cursor-pointer"
                               title="Delete expense entry"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1999,7 +2018,7 @@ export default function AdminDashboardClient({
                 </Table>
               </div>
 
-              <div className="px-6 py-4 border-t border-[#cacacb] dark:border-[#222226]">
+              <div className="px-4 py-3 border-t border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-black/20">
                 <PaginationBar
                   meta={buildPaginationMeta(expensePage, expenseLimit, filteredExpenses.length)}
                   onPageChange={setExpensePage}
@@ -2018,21 +2037,21 @@ export default function AdminDashboardClient({
         {activeTab === 'pos_invoices' && (
           <div className="space-y-6">
             {/* POS Security & Supervisor Void PIN Control Card */}
-            <div className="border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="border border-amber-300 dark:border-amber-800/80 bg-amber-50/70 dark:bg-amber-950/25 p-5 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-10 h-10 rounded-none bg-amber-200/80 dark:bg-amber-900/50 border border-amber-400/60 text-amber-900 dark:text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
                   <ShieldAlert className="w-5 h-5" />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
                       POS Supervisor Void Authorization
                     </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-[#007d48] dark:text-[#10b981] border border-emerald-300 dark:border-emerald-800">
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-none bg-emerald-600 text-white">
                       Active
                     </span>
                   </div>
-                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80 max-w-2xl">
+                  <p className="text-xs text-amber-900/80 dark:text-amber-300/80 max-w-2xl font-medium">
                     Cashiers must enter the Master PIN to void individual items, clear active carts, or reverse completed sales invoices.
                   </p>
                 </div>
@@ -2045,27 +2064,30 @@ export default function AdminDashboardClient({
                   setPinChangeSuccess(null);
                   setPinChangeModalOpen(true);
                 }}
-                className="h-9 px-4 text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 rounded-full cursor-pointer font-bold shrink-0 shadow-xs"
+                className="h-9 px-4 text-xs bg-[#0B2A67] hover:bg-[#081F4D] dark:bg-[#FFD21C] dark:hover:bg-[#E5BC19] text-white dark:text-[#0B2A67] rounded-none cursor-pointer font-black uppercase tracking-wider shrink-0 shadow-xs"
               >
-                <KeyRound className="w-3.5 h-3.5 mr-1.5 text-amber-400 dark:text-amber-600" />
+                <KeyRound className="w-3.5 h-3.5 mr-1.5 text-[#FFD21C] dark:text-[#0B2A67]" />
                 Change Master PIN
               </Button>
             </div>
 
-            <div className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] overflow-hidden">
-              <div className="p-6 border-b border-[#cacacb] dark:border-[#222226] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] rounded-none overflow-hidden">
+              <div className="p-5 border-b border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-xl font-bold tracking-tight text-foreground">
-                    POS Sales Invoice Registry &amp; Void Audit
-                  </h3>
-                  <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 rounded-none bg-[#0B2A67] dark:bg-[#FFD21C]" />
+                    <h3 className="text-lg font-black uppercase tracking-tight text-foreground">
+                      POS Sales Invoice Registry &amp; Void Audit
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                     All completed and voided retail sales with BIR statutory tax classifications and supervisor overrides.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
                       placeholder="Search invoice, customer..."
                       value={txSearch}
@@ -2073,7 +2095,7 @@ export default function AdminDashboardClient({
                         setTxSearch(e.target.value);
                         setTxPage(1);
                       }}
-                      className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus:border-[#111111] dark:focus:border-white"
+                      className="pl-10 h-9 rounded-none bg-white dark:bg-[#071E4B] text-xs text-foreground placeholder:text-slate-400 border border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
 
@@ -2083,7 +2105,7 @@ export default function AdminDashboardClient({
                       setTxStatusFilter(e.target.value);
                       setTxPage(1);
                     }}
-                    className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
+                    className="h-9 px-3 rounded-none bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 text-xs font-bold text-foreground outline-none cursor-pointer"
                   >
                     <option value="all">All Invoices</option>
                     <option value="completed">Completed Only</option>
@@ -2094,120 +2116,135 @@ export default function AdminDashboardClient({
 
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-[#f5f5f5] dark:bg-[#18181c] border-b border-[#cacacb] dark:border-[#222226]">
-                    <TableRow className="border-[#cacacb] dark:border-[#222226]">
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Invoice No</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Customer</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Cashier on Duty</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Timestamp</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Channel</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Gross</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Discount</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Net Amount</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Status</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Action</TableHead>
+                  <TableHeader className="bg-[#0B2A67] text-white rounded-none border-b-2 border-[#FFD21C]">
+                    <TableRow className="border-[#0B2A67] hover:bg-transparent">
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Invoice No</TableHead>
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Customer</TableHead>
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Cashier on Duty</TableHead>
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Timestamp</TableHead>
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Channel</TableHead>
+                      <TableHead className="text-right text-[11px] font-black uppercase tracking-wider text-white py-3">Gross</TableHead>
+                      <TableHead className="text-right text-[11px] font-black uppercase tracking-wider text-white py-3">Discount</TableHead>
+                      <TableHead className="text-right text-[11px] font-black uppercase tracking-wider text-white py-3">Net Amount</TableHead>
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Status</TableHead>
+                      <TableHead className="text-right text-[11px] font-black uppercase tracking-wider text-white py-3">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredTransactions.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-12 text-[#707072] text-xs font-medium">
+                        <TableCell colSpan={10} className="text-center py-12 text-slate-500 text-xs font-bold uppercase tracking-wider">
                           No POS transactions matched your search criteria.
                         </TableCell>
                       </TableRow>
                     ) : (
                       paginatedTransactions.map((tx) => {
-                      const isVoided = tx.status === 'voided';
-                      const isDiscounted = tx.discount_type === 'senior_citizen' || tx.discount_type === 'pwd';
+                        const isVoided = tx.status === 'voided';
+                        const isDiscounted = tx.discount_type === 'senior_citizen' || tx.discount_type === 'pwd';
 
-                      return (
-                        <TableRow key={tx.id} className="border-b border-[#e5e5e5] dark:border-[#222226] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] transition-colors">
-                          <TableCell className="font-mono text-xs font-bold text-foreground">
-                            <span className={isVoided ? "line-through text-[#a0a0a2]" : ""}>
-                              {tx.invoice_number || `#${tx.id.slice(0, 8).toUpperCase()}`}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            <span className="font-medium text-foreground">{tx.customer_name || 'Walk-in'}</span>
-                            {isDiscounted && (
-                              <span className="block text-[10px] text-[#007d48] font-bold">
-                                {tx.discount_type === 'senior_citizen' ? 'Senior (20%)' : 'PWD (20%)'}
+                        return (
+                          <TableRow
+                            key={tx.id}
+                            className="border-b border-slate-200 dark:border-white/10 hover:bg-[#EDF4FC]/40 dark:hover:bg-white/5 transition-colors rounded-none"
+                          >
+                            <TableCell className="font-mono text-xs font-black text-foreground">
+                              <span className={isVoided ? "line-through text-red-500/70" : "text-[#0B2A67] dark:text-[#FFD21C]"}>
+                                {tx.invoice_number || `#${tx.id.slice(0, 8).toUpperCase()}`}
                               </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-[10px] font-bold shrink-0">
-                                {(tx.cashier_name || 'C')[0].toUpperCase()}
-                              </div>
-                              <div>
-                                <span className="font-semibold text-foreground">{tx.cashier_name || 'System / Staff'}</span>
-                                {tx.cashier_role && (
-                                  <span className="block text-[9px] text-[#707072] uppercase font-bold tracking-wider">
-                                    {tx.cashier_role}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs text-[#707072]">
-                            {formatDateTime(tx.created_at)}
-                          </TableCell>
-                          <TableCell>
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a]">
-                              {tx.payment_method}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right text-xs text-[#707072]">
-                            ₱{Number(tx.gross_amount || tx.total_amount).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right text-xs text-[#007d48] font-semibold">
-                            {Number(tx.discount_amount) > 0 ? `-₱${Number(tx.discount_amount).toFixed(2)}` : '—'}
-                          </TableCell>
-                          <TableCell className={`text-right font-bold text-sm ${isVoided ? "line-through text-[#a0a0a2]" : "text-foreground"}`}>
-                            ₱{Number(tx.total_amount).toFixed(2)}
-                          </TableCell>
-                          <TableCell>
-                            {isVoided ? (
-                              <div>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 dark:bg-red-950/60 text-[#d30005] border border-red-200 dark:border-red-900">
-                                  Voided
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <span className="font-bold text-foreground">{tx.customer_name || 'Walk-in'}</span>
+                              {isDiscounted && (
+                                <span className="inline-block ml-1.5 px-1.5 py-0.5 rounded-none text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/80 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                                  {tx.discount_type === 'senior_citizen' ? 'Senior (20%)' : 'PWD (20%)'}
                                 </span>
-                                {tx.void_reason && (
-                                  <span className="block text-[10px] text-[#707072] italic truncate max-w-[120px]" title={tx.void_reason}>
-                                    {tx.void_reason}
-                                  </span>
-                                )}
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-none bg-[#0B2A67] text-[#FFD21C] border border-[#0B2A67] font-black flex items-center justify-center text-[10px] shrink-0">
+                                  {(tx.cashier_name || 'C')[0].toUpperCase()}
+                                </div>
+                                <div>
+                                  <span className="font-bold text-foreground block">{tx.cashier_name || 'System / Staff'}</span>
+                                  {tx.cashier_role && (
+                                    <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-wider block">
+                                      {tx.cashier_role}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#e8f5e9] dark:bg-emerald-950/60 text-[#007d48] dark:text-emerald-400">
-                                Completed
+                            </TableCell>
+                            <TableCell className="text-xs text-slate-600 dark:text-slate-300 font-medium font-mono">
+                              {formatDateTime(tx.created_at)}
+                            </TableCell>
+                            <TableCell>
+                              <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-slate-100 dark:bg-white/10 text-foreground border border-slate-300 dark:border-white/20">
+                                {tx.payment_method}
                               </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {isVoided ? (
-                              <span className="text-[11px] text-[#a0a0a2] italic">Voided</span>
-                            ) : (
-                              <Button
-                                size="xs"
-                                variant="outline"
-                                onClick={() => handleTxVoidClick(tx)}
-                                className="border-[#cacacb] dark:border-[#27272a] text-[#d30005] hover:bg-red-50 dark:hover:bg-red-950/30 text-[11px] px-3 rounded-full cursor-pointer font-bold"
-                              >
-                                <Ban className="w-3.5 h-3.5 mr-1" />
-                                Void
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
+                            </TableCell>
+                            <TableCell className="text-right text-xs font-mono font-medium text-slate-600 dark:text-slate-300">
+                              ₱{Number(tx.gross_amount || tx.total_amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right text-xs font-mono font-bold text-[#007d48] dark:text-emerald-400">
+                              {Number(tx.discount_amount) > 0 ? `-₱${Number(tx.discount_amount).toFixed(2)}` : '—'}
+                            </TableCell>
+                            <TableCell className={`text-right font-mono font-black text-sm ${isVoided ? "line-through text-red-500/70" : "text-foreground"}`}>
+                              ₱{Number(tx.total_amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              {isVoided ? (
+                                <div>
+                                  <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-red-100 dark:bg-red-950/80 text-[#bf050b] dark:text-red-400 border border-red-300 dark:border-red-900">
+                                    Voided
+                                  </span>
+                                  {tx.void_reason && (
+                                    <span className="block text-[10px] text-slate-500 italic truncate max-w-[120px] mt-0.5" title={tx.void_reason}>
+                                      {tx.void_reason}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/80 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                                  Completed
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {isVoided ? (
+                                <span className="text-[10px] font-black uppercase text-slate-400 italic">Voided</span>
+                              ) : (
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  onClick={() => handleTxVoidClick(tx)}
+                                  className="rounded-none border border-red-300 dark:border-red-900 text-[#bf050b] hover:bg-red-50 dark:hover:bg-red-950/40 text-[10px] font-black uppercase tracking-wider px-2.5 h-7 cursor-pointer"
+                                >
+                                  <Ban className="w-3 h-3 mr-1" />
+                                  Void
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="px-4 py-3 border-t border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-black/20">
+                <PaginationBar
+                  meta={buildPaginationMeta(txPage, txLimit, filteredTransactions.length)}
+                  onPageChange={setTxPage}
+                  onLimitChange={(lim) => {
+                    setTxLimit(lim);
+                    setTxPage(1);
+                  }}
+                  label="sales invoices"
+                />
+              </div>
             </div>
-          </div>
           </div>
         )}
 
@@ -2215,18 +2252,19 @@ export default function AdminDashboardClient({
         {activeTab === 'duty_roster' && (
           <div className="space-y-6">
             {/* Real-time Summary Header */}
-            <div className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] rounded-none p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-xl font-bold tracking-tight text-foreground">
+                  <span className="w-2.5 h-2.5 rounded-none bg-[#0B2A67] dark:bg-[#FFD21C]" />
+                  <h3 className="text-lg font-black uppercase tracking-tight text-foreground">
                     Cashier Shift &amp; Duty Roster Manager
                   </h3>
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/60 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="px-2.5 py-0.5 rounded-none text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/80 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-none bg-emerald-500 animate-pulse" />
                     {activeOnDutyCount} Active On Duty
                   </span>
                 </div>
-                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Inspect which cashiers and coordinators are currently clocked in, or look up exact duty coverage at any past date and hour.
                 </p>
               </div>
@@ -2245,7 +2283,7 @@ export default function AdminDashboardClient({
                     setInspectorTime(curTime);
                     handleInspectDutyTime(curDate, curTime);
                   }}
-                  className="border-[#cacacb] dark:border-[#27272a] text-xs h-9 px-4 rounded-full font-medium cursor-pointer"
+                  className="rounded-none border border-slate-300 dark:border-white/20 bg-white dark:bg-[#071E4B] text-foreground hover:bg-[#EDF4FC]/60 dark:hover:bg-white/10 text-xs h-9 px-4 font-bold cursor-pointer"
                 >
                   <Activity className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
                   Live Duty Check
@@ -2256,18 +2294,18 @@ export default function AdminDashboardClient({
             {/* Currently Active On-Duty Cashiers Grid */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] flex items-center gap-2">
-                  <UserCheck className="w-4 h-4 text-emerald-500" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   Active Cashiers On Duty Right Now ({activeOnDutyCount})
                 </h4>
-                <span className="text-[11px] text-[#707072]">Auto-synced with POS clock-ins</span>
+                <span className="text-[11px] text-slate-500 font-medium">Auto-synced with POS clock-ins</span>
               </div>
 
               {activeOnDutySessions.length === 0 ? (
-                <div className="border border-dashed border-[#cacacb] dark:border-[#27272a] bg-[#fafafa] dark:bg-[#141417] p-8 text-center rounded-xl">
-                  <Clock className="w-8 h-8 text-[#a0a0a2] mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-foreground">No cashiers currently on duty</p>
-                  <p className="text-xs text-[#707072] dark:text-[#8a8a93] mt-1">
+                <div className="border-2 border-dashed border-slate-300 dark:border-white/20 bg-slate-50 dark:bg-white/5 p-8 text-center rounded-none">
+                  <Clock className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-foreground uppercase tracking-wide">No cashiers currently on duty</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                     Cashiers appear here automatically when they clock in at the cashier terminal.
                   </p>
                 </div>
@@ -2284,49 +2322,48 @@ export default function AdminDashboardClient({
                     return (
                       <div
                         key={session.id}
-                        className="border border-emerald-200 dark:border-emerald-900/60 bg-white dark:bg-[#121215] p-5 rounded-xl shadow-xs relative overflow-hidden"
+                        className="rounded-none border-2 border-emerald-500/40 dark:border-emerald-500/30 bg-white dark:bg-[#071E4B] p-5 shadow-xs relative overflow-hidden"
                       >
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-8 -mt-8 pointer-events-none" />
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 font-bold flex items-center justify-center text-sm ring-2 ring-emerald-500/20">
+                            <div className="w-10 h-10 rounded-none bg-[#0B2A67] text-[#FFD21C] border-2 border-[#0B2A67] font-black flex items-center justify-center text-sm shrink-0">
                               {(session.cashier_name || 'C')[0].toUpperCase()}
                             </div>
                             <div>
                               <h5 className="text-sm font-bold text-foreground flex items-center gap-1.5">
                                 {session.cashier_name}
                               </h5>
-                              <span className="text-[11px] text-[#707072] dark:text-[#8a8a93] block">
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-mono">
                                 {session.cashier_email}
                               </span>
                             </div>
                           </div>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                          <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-emerald-600 text-white">
                             ON DUTY
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#f0f0f0] dark:border-[#222226] text-xs">
+                        <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-200 dark:border-white/10 text-xs">
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">Shift Started</span>
-                            <p className="font-semibold text-foreground">{formatDateTime(session.started_at)}</p>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Shift Started</span>
+                            <p className="font-semibold text-foreground font-mono">{formatDateTime(session.started_at)}</p>
                           </div>
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">Active Duration</span>
-                            <p className="font-semibold text-emerald-600 dark:text-emerald-400">{durationText}</p>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Active Duration</span>
+                            <p className="font-black text-emerald-600 dark:text-emerald-400">{durationText}</p>
                           </div>
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">Opening Float</span>
-                            <p className="font-semibold text-foreground">₱{Number(session.opening_float || 0).toFixed(2)}</p>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Opening Float</span>
+                            <p className="font-semibold font-mono text-foreground">₱{Number(session.opening_float || 0).toFixed(2)}</p>
                           </div>
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">Role</span>
-                            <p className="font-semibold text-foreground uppercase text-[11px]">{session.cashier_role || 'Staff'}</p>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Role</span>
+                            <p className="font-bold text-foreground uppercase text-[11px]">{session.cashier_role || 'Staff'}</p>
                           </div>
                         </div>
 
                         {session.notes && (
-                          <div className="mt-3 p-2 bg-[#f5f5f5] dark:bg-[#18181c] rounded-md text-[11px] text-[#707072] italic">
+                          <div className="mt-3 p-2 bg-slate-50 dark:bg-white/5 rounded-none border border-slate-200 dark:border-white/10 text-[11px] text-slate-600 dark:text-slate-400 italic">
                             &quot;{session.notes}&quot;
                           </div>
                         )}
@@ -2338,16 +2375,16 @@ export default function AdminDashboardClient({
             </div>
 
             {/* INTERACTIVE DUTY TIME INSPECTOR CARD */}
-            <div className="border border-sky-200 dark:border-sky-950 bg-gradient-to-br from-sky-50/40 via-white to-sky-50/20 dark:from-sky-950/20 dark:via-[#121215] dark:to-sky-950/10 p-6 rounded-2xl shadow-xs">
+            <div className="border border-[#0B2A67]/30 dark:border-white/20 bg-[#EDF4FC]/40 dark:bg-[#071E4B] p-6 rounded-none shadow-xs">
               <div className="flex items-start gap-4 mb-5">
-                <div className="w-11 h-11 rounded-xl bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 border border-sky-200 dark:border-sky-800">
-                  <Timer className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-none bg-[#0B2A67] text-[#FFD21C] border border-[#0B2A67] flex items-center justify-center shrink-0">
+                  <Timer className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-bold tracking-tight text-foreground">
+                  <h4 className="text-base font-black uppercase tracking-tight text-[#0B2A67] dark:text-[#FFD21C]">
                     Duty Time Inspector &mdash; &quot;Who was on duty at that time?&quot;
                   </h4>
-                  <p className="text-xs text-[#707072] dark:text-[#8a8a93] mt-0.5">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 font-medium">
                     Pick any target date and time to verify the exact cashier roster active at that exact minute, cross-referenced with POS receipts and court lock logs.
                   </p>
                 </div>
@@ -2355,7 +2392,7 @@ export default function AdminDashboardClient({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                 <div className="space-y-1.5">
-                  <Label htmlFor="inspDate" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Label htmlFor="inspDate" className="text-xs font-black uppercase tracking-wider text-foreground">
                     Target Date
                   </Label>
                   <Input
@@ -2363,12 +2400,12 @@ export default function AdminDashboardClient({
                     type="date"
                     value={inspectorDate}
                     onChange={(e) => setInspectorDate(e.target.value)}
-                    className="h-10 px-3.5 rounded-xl bg-white dark:bg-black text-xs font-medium border-[#cacacb] dark:border-[#3f3f46]"
+                    className="h-10 px-3.5 rounded-none bg-white dark:bg-black text-xs font-medium border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="inspTime" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Label htmlFor="inspTime" className="text-xs font-black uppercase tracking-wider text-foreground">
                     Target Time (24-Hour)
                   </Label>
                   <Input
@@ -2376,7 +2413,7 @@ export default function AdminDashboardClient({
                     type="time"
                     value={inspectorTime}
                     onChange={(e) => setInspectorTime(e.target.value)}
-                    className="h-10 px-3.5 rounded-xl bg-white dark:bg-black text-xs font-medium border-[#cacacb] dark:border-[#3f3f46]"
+                    className="h-10 px-3.5 rounded-none bg-white dark:bg-black text-xs font-medium border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                   />
                 </div>
 
@@ -2384,7 +2421,7 @@ export default function AdminDashboardClient({
                   type="button"
                   onClick={() => handleInspectDutyTime()}
                   disabled={isInspecting}
-                  className="h-10 rounded-xl bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 font-bold text-xs cursor-pointer shadow-xs"
+                  className="h-10 rounded-none bg-[#0B2A67] hover:bg-[#081F4D] dark:bg-[#FFD21C] dark:hover:bg-[#E5BC19] text-white dark:text-[#0B2A67] font-black text-xs uppercase tracking-wider cursor-pointer shadow-xs"
                 >
                   {isInspecting ? (
                     <>
@@ -2400,7 +2437,7 @@ export default function AdminDashboardClient({
 
               {/* Quick Shift Presets */}
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#707072] mr-1">Quick Shifts:</span>
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 mr-1">Quick Shifts:</span>
                 {[
                   { label: 'Now', time: 'now' },
                   { label: 'Morning (08:00)', time: '08:00' },
@@ -2426,7 +2463,7 @@ export default function AdminDashboardClient({
                         handleInspectDutyTime(inspectorDate, preset.time);
                       }
                     }}
-                    className="px-3 py-1 rounded-full text-xs font-medium bg-white dark:bg-black/60 border border-[#cacacb] dark:border-[#3f3f46] hover:border-[#111111] dark:hover:border-white text-foreground transition-colors cursor-pointer shadow-2xs"
+                    className="px-3 py-1 rounded-none text-xs font-bold bg-white dark:bg-white/10 border border-slate-300 dark:border-white/20 hover:border-[#0B2A67] dark:hover:border-[#FFD21C] text-foreground transition-colors cursor-pointer shadow-2xs"
                   >
                     {preset.label}
                   </button>
@@ -2435,27 +2472,27 @@ export default function AdminDashboardClient({
 
               {/* Inspector Result Display */}
               {inspectorResults !== null && (
-                <div className="mt-6 pt-5 border-t border-sky-200 dark:border-sky-900/60 animate-in fade-in duration-200">
+                <div className="mt-6 pt-5 border-t border-[#0B2A67]/20 dark:border-white/15 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      <span className="text-xs font-black uppercase tracking-wider text-foreground">
                         Inspection Results for:
                       </span>
-                      <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300">
+                      <span className="text-xs font-mono font-black px-2.5 py-0.5 rounded-none bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]">
                         {inspectorDate} @ {inspectorTime} PHT
                       </span>
                     </div>
-                    <span className="text-xs font-semibold text-[#707072]">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                       {inspectorResults.length} staff member{inspectorResults.length === 1 ? '' : 's'} on duty
                     </span>
                   </div>
 
                   {inspectorResults.length === 0 ? (
-                    <div className="p-4 rounded-xl bg-white/80 dark:bg-black/40 border border-amber-200 dark:border-amber-900/50 text-center">
-                      <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                    <div className="p-4 rounded-none bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-center">
+                      <p className="text-xs font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
                         No cashiers were on active duty at {inspectorDate} {inspectorTime}.
                       </p>
-                      <p className="text-[11px] text-[#707072] mt-0.5">
+                      <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
                         No shift session covered this timestamp in the database.
                       </p>
                     </div>
@@ -2464,20 +2501,20 @@ export default function AdminDashboardClient({
                       {inspectorResults.map((r) => (
                         <div
                           key={r.id}
-                          className="p-4 rounded-xl bg-white dark:bg-black/60 border border-emerald-300 dark:border-emerald-800/80 shadow-2xs"
+                          className="p-4 rounded-none bg-white dark:bg-black/40 border border-emerald-400 dark:border-emerald-700/80 shadow-2xs"
                         >
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-bold text-foreground">{r.cashier_name}</span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-[#007d48] dark:text-emerald-400">
+                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-none bg-emerald-100 dark:bg-emerald-950 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
                               {r.status === 'on_duty' ? 'ACTIVE SHIFT' : 'SHIFT COMPLETED'}
                             </span>
                           </div>
-                          <div className="text-[11px] text-[#707072] space-y-1">
+                          <div className="text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
                             <div>Email: <span className="text-foreground font-mono">{r.cashier_email}</span></div>
                             <div>Shift Window: <span className="text-foreground font-medium">{formatDateTime(r.started_at)} &rarr; {r.ended_at ? formatDateTime(r.ended_at) : 'Active / Ongoing'}</span></div>
-                            <div>Opening Float: <span className="text-foreground font-semibold">₱{Number(r.opening_float || 0).toFixed(2)}</span></div>
+                            <div>Opening Float: <span className="text-foreground font-bold font-mono">₱{Number(r.opening_float || 0).toFixed(2)}</span></div>
                             {r.closing_cash !== null && r.closing_cash !== undefined && (
-                              <div>Closing Cash: <span className="text-foreground font-semibold">₱{Number(r.closing_cash).toFixed(2)}</span></div>
+                              <div>Closing Cash: <span className="text-foreground font-bold font-mono">₱{Number(r.closing_cash).toFixed(2)}</span></div>
                             )}
                           </div>
                         </div>
@@ -2489,32 +2526,35 @@ export default function AdminDashboardClient({
             </div>
 
             {/* MASTER SHIFT AUDIT LOG TABLE */}
-            <div className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] overflow-hidden">
-              <div className="p-6 border-b border-[#cacacb] dark:border-[#222226] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] rounded-none overflow-hidden">
+              <div className="p-5 border-b border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-xl font-bold tracking-tight text-foreground">
-                    Historical Cashier Shift Log &amp; Cash Balance
-                  </h3>
-                  <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 rounded-none bg-[#0B2A67] dark:bg-[#FFD21C]" />
+                    <h3 className="text-lg font-black uppercase tracking-tight text-foreground">
+                      Historical Cashier Shift Log &amp; Cash Balance
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                     Comprehensive record of cashier terminals, opening floats, closing cash declarations, and notes.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
                       placeholder="Search cashier name, email..."
                       value={dutySearch}
                       onChange={(e) => setDutySearch(e.target.value)}
-                      className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus:border-[#111111] dark:focus:border-white"
+                      className="pl-10 h-9 rounded-none bg-white dark:bg-[#071E4B] text-xs text-foreground placeholder:text-slate-400 border border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
 
                   <select
                     value={dutyStatusFilter}
                     onChange={(e) => setDutyStatusFilter(e.target.value as 'all' | 'on_duty' | 'off_duty')}
-                    className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
+                    className="h-9 px-3 rounded-none bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 text-xs font-bold text-foreground outline-none cursor-pointer"
                   >
                     <option value="all">All Shifts</option>
                     <option value="on_duty">On Duty Only</option>
@@ -2525,21 +2565,21 @@ export default function AdminDashboardClient({
 
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader className="bg-[#f5f5f5] dark:bg-[#18181c] border-b border-[#cacacb] dark:border-[#222226]">
-                    <TableRow className="border-[#cacacb] dark:border-[#222226]">
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Cashier</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Status</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Shift Start</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Shift End</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Opening Float</TableHead>
-                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Closing Cash</TableHead>
-                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Notes / Handover</TableHead>
+                  <TableHeader className="bg-[#0B2A67] text-white rounded-none border-b-2 border-[#FFD21C]">
+                    <TableRow className="border-[#0B2A67] hover:bg-transparent">
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Cashier</TableHead>
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Status</TableHead>
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Shift Start</TableHead>
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Shift End</TableHead>
+                      <TableHead className="text-right text-[11px] font-black uppercase tracking-wider text-white py-3">Opening Float</TableHead>
+                      <TableHead className="text-right text-[11px] font-black uppercase tracking-wider text-white py-3">Closing Cash</TableHead>
+                      <TableHead className="text-[11px] font-black uppercase tracking-wider text-white py-3">Notes / Handover</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredDutySessions.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-12 text-[#707072] text-xs font-medium">
+                        <TableCell colSpan={7} className="text-center py-12 text-slate-500 text-xs font-bold uppercase tracking-wider">
                           No shift logs found matching your filters.
                         </TableCell>
                       </TableRow>
@@ -2549,47 +2589,47 @@ export default function AdminDashboardClient({
                         return (
                           <TableRow
                             key={session.id}
-                            className="border-b border-[#e5e5e5] dark:border-[#222226] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] transition-colors"
+                            className="border-b border-slate-200 dark:border-white/10 hover:bg-[#EDF4FC]/40 dark:hover:bg-white/5 transition-colors rounded-none"
                           >
                             <TableCell className="text-xs">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 font-bold flex items-center justify-center text-xs shrink-0">
+                                <div className="w-6 h-6 rounded-none bg-[#0B2A67] text-[#FFD21C] border border-[#0B2A67] font-black flex items-center justify-center text-[10px] shrink-0">
                                   {(session.cashier_name || 'C')[0].toUpperCase()}
                                 </div>
                                 <div>
-                                  <span className="font-semibold text-foreground block">{session.cashier_name}</span>
-                                  <span className="text-[10px] text-[#707072] block">{session.cashier_email}</span>
+                                  <span className="font-bold text-foreground block">{session.cashier_name}</span>
+                                  <span className="text-[10px] text-slate-500 font-mono block">{session.cashier_email}</span>
                                 </div>
                               </div>
                             </TableCell>
                             <TableCell>
                               {isOnDuty ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                                <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/80 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
                                   ON DUTY
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f0f0f0] dark:bg-[#1f1f23] text-[#707072] dark:text-[#a0a0a2]">
+                                <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10">
                                   OFF DUTY
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell className="text-xs text-[#707072]">
+                            <TableCell className="text-xs text-slate-600 dark:text-slate-300 font-medium font-mono">
                               {formatDateTime(session.started_at)}
                             </TableCell>
-                            <TableCell className="text-xs text-[#707072]">
+                            <TableCell className="text-xs text-slate-600 dark:text-slate-300 font-medium font-mono">
                               {session.ended_at ? formatDateTime(session.ended_at) : (
                                 <span className="text-emerald-600 dark:text-emerald-400 font-bold italic">Ongoing Shift</span>
                               )}
                             </TableCell>
-                            <TableCell className="text-right text-xs font-medium text-foreground">
+                            <TableCell className="text-right text-xs font-mono font-medium text-foreground">
                               ₱{Number(session.opening_float || 0).toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right text-xs font-medium text-foreground">
+                            <TableCell className="text-right text-xs font-mono font-bold text-foreground">
                               {session.closing_cash !== null && session.closing_cash !== undefined
                                 ? `₱${Number(session.closing_cash).toFixed(2)}`
                                 : '—'}
                             </TableCell>
-                            <TableCell className="text-xs text-[#707072] max-w-[200px] truncate" title={session.notes || ''}>
+                            <TableCell className="text-xs text-slate-600 dark:text-slate-400 max-w-[200px] truncate" title={session.notes || ''}>
                               {session.notes || '—'}
                             </TableCell>
                           </TableRow>
@@ -2600,16 +2640,9 @@ export default function AdminDashboardClient({
                 </Table>
               </div>
 
-              <div className="px-6 py-4 border-t border-[#cacacb] dark:border-[#222226]">
-                <PaginationBar
-                  meta={buildPaginationMeta(txPage, txLimit, filteredTransactions.length)}
-                  onPageChange={setTxPage}
-                  onLimitChange={(lim) => {
-                    setTxLimit(lim);
-                    setTxPage(1);
-                  }}
-                  label="sales invoices"
-                />
+              <div className="px-5 py-3 border-t border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-black/20 flex items-center justify-between text-xs text-slate-500 font-bold uppercase tracking-wider">
+                <span>Total Recorded Shifts: {filteredDutySessions.length}</span>
+                <span>{activeOnDutyCount} Cashier{activeOnDutyCount === 1 ? '' : 's'} Active</span>
               </div>
             </div>
           </div>
@@ -2647,35 +2680,35 @@ export default function AdminDashboardClient({
       {/* Change Master PIN Modal Overlay */}
       {pinChangeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="relative w-full max-w-md bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-foreground rounded-2xl p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-md bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 text-foreground rounded-none p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-150">
             <button
               type="button"
               onClick={() => setPinChangeModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[#707072] dark:text-[#8a8a93] hover:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#1c1c20] transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 rounded-none text-slate-500 hover:text-foreground hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
               aria-label="Close modal"
             >
               <X className="w-4 h-4" />
             </button>
             <form onSubmit={handleMasterPinUpdate}>
               <div className="space-y-1 pb-2">
-                <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-2 border border-amber-200 dark:border-amber-900">
+                <div className="w-10 h-10 rounded-none bg-amber-100 dark:bg-amber-900/50 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300 flex items-center justify-center mb-2">
                   <KeyRound className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold tracking-tight text-foreground">
+                <h3 className="text-lg font-black uppercase tracking-tight text-[#0B2A67] dark:text-[#FFD21C]">
                   Update POS Master PIN
                 </h3>
-                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Change the supervisor Master PIN used by cashiers and managers for POS item voiding, order cancellation, and invoice voiding.
                 </p>
               </div>
 
               {/* Current PIN Inspection Card for Admin */}
-              <div className="mt-3 p-3 rounded-xl bg-[#f5f5f5] dark:bg-[#18181c] border border-[#e5e5e5] dark:border-[#27272a] flex items-center justify-between">
+              <div className="mt-3 p-3 rounded-none bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
                     Current Master PIN
                   </span>
-                  <div className="text-sm font-mono font-bold text-foreground">
+                  <div className="text-sm font-mono font-black text-foreground">
                     {showActivePinRevealed ? masterPinState : '••••••••'.slice(0, masterPinState.length || 4)}
                   </div>
                 </div>
@@ -2684,7 +2717,7 @@ export default function AdminDashboardClient({
                   variant="ghost"
                   size="xs"
                   onClick={() => setShowActivePinRevealed(!showActivePinRevealed)}
-                  className="h-8 px-2.5 text-xs text-[#707072] hover:text-foreground cursor-pointer"
+                  className="rounded-none h-8 px-2.5 text-xs text-slate-500 hover:text-foreground cursor-pointer font-bold uppercase tracking-wider"
                 >
                   {showActivePinRevealed ? (
                     <>
@@ -2699,14 +2732,14 @@ export default function AdminDashboardClient({
               </div>
 
               {pinChangeError && (
-                <div className="mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-[#d30005] font-semibold">
+                <div className="mt-3 p-3 rounded-none bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-900 text-xs text-[#bf050b] dark:text-red-400 font-bold uppercase tracking-wide">
                   {pinChangeError}
                 </div>
               )}
 
               {pinChangeSuccess && (
-                <div className="mt-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-xs text-[#007d48] font-semibold flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4" />
+                <div className="mt-3 p-3 rounded-none bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-900 text-xs text-[#007d48] dark:text-emerald-400 font-bold flex items-center gap-1.5 uppercase tracking-wide">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>{pinChangeSuccess}</span>
                 </div>
               )}
@@ -2714,8 +2747,8 @@ export default function AdminDashboardClient({
               <div className="space-y-3.5 py-4">
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="currentPin" className="text-xs font-bold uppercase tracking-wider text-foreground">
-                      Current Master PIN <span className="text-[#707072] font-normal lowercase">(optional for admin)</span>
+                    <Label htmlFor="currentPin" className="text-xs font-black uppercase tracking-wider text-foreground">
+                      Current Master PIN <span className="text-slate-400 font-normal lowercase">(optional for admin)</span>
                     </Label>
                   </div>
                   <div className="relative">
@@ -2726,20 +2759,20 @@ export default function AdminDashboardClient({
                       placeholder="Enter current PIN"
                       value={currentPinInput}
                       onChange={(e) => setCurrentPinInput(e.target.value)}
-                      className="h-10 px-4 pr-10 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs font-mono"
+                      className="h-10 px-4 pr-10 rounded-none bg-white dark:bg-black text-xs font-mono border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="newPin" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="newPin" className="text-xs font-black uppercase tracking-wider text-foreground">
                       New Master PIN (4–8 digits)
                     </Label>
                     <button
                       type="button"
                       onClick={() => setShowPinInputs(!showPinInputs)}
-                      className="text-[11px] text-[#707072] dark:text-[#8a8a93] hover:text-foreground flex items-center gap-1 cursor-pointer"
+                      className="text-[11px] text-slate-500 hover:text-foreground flex items-center gap-1 cursor-pointer font-bold uppercase tracking-wider"
                     >
                       {showPinInputs ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                       <span>{showPinInputs ? 'Hide' : 'Show'}</span>
@@ -2753,12 +2786,12 @@ export default function AdminDashboardClient({
                     value={newPinInput}
                     onChange={(e) => setNewPinInput(e.target.value)}
                     required
-                    className="h-10 px-4 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs font-mono"
+                    className="h-10 px-4 rounded-none bg-white dark:bg-black text-xs font-mono border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="confirmPin" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Label htmlFor="confirmPin" className="text-xs font-black uppercase tracking-wider text-foreground">
                     Confirm New Master PIN
                   </Label>
                   <Input
@@ -2769,7 +2802,7 @@ export default function AdminDashboardClient({
                     value={confirmPinInput}
                     onChange={(e) => setConfirmPinInput(e.target.value)}
                     required
-                    className="h-10 px-4 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs font-mono"
+                    className="h-10 px-4 rounded-none bg-white dark:bg-black text-xs font-mono border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                   />
                 </div>
               </div>
@@ -2779,14 +2812,14 @@ export default function AdminDashboardClient({
                   type="button"
                   variant="outline"
                   onClick={() => setPinChangeModalOpen(false)}
-                  className="flex-1 h-10 text-xs rounded-xl cursor-pointer"
+                  className="flex-1 h-10 text-xs rounded-none border border-slate-300 dark:border-white/20 font-bold uppercase tracking-wider cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={isUpdatingPin}
-                  className="flex-1 h-10 text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 rounded-xl font-bold cursor-pointer"
+                  className="flex-1 h-10 text-xs bg-[#0B2A67] hover:bg-[#081F4D] dark:bg-[#FFD21C] dark:hover:bg-[#E5BC19] text-white dark:text-[#0B2A67] rounded-none font-black uppercase tracking-wider cursor-pointer shadow-xs"
                 >
                   {isUpdatingPin ? 'Saving...' : 'Update PIN'}
                 </Button>
@@ -2799,34 +2832,34 @@ export default function AdminDashboardClient({
       {/* Admin Inventory Item Adjustment Modal */}
       {selectedProdForAdj && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="relative w-full max-w-md bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-foreground rounded-2xl p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-md bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 text-foreground rounded-none p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-150">
             <button
               type="button"
               onClick={() => setSelectedProdForAdj(null)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[#707072] dark:text-[#8a8a93] hover:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#1c1c20] transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 rounded-none text-slate-500 hover:text-foreground hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
               aria-label="Close modal"
             >
               <X className="w-4 h-4" />
             </button>
             <form onSubmit={handleSaveInventoryAdj}>
               <div className="space-y-1 pb-2">
-                <div className="w-10 h-10 rounded-full bg-[#f5f5f5] dark:bg-[#1c1c20] text-foreground flex items-center justify-center mb-2">
+                <div className="w-10 h-10 rounded-none bg-[#EDF4FC] dark:bg-white/10 text-[#0B2A67] dark:text-[#FFD21C] border border-[#0B2A67]/20 flex items-center justify-center mb-2">
                   <Package className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold tracking-tight text-foreground">
+                <h3 className="text-lg font-black uppercase tracking-tight text-[#0B2A67] dark:text-[#FFD21C]">
                   Adjust Inventory &amp; Cost
                 </h3>
-                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   {selectedProdForAdj.name} {selectedProdForAdj.sku ? `(${selectedProdForAdj.sku})` : ''}
                 </p>
               </div>
 
               {adjFeedback && (
                 <div
-                  className={`mt-3 p-3 rounded-lg border text-xs font-semibold flex items-center gap-1.5 ${
+                  className={`mt-3 p-3 rounded-none border text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${
                     adjFeedback.type === 'success'
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900 text-[#007d48]'
-                      : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900 text-[#d30005]'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-900 text-[#007d48] dark:text-emerald-400'
+                      : 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-900 text-[#bf050b] dark:text-red-400'
                   }`}
                 >
                   {adjFeedback.type === 'success' && <CheckCircle2 className="w-4 h-4 shrink-0" />}
@@ -2837,7 +2870,7 @@ export default function AdminDashboardClient({
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="adminAdjStock" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="adminAdjStock" className="text-xs font-black uppercase tracking-wider text-foreground">
                       Physical Stock Count
                     </Label>
                     <Input
@@ -2847,12 +2880,12 @@ export default function AdminDashboardClient({
                       value={adjStock}
                       onChange={(e) => setAdjStock(parseInt(e.target.value) || 0)}
                       required
-                      className="h-10 px-3 rounded-xl bg-[#f5f5f5] dark:bg-black text-sm font-mono"
+                      className="h-10 px-3 rounded-none bg-white dark:bg-black text-sm font-mono border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="adminAdjReorder" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="adminAdjReorder" className="text-xs font-black uppercase tracking-wider text-foreground">
                       Reorder Threshold
                     </Label>
                     <Input
@@ -2862,14 +2895,14 @@ export default function AdminDashboardClient({
                       value={adjReorder}
                       onChange={(e) => setAdjReorder(parseInt(e.target.value) || 0)}
                       required
-                      className="h-10 px-3 rounded-xl bg-[#f5f5f5] dark:bg-black text-sm font-mono"
+                      className="h-10 px-3 rounded-none bg-white dark:bg-black text-sm font-mono border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="adminAdjCost" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="adminAdjCost" className="text-xs font-black uppercase tracking-wider text-foreground">
                       Unit Cost Price (₱)
                     </Label>
                     <Input
@@ -2880,12 +2913,12 @@ export default function AdminDashboardClient({
                       value={adjCost}
                       onChange={(e) => setAdjCost(parseFloat(e.target.value) || 0)}
                       required
-                      className="h-10 px-3 rounded-xl bg-[#f5f5f5] dark:bg-black text-sm font-mono"
+                      className="h-10 px-3 rounded-none bg-white dark:bg-black text-sm font-mono border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="adminAdjPrice" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="adminAdjPrice" className="text-xs font-black uppercase tracking-wider text-foreground">
                       Selling Price (₱)
                     </Label>
                     <Input
@@ -2896,22 +2929,22 @@ export default function AdminDashboardClient({
                       value={adjPrice}
                       onChange={(e) => setAdjPrice(parseFloat(e.target.value) || 0)}
                       required
-                      className="h-10 px-3 rounded-xl bg-[#f5f5f5] dark:bg-black text-sm font-mono"
+                      className="h-10 px-3 rounded-none bg-white dark:bg-black text-sm font-mono border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
                 </div>
 
                 {/* Live Margin Calculation Preview */}
-                <div className="p-3 bg-[#f5f5f5] dark:bg-[#18181c] rounded-xl border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
+                <div className="p-3.5 bg-[#EDF4FC]/60 dark:bg-white/5 rounded-none border border-[#0B2A67]/20 dark:border-white/10 space-y-1.5">
                   <div className="flex justify-between text-xs">
-                    <span className="text-[#707072] dark:text-[#8a8a93]">Unit Profit Margin:</span>
-                    <span className="font-mono font-bold text-[#007d48] dark:text-[#10b981]">
+                    <span className="text-slate-600 dark:text-slate-300 font-medium">Unit Profit Margin:</span>
+                    <span className="font-mono font-black text-[#007d48] dark:text-emerald-400">
                       +₱{(adjPrice - adjCost).toFixed(2)} ({adjPrice > 0 ? Math.round(((adjPrice - adjCost) / adjPrice) * 100) : 0}%)
                     </span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-[#707072] dark:text-[#8a8a93]">Inventory Value At Cost:</span>
-                    <span className="font-mono font-bold text-foreground">
+                    <span className="text-slate-600 dark:text-slate-300 font-medium">Inventory Value At Cost:</span>
+                    <span className="font-mono font-black text-foreground">
                       ₱{(adjStock * adjCost).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
@@ -2923,14 +2956,14 @@ export default function AdminDashboardClient({
                   type="button"
                   variant="outline"
                   onClick={() => setSelectedProdForAdj(null)}
-                  className="flex-1 h-10 text-xs rounded-xl cursor-pointer"
+                  className="flex-1 h-10 text-xs rounded-none border border-slate-300 dark:border-white/20 font-bold uppercase tracking-wider cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={isSubmittingAdj}
-                  className="flex-1 h-10 text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] rounded-xl font-bold cursor-pointer"
+                  className="flex-1 h-10 text-xs bg-[#0B2A67] hover:bg-[#081F4D] dark:bg-[#FFD21C] dark:hover:bg-[#E5BC19] text-white dark:text-[#0B2A67] rounded-none font-black uppercase tracking-wider cursor-pointer shadow-xs"
                 >
                   {isSubmittingAdj ? 'Saving...' : 'Save Changes'}
                 </Button>
@@ -2943,7 +2976,7 @@ export default function AdminDashboardClient({
       {/* Admin Add Operating Expense Modal */}
       {isAddExpenseOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="relative w-full max-w-lg bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-foreground rounded-2xl p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-lg bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 text-foreground rounded-none p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-150">
             <button
               type="button"
               onClick={() => {
@@ -2951,32 +2984,32 @@ export default function AdminDashboardClient({
                 setExpError(null);
                 setExpSuccess(null);
               }}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[#707072] dark:text-[#8a8a93] hover:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#1c1c20] transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 rounded-none text-slate-500 hover:text-foreground hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
               aria-label="Close modal"
             >
               <X className="w-4 h-4" />
             </button>
             <form onSubmit={handleAddExpenseSubmit}>
               <div className="space-y-1 pb-2">
-                <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-950/40 text-[#d30005] flex items-center justify-center mb-2">
+                <div className="w-10 h-10 rounded-none bg-red-100 dark:bg-red-950/60 text-[#bf050b] border border-red-300 dark:border-red-800 flex items-center justify-center mb-2">
                   <Receipt className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-bold tracking-tight text-foreground">
+                <h3 className="text-lg font-black uppercase tracking-tight text-[#0B2A67] dark:text-[#FFD21C]">
                   Record Operating Expense
                 </h3>
-                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                   Log facility expenditures, maintenance, utilities, kitchen stock replenishment, or petty cash.
                 </p>
               </div>
 
               {expError && (
-                <div className="mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-[#d30005] font-semibold">
+                <div className="mt-3 p-3 rounded-none bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-900 text-xs text-[#bf050b] dark:text-red-400 font-bold uppercase tracking-wider">
                   {expError}
                 </div>
               )}
 
               {expSuccess && (
-                <div className="mt-3 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-xs text-[#007d48] font-semibold flex items-center gap-1.5">
+                <div className="mt-3 p-3 rounded-none bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-900 text-xs text-[#007d48] dark:text-emerald-400 font-bold flex items-center gap-1.5 uppercase tracking-wider">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>{expSuccess}</span>
                 </div>
@@ -2985,7 +3018,7 @@ export default function AdminDashboardClient({
               <div className="space-y-3.5 py-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="adminExpDate" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="adminExpDate" className="text-xs font-black uppercase tracking-wider text-foreground">
                       Expense Date
                     </Label>
                     <Input
@@ -2994,19 +3027,19 @@ export default function AdminDashboardClient({
                       value={newExpDate}
                       onChange={(e) => setNewExpDate(e.target.value)}
                       required
-                      className="h-10 px-3 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs"
+                      className="h-10 px-3 rounded-none bg-white dark:bg-black text-xs border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="adminExpCategory" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="adminExpCategory" className="text-xs font-black uppercase tracking-wider text-foreground">
                       Expense Category
                     </Label>
                     <select
                       id="adminExpCategory"
                       value={newExpCategory}
                       onChange={(e) => setNewExpCategory(e.target.value)}
-                      className="w-full h-10 px-3 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs border border-[#cacacb] dark:border-[#3f3f46] text-foreground outline-none"
+                      className="w-full h-10 px-3 rounded-none bg-white dark:bg-black text-xs border border-slate-300 dark:border-white/20 text-foreground outline-none font-bold"
                     >
                       <option value="supplies">Kitchen &amp; Bar Supplies</option>
                       <option value="maintenance">Court &amp; Facility Maintenance</option>
@@ -3019,7 +3052,7 @@ export default function AdminDashboardClient({
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="adminExpTitle" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Label htmlFor="adminExpTitle" className="text-xs font-black uppercase tracking-wider text-foreground">
                     Expense Description / Item
                   </Label>
                   <Input
@@ -3028,13 +3061,13 @@ export default function AdminDashboardClient({
                     value={newExpTitle}
                     onChange={(e) => setNewExpTitle(e.target.value)}
                     required
-                    className="h-10 px-4 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs"
+                    className="h-10 px-4 rounded-none bg-white dark:bg-black text-xs border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="adminExpAmount" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="adminExpAmount" className="text-xs font-black uppercase tracking-wider text-foreground">
                       Amount (₱)
                     </Label>
                     <Input
@@ -3046,19 +3079,19 @@ export default function AdminDashboardClient({
                       value={newExpAmount}
                       onChange={(e) => setNewExpAmount(e.target.value)}
                       required
-                      className="h-10 px-3 rounded-xl bg-[#f5f5f5] dark:bg-black text-sm font-mono font-bold"
+                      className="h-10 px-3 rounded-none bg-white dark:bg-black text-sm font-mono font-black border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <Label htmlFor="adminExpPayment" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    <Label htmlFor="adminExpPayment" className="text-xs font-black uppercase tracking-wider text-foreground">
                       Payment Disbursed Via
                     </Label>
                     <select
                       id="adminExpPayment"
                       value={newExpPaymentMethod}
                       onChange={(e) => setNewExpPaymentMethod(e.target.value)}
-                      className="w-full h-10 px-3 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs border border-[#cacacb] dark:border-[#3f3f46] text-foreground outline-none"
+                      className="w-full h-10 px-3 rounded-none bg-white dark:bg-black text-xs border border-slate-300 dark:border-white/20 text-foreground outline-none font-bold"
                     >
                       <option value="cash">Cash (Drawer / Petty Cash)</option>
                       <option value="gcash">GCash (Arena Business)</option>
@@ -3069,7 +3102,7 @@ export default function AdminDashboardClient({
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="adminExpReceipt" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Label htmlFor="adminExpReceipt" className="text-xs font-black uppercase tracking-wider text-foreground">
                     Official Receipt / Invoice # (Optional)
                   </Label>
                   <Input
@@ -3077,12 +3110,12 @@ export default function AdminDashboardClient({
                     placeholder="e.g. OR-884920 or Supplier Inv #"
                     value={newExpReceiptRef}
                     onChange={(e) => setNewExpReceiptRef(e.target.value)}
-                    className="h-10 px-4 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs font-mono"
+                    className="h-10 px-4 rounded-none bg-white dark:bg-black text-xs font-mono border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="adminExpNotes" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  <Label htmlFor="adminExpNotes" className="text-xs font-black uppercase tracking-wider text-foreground">
                     Remarks / Vendor Notes (Optional)
                   </Label>
                   <Input
@@ -3090,7 +3123,7 @@ export default function AdminDashboardClient({
                     placeholder="Additional context or supplier details"
                     value={newExpNotes}
                     onChange={(e) => setNewExpNotes(e.target.value)}
-                    className="h-10 px-4 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs"
+                    className="h-10 px-4 rounded-none bg-white dark:bg-black text-xs border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
                   />
                 </div>
               </div>
@@ -3100,14 +3133,14 @@ export default function AdminDashboardClient({
                   type="button"
                   variant="outline"
                   onClick={() => setIsAddExpenseOpen(false)}
-                  className="flex-1 h-10 text-xs rounded-xl cursor-pointer"
+                  className="flex-1 h-10 text-xs rounded-none border border-slate-300 dark:border-white/20 font-bold uppercase tracking-wider cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={isSubmittingExp}
-                  className="flex-1 h-10 text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] rounded-xl font-bold cursor-pointer"
+                  className="flex-1 h-10 text-xs bg-[#0B2A67] hover:bg-[#081F4D] dark:bg-[#FFD21C] dark:hover:bg-[#E5BC19] text-white dark:text-[#0B2A67] rounded-none font-black uppercase tracking-wider cursor-pointer shadow-xs"
                 >
                   {isSubmittingExp ? 'Recording...' : 'Record Expense'}
                 </Button>
