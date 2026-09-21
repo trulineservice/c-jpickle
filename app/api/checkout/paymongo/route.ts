@@ -97,11 +97,27 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // 2. Check for Overlapping Active/Locked Bookings
+    const adminSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    // 2. Clean up any expired pending holds and check for overlapping active bookings
     const nowUtc = new Date();
+    try {
+      await adminSupabase
+        .from('bookings')
+        .update({ status: 'expired', updated_at: nowUtc.toISOString() })
+        .eq('court_id', court.id)
+        .eq('status', 'pending_payment')
+        .lt('expires_at', nowUtc.toISOString());
+    } catch (cleanupErr) {
+      console.warn('[Checkout API] Warning during expired holds cleanup:', cleanupErr);
+    }
+
     let overlappingBookings: Array<{ id: string; status: string; expires_at: string | null }> | null = null;
     try {
-      const { data, error: overlapError } = await supabase
+      const { data, error: overlapError } = await adminSupabase
         .from('bookings')
         .select('id, status, expires_at')
         .eq('court_id', court.id)
@@ -162,14 +178,12 @@ export async function POST(request: NextRequest) {
     }
     const notesSummary = rentalNotes.length > 0 ? rentalNotes.join(' • ') : null;
 
-    const adminSupabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     const rawOrigin = request.nextUrl.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const originUrl = rawOrigin.replace(/0\.0\.0\.0/g, 'localhost');
     const formattedSlot = `${startHour % 12 === 0 ? 12 : startHour % 12}:00 ${startHour >= 12 ? 'PM' : 'AM'}`;
+
+    // 15-minute temporary reservation hold while player completes checkout on PayMongo
+    const holdExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     const bookingPayload: Record<string, any> = {
       court_id: court.id,
@@ -182,9 +196,9 @@ export async function POST(request: NextRequest) {
       duration_hours: duration,
       total_price: totalPrice,
       currency: 'PHP',
-      status: 'paid', // Immediately recorded as paid at the same time as reservation
+      status: 'pending_payment', // Temporary hold
       payment_method: 'paymongo',
-      expires_at: null, // Permanent paid reservation
+      expires_at: holdExpiresAt.toISOString(), // 15-minute hold window
       notes: notesSummary,
       paddle_count: clampedPaddleCount,
     };
@@ -286,7 +300,7 @@ export async function POST(request: NextRequest) {
       success: true,
       bookingId,
       checkoutUrl,
-      expiresAt: null,
+      expiresAt: holdExpiresAt.toISOString(),
     });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);

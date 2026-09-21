@@ -111,6 +111,7 @@ export default function BookEventsPage() {
   // Processing & Errors
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [existingBookings, setExistingBookings] = useState<any[]>([]);
 
   // Load Venues & User Auth
@@ -220,6 +221,30 @@ export default function BookEventsPage() {
 
   useEffect(() => {
     fetchVenueBookings();
+  }, [fetchVenueBookings]);
+
+  // Auto-cancel and release venue hold if redirected back with cancelled=true
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const isCancelled = params.get('cancelled') === 'true';
+    const cancelledBookingId = params.get('booking_id');
+
+    if (isCancelled) {
+      if (cancelledBookingId) {
+        fetch('/api/checkout/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: cancelledBookingId }),
+        })
+          .then(() => {
+            fetchVenueBookings();
+          })
+          .catch((err) => console.warn('[Cancel] Failed to release venue hold:', err));
+      }
+      setInfoMessage('Checkout was cancelled. Your temporary venue reservation hold has been released.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, [fetchVenueBookings]);
 
   // Pricing Calculations
@@ -375,6 +400,22 @@ export default function BookEventsPage() {
 
       {/* Main Reservation Workbench */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
+        {infoMessage && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>{infoMessage}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setInfoMessage(null)}
+              className="text-amber-700 hover:text-amber-900 text-xs font-bold underline cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {errorMessage && (
           <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-bold flex items-center gap-2 shadow-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />

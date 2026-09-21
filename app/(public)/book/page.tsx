@@ -86,6 +86,7 @@ export default function BookPage() {
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<'all' | 'morning' | 'afternoon' | 'night'>('all');
 
   useEffect(() => {
@@ -225,6 +226,31 @@ export default function BookPage() {
       })
       .catch((err) => console.warn('Failed to load month overview for court switch:', err));
   }, [selectedCourt?.id, visibleMonth]);
+
+  // Auto-cancel and release hold if redirected back from PayMongo with cancelled=true
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const isCancelled = params.get('cancelled') === 'true';
+    const cancelledBookingId = params.get('booking_id');
+
+    if (isCancelled) {
+      if (cancelledBookingId) {
+        fetch('/api/checkout/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: cancelledBookingId }),
+        })
+          .then((r) => r.json())
+          .then(() => {
+            fetchAvailability();
+          })
+          .catch((err) => console.warn('[Cancel] Failed to release hold:', err));
+      }
+      setInfoMessage('Checkout was cancelled. Your temporary reservation hold has been released and the time slot is immediately available.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [fetchAvailability]);
 
   const handleMonthChange = useCallback(
     async (newMonth: Date) => {
@@ -490,6 +516,22 @@ export default function BookPage() {
               </Button>
             </Link>
           </div>
+        </div>
+      )}
+
+      {/* Info / Cancellation Alert */}
+      {infoMessage && (
+        <div className="p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-xs mb-8 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-amber-600 shrink-0" />
+            <span className="font-semibold">{infoMessage}</span>
+          </div>
+          <button
+            onClick={() => setInfoMessage(null)}
+            className="text-amber-700 hover:text-amber-900 text-xs font-bold underline cursor-pointer"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
