@@ -948,8 +948,13 @@ export async function voidPosTransactionWithPin(payload: {
     return { success: false, error: 'Transaction has already been voided.' };
   }
 
-  // 2. Fetch line items to restore inventory stock
-  const { data: lineItems } = await supabase
+  // 2. Fetch line items to restore inventory stock using elevated client once PIN is verified
+  const adminSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const { data: lineItems } = await adminSupabase
     .from('pos_transaction_items')
     .select('product_id, quantity')
     .eq('transaction_id', transactionId);
@@ -957,7 +962,7 @@ export async function voidPosTransactionWithPin(payload: {
   if (lineItems && lineItems.length > 0) {
     for (const item of lineItems) {
       if (item.product_id) {
-        const { data: prod } = await supabase
+        const { data: prod } = await adminSupabase
           .from('pos_products')
           .select('id, stock_level')
           .eq('id', item.product_id)
@@ -965,7 +970,7 @@ export async function voidPosTransactionWithPin(payload: {
 
         if (prod) {
           const restoredStock = Number(prod.stock_level ?? 0) + Number(item.quantity ?? 0);
-          await supabase
+          await adminSupabase
             .from('pos_products')
             .update({ stock_level: restoredStock })
             .eq('id', prod.id);
@@ -976,7 +981,7 @@ export async function voidPosTransactionWithPin(payload: {
 
   // 3. Mark transaction as voided
   const voidReason = reason?.trim() || 'Cashier / Supervisor Void';
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await adminSupabase
     .from('pos_transactions')
     .update({
       status: 'voided',

@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import CashierClient from "./cashier-client";
 
+export const dynamic = 'force-dynamic';
+
 export default async function CashierDashboard() {
   const supabase = await createClient();
 
