@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useTransition } from 'react';
+import React, { useState, useMemo, useTransition, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,11 @@ import {
   ArrowLeftRight,
 } from 'lucide-react';
 import { addDailyExpense } from '@/app/actions';
-import type { DailyExpenseRecord, DailySalesInvoiceRecord } from './page';
+import type { DailyExpenseRecord, DailySalesInvoiceRecord, ExpensesFinancialSummary } from './page';
+import { PaginationBar } from '@/components/ui/pagination-bar';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { DateRangeFilter, type DateRange } from '@/components/ui/date-range-filter';
+import type { PaginationMeta } from '@/lib/pagination';
 
 export const EXPENSE_CATEGORIES = [
   { id: 'supplies', label: 'Kitchen & Bar Supplies', icon: Coffee, color: 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-800' },
@@ -53,28 +57,32 @@ export const EXPENSE_CATEGORIES = [
 
 export default function CashierExpensesClient({
   expenses: initialExpenses,
-  todayPosSales,
-  todayPosCashSales,
   todaySalesInvoices = [],
+  financialSummary,
+  meta,
+  activeTab: initialActiveTab,
+  dateRange: initialDateRange,
+  categoryFilter: initialCategoryFilter,
   manilaTodayStr,
   userRole,
 }: {
   expenses: DailyExpenseRecord[];
-  todayPosSales: number;
-  todayPosCashSales: number;
   todaySalesInvoices?: DailySalesInvoiceRecord[];
+  financialSummary: ExpensesFinancialSummary;
+  meta: PaginationMeta;
+  activeTab: 'invoices' | 'disbursals' | 'ledger';
+  dateRange: DateRange;
+  categoryFilter: string;
   manilaTodayStr?: string;
   userRole: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const [expenses, setExpenses] = useState<DailyExpenseRecord[]>(initialExpenses);
-  const [activeLedgerTab, setActiveLedgerTab] = useState<'invoices' | 'disbursals' | 'ledger'>('invoices');
-  const [dateFilter, setDateFilter] = useState<'today' | '7days' | 'all'>('today');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'box'>('table');
+  const [dateRange, setDateRange] = useState<DateRange>(initialDateRange);
 
   // Add Expense Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,48 +97,49 @@ export default function CashierExpensesClient({
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
   const todayStr = manilaTodayStr || new Date().toISOString().split('T')[0];
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  // Manual live refresh trigger
-  const handleRefresh = () => {
-    startTransition(() => {
-      router.refresh();
-    });
+  // URL navigation helper
+  const pushParams = useCallback(
+    (updates: Record<string, string | number>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([k, v]) => params.set(k, String(v)));
+      startTransition(() => router.push(`${pathname}?${params.toString()}`));
+    },
+    [router, pathname, searchParams]
+  );
+
+  const handleTabChange = (tab: 'invoices' | 'disbursals' | 'ledger') =>
+    pushParams({ tab, page: 1 });
+
+  const handleDateRangeChange = (range: DateRange) => {
+    setDateRange(range);
+    pushParams({ dateFrom: range.dateFrom, dateTo: range.dateTo, page: 1 });
   };
 
-  // Filtered Expenses
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter((e) => {
-      if (dateFilter === 'today' && e.expense_date !== todayStr) return false;
-      if (dateFilter === '7days' && e.expense_date < sevenDaysAgo) return false;
-      if (categoryFilter !== 'all' && e.category !== categoryFilter) return false;
+  const handleCategoryChange = (cat: string) =>
+    pushParams({ category: cat, page: 1 });
 
-      const q = searchQuery.toLowerCase().trim();
-      if (q) {
-        const match =
-          e.title.toLowerCase().includes(q) ||
-          (e.receipt_reference && e.receipt_reference.toLowerCase().includes(q)) ||
-          (e.notes && e.notes.toLowerCase().includes(q)) ||
-          (e.recorder_name && e.recorder_name.toLowerCase().includes(q));
-        if (!match) return false;
-      }
+  const handlePageChange = (page: number) => pushParams({ page });
+  const handleLimitChange = (limit: number) => pushParams({ limit, page: 1 });
 
-      return true;
-    });
-  }, [expenses, dateFilter, categoryFilter, searchQuery, todayStr, sevenDaysAgo]);
+  // Manual live refresh
+  const handleRefresh = () => startTransition(() => router.refresh());
 
-  // Filtered Sales Invoices
-  const filteredSalesInvoices = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return todaySalesInvoices;
-    return todaySalesInvoices.filter((inv) =>
-      inv.invoice_number.toLowerCase().includes(q) ||
-      inv.customer_name.toLowerCase().includes(q) ||
-      inv.payment_method.toLowerCase().includes(q)
-    );
-  }, [todaySalesInvoices, searchQuery]);
+  // Destructure summary (always from full date window)
+  const {
+    totalPosSales,
+    totalPosCashSales,
+    totalExpenses,
+    totalExpensesCash,
+    netMargin,
+    marginPercent,
+    netCashDrawer,
+  } = financialSummary;
 
-  // Combined Unified Ledger (Inflows & Outflows chronologically)
+  // Today's expenses for optimistic new entries
+  const todayExpenses = useMemo(() => expenses.filter((e) => e.expense_date === todayStr), [expenses, todayStr]);
+
+  // Unified ledger: combine server-provided invoices + current-page expenses
   const unifiedLedger = useMemo(() => {
     const inflows = todaySalesInvoices.map((inv) => ({
       id: `in-${inv.id}`,
@@ -143,45 +152,27 @@ export default function CashierExpensesClient({
       created_at: inv.created_at,
     }));
 
-    const outflows = expenses
-      .filter((e) => e.expense_date === todayStr)
-      .map((e) => ({
-        id: `out-${e.id}`,
-        type: 'outflow' as const,
-        source: 'Operational Disbursal',
-        reference: e.receipt_reference || 'Disbursal',
-        description: e.title,
-        payment_method: e.payment_method,
-        amount: -e.amount,
-        created_at: e.created_at,
-      }));
+    const outflows = expenses.map((e) => ({
+      id: `out-${e.id}`,
+      type: 'outflow' as const,
+      source: 'Operational Disbursal',
+      reference: e.receipt_reference || 'Disbursal',
+      description: e.title,
+      payment_method: e.payment_method,
+      amount: -e.amount,
+      created_at: e.created_at,
+    }));
 
     return [...inflows, ...outflows].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
-  }, [todaySalesInvoices, expenses, todayStr]);
+  }, [todaySalesInvoices, expenses]);
 
-  // Today's Expense Metrics
-  const todayExpenses = useMemo(
-    () => expenses.filter((e) => e.expense_date === todayStr),
-    [expenses, todayStr]
-  );
   const todayTotalExpenses = useMemo(
     () => todayExpenses.reduce((acc, e) => acc + e.amount, 0),
     [todayExpenses]
   );
-  const todayCashExpenses = useMemo(
-    () => todayExpenses
-      .filter((e) => e.payment_method === 'cash')
-      .reduce((acc, e) => acc + e.amount, 0),
-    [todayExpenses]
-  );
 
-  // Shift Margins
-  const todayNetMargin = todayPosSales - todayTotalExpenses;
-  const todayMarginPercent =
-    todayPosSales > 0 ? Math.round((todayNetMargin / todayPosSales) * 100) : 0;
-  const netCashDrawer = todayPosCashSales - todayCashExpenses;
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -342,6 +333,13 @@ export default function CashierExpensesClient({
         </div>
       </div>
 
+      {/* Date Range Audit Filter */}
+      <DateRangeFilter
+        value={dateRange}
+        onChange={handleDateRangeChange}
+        isLoading={isPending}
+      />
+
       {/* ========================================================================= */}
       {/* 4 REAL-TIME SHIFT MARGIN KPI CARDS (CRISP NON-ROUNDED GRID)               */}
       {/* ========================================================================= */}
@@ -349,7 +347,7 @@ export default function CashierExpensesClient({
         
         {/* 1. Today's POS Gross Sales */}
         <div
-          onClick={() => setActiveLedgerTab('invoices')}
+          onClick={() => handleTabChange('invoices')}
           className="rounded-none border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs hover:border-[#0B2A67] dark:hover:border-[#FFD21C] transition-all flex flex-col justify-between cursor-pointer group"
         >
           <div className="flex items-center justify-between">
@@ -363,14 +361,14 @@ export default function CashierExpensesClient({
 
           <div className="my-2">
             <div className="text-2xl font-black font-mono text-[#007d48] dark:text-emerald-400 tracking-tight">
-              ₱{todayPosSales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ₱{totalPosSales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
 
           <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span className="font-semibold">Cash Tender:</span>
             <span className="font-bold text-[#0B2A67] dark:text-white font-mono">
-              ₱{todayPosCashSales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ₱{totalPosCashSales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
 
@@ -382,7 +380,7 @@ export default function CashierExpensesClient({
 
         {/* 2. Today's Operational Expenses */}
         <div
-          onClick={() => setActiveLedgerTab('disbursals')}
+          onClick={() => handleTabChange('disbursals')}
           className="rounded-none border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs hover:border-red-400 transition-all flex flex-col justify-between cursor-pointer group"
         >
           <div className="flex items-center justify-between">
@@ -396,26 +394,26 @@ export default function CashierExpensesClient({
 
           <div className="my-2">
             <div className="text-2xl font-black font-mono text-[#bf050b] tracking-tight">
-              -₱{todayTotalExpenses.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              -₱{totalExpenses.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
 
           <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Cash Disbursals:</span>
             <span className="font-bold text-[#bf050b] font-mono">
-              -₱{todayCashExpenses.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              -₱{totalExpensesCash.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
 
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-bold">
-            <span>{todayExpenses.length} Records Logged</span>
+            <span>{expenses.length} Records Logged</span>
             <span className="text-[#bf050b] group-hover:underline">View Disbursals &rarr;</span>
           </div>
         </div>
 
         {/* 3. Net Shift Cash Margin */}
         <div className={`rounded-none border p-4 shadow-xs flex flex-col justify-between ${
-          todayNetMargin >= 0
+          netMargin >= 0
             ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20'
             : 'border-red-300 dark:border-red-800 bg-red-50/30 dark:bg-red-950/20'
         }`}>
@@ -424,7 +422,7 @@ export default function CashierExpensesClient({
               Net Shift Margin (Profit)
             </span>
             <div className={`w-7 h-7 rounded-none flex items-center justify-center border ${
-              todayNetMargin >= 0
+              netMargin >= 0
                 ? 'bg-[#007d48] text-white border-[#005e36]'
                 : 'bg-[#bf050b] text-white border-red-700'
             }`}>
@@ -434,20 +432,20 @@ export default function CashierExpensesClient({
 
           <div className="my-2">
             <div className={`text-2xl font-black font-mono tracking-tight ${
-              todayNetMargin >= 0 ? 'text-[#007d48] dark:text-emerald-400' : 'text-[#bf050b]'
+              netMargin >= 0 ? 'text-[#007d48] dark:text-emerald-400' : 'text-[#bf050b]'
             }`}>
-              ₱{todayNetMargin.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ₱{netMargin.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
 
           <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex items-center justify-between text-xs">
             <span className="text-slate-600 dark:text-slate-400 font-semibold">Margin Ratio:</span>
             <span className={`font-black px-2 py-0.5 rounded-none text-[11px] ${
-              todayNetMargin >= 0
+              netMargin >= 0
                 ? 'bg-[#FFD21C] text-[#0B2A67]'
                 : 'bg-[#bf050b] text-white'
             }`}>
-              {todayMarginPercent}% of gross
+              {marginPercent}% of gross
             </span>
           </div>
 
@@ -496,35 +494,35 @@ export default function CashierExpensesClient({
         <div className="flex items-center border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-black/40">
           <button
             type="button"
-            onClick={() => setActiveLedgerTab('invoices')}
+            onClick={() => handleTabChange('invoices')}
             className={`px-4 py-2 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
-              activeLedgerTab === 'invoices'
+              initialActiveTab === 'invoices'
                 ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
             }`}
           >
             <Receipt className="w-3.5 h-3.5" />
-            <span>Sales Invoices ({todaySalesInvoices.length})</span>
+            <span>Sales Invoices ({meta.totalCount})</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveLedgerTab('disbursals')}
+            onClick={() => handleTabChange('disbursals')}
             className={`px-4 py-2 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
-              activeLedgerTab === 'disbursals'
+              initialActiveTab === 'disbursals'
                 ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
             }`}
           >
             <TrendingDown className="w-3.5 h-3.5" />
-            <span>Disbursals ({filteredExpenses.length})</span>
+            <span>Disbursals ({initialActiveTab === 'disbursals' ? meta.totalCount : expenses.length})</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveLedgerTab('ledger')}
+            onClick={() => handleTabChange('ledger')}
             className={`px-4 py-2 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
-              activeLedgerTab === 'ledger'
+              initialActiveTab === 'ledger'
                 ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-xs'
                 : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
             }`}
@@ -534,31 +532,14 @@ export default function CashierExpensesClient({
           </button>
         </div>
 
-        {/* Search Input */}
-        <div className="relative flex-1 max-w-xs">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search invoice #, customer, title..."
-            className="pl-9 h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15 text-foreground placeholder:text-slate-400 font-medium"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-foreground text-xs cursor-pointer"
-            >
-              ✕
-            </button>
-          )}
-        </div>
+        {/* Search Input — removed (server-side search via URL) */}
 
         {/* Disbursals Specific Category Filter */}
-        {activeLedgerTab === 'disbursals' && (
+        {initialActiveTab === 'disbursals' && (
           <div className="flex items-center gap-2">
             <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              value={initialCategoryFilter}
+              onChange={(e) => handleCategoryChange(e.target.value)}
               className="h-9 px-3 rounded-none text-xs font-bold bg-[#EDF4FC] dark:bg-[#0c1a3b] border border-[#0B2A67]/20 dark:border-white/15 text-[#0B2A67] dark:text-white outline-none cursor-pointer"
             >
               <option value="all">All Categories</option>
@@ -568,29 +549,6 @@ export default function CashierExpensesClient({
                 </option>
               ))}
             </select>
-
-            <div className="flex items-center border border-slate-300 dark:border-white/15">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={`p-2 text-xs font-bold transition-colors cursor-pointer ${
-                  viewMode === 'table' ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]' : 'text-slate-600 dark:text-slate-300'
-                }`}
-                title="Table View"
-              >
-                <TableIcon className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('box')}
-                className={`p-2 text-xs font-bold transition-colors cursor-pointer ${
-                  viewMode === 'box' ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]' : 'text-slate-600 dark:text-slate-300'
-                }`}
-                title="Box Cards View"
-              >
-                <LayoutGrid className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         )}
       </div>
@@ -598,13 +556,14 @@ export default function CashierExpensesClient({
       {/* ========================================================================= */}
       {/* TAB 1: CASHIER SALES INVOICES (REVENUE INFLOW GRID)                       */}
       {/* ========================================================================= */}
-      {activeLedgerTab === 'invoices' && (
-        <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] overflow-x-auto shadow-xs">
+      {initialActiveTab === 'invoices' && (
+        <>
+          <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] overflow-x-auto shadow-xs">
           <div className="p-3.5 bg-slate-50 dark:bg-black/30 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
             <div>
               <h3 className="font-black text-xs uppercase tracking-wider text-[#0B2A67] dark:text-white flex items-center gap-1.5">
                 <Receipt className="w-4 h-4 text-[#007d48]" />
-                <span>Today&apos;s Cashier Sales Invoices (Gross Revenue: ₱{todayPosSales.toFixed(2)})</span>
+                <span>Cashier Sales Invoices (Gross Revenue: ₱{totalPosSales.toFixed(2)})</span>
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 All retail POS counter invoices and court walk-in bookings recorded in this shift.
@@ -631,14 +590,14 @@ export default function CashierExpensesClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSalesInvoices.length === 0 ? (
+              {todaySalesInvoices.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs font-medium">
-                    No sales invoices recorded for today yet. Use the POS Terminal to ring up sales.
+                    No sales invoices recorded for the selected date range yet.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredSalesInvoices.map((inv) => (
+                todaySalesInvoices.map((inv) => (
                   <TableRow
                     key={inv.id}
                     className="border-b border-slate-100 dark:border-white/10 hover:bg-[#EDF4FC]/40 dark:hover:bg-white/5 transition-colors"
@@ -693,15 +652,22 @@ export default function CashierExpensesClient({
             </TableBody>
           </Table>
         </div>
-      )}
+        <PaginationBar
+          meta={meta}
+          onPageChange={handlePageChange}
+          onLimitChange={handleLimitChange}
+          label="invoices"
+          isLoading={isPending}
+        />
+      </>
+    )}
 
       {/* ========================================================================= */}
       {/* TAB 2: OPERATIONAL EXPENSES & DISBURSALS                                   */}
       {/* ========================================================================= */}
-      {activeLedgerTab === 'disbursals' && (
+      {initialActiveTab === 'disbursals' && (
         <>
-          {viewMode === 'table' ? (
-            <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] overflow-x-auto shadow-xs">
+          <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] overflow-x-auto shadow-xs">
               <Table>
                 <TableHeader className="bg-[#0B2A67] text-white">
                   <TableRow className="border-none hover:bg-transparent">
@@ -715,14 +681,14 @@ export default function CashierExpensesClient({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredExpenses.length === 0 ? (
+                  {expenses.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs font-medium">
                         No operational disbursals logged for this date range.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredExpenses.map((exp) => {
+                    expenses.map((exp) => {
                       const catMeta = getCategoryMeta(exp.category);
                       const CatIcon = catMeta.icon;
                       const isToday = exp.expense_date === todayStr;
@@ -781,61 +747,20 @@ export default function CashierExpensesClient({
                 </TableBody>
               </Table>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
-              {filteredExpenses.map((exp) => {
-                const catMeta = getCategoryMeta(exp.category);
-                const CatIcon = catMeta.icon;
-                const isToday = exp.expense_date === todayStr;
-
-                return (
-                  <div
-                    key={exp.id}
-                    className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs hover:border-[#0B2A67] transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/10">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase border ${catMeta.color}`}>
-                          <CatIcon className="w-3 h-3" />
-                          <span>{catMeta.label}</span>
-                        </span>
-                        <span className="text-xs font-mono font-bold text-slate-500">
-                          {exp.expense_date} {isToday && '(Today)'}
-                        </span>
-                      </div>
-
-                      <div className="py-2.5">
-                        <h4 className="font-black text-sm text-[#0B2A67] dark:text-white leading-snug">
-                          {exp.title}
-                        </h4>
-                        {exp.notes && (
-                          <p className="text-xs text-slate-500 mt-1 italic">
-                            {exp.notes}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
-                      <span className="text-xs text-slate-500 capitalize">
-                        Source: {exp.payment_method === 'cash' ? 'Cash Drawer' : exp.payment_method}
-                      </span>
-                      <span className="font-black font-mono text-base text-[#bf050b]">
-                        -₱{exp.amount.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <PaginationBar
+            meta={meta}
+            onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
+            label="disbursals"
+            isLoading={isPending}
+          />
         </>
       )}
 
       {/* ========================================================================= */}
       {/* TAB 3: UNIFIED SHIFT CASH LEDGER (INFLOWS & OUTFLOWS CHRONOLOGICALLY)      */}
       {/* ========================================================================= */}
-      {activeLedgerTab === 'ledger' && (
+      {initialActiveTab === 'ledger' && (
         <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] overflow-x-auto shadow-xs">
           <div className="p-3.5 bg-slate-50 dark:bg-black/30 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
             <div>
@@ -849,8 +774,8 @@ export default function CashierExpensesClient({
             </div>
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-slate-500">Net Shift Margin: </span>
-              <span className={`font-mono font-black text-xs sm:text-sm ${todayNetMargin >= 0 ? 'text-[#007d48]' : 'text-[#bf050b]'}`}>
-                {todayNetMargin >= 0 ? '+' : ''}₱{todayNetMargin.toFixed(2)}
+              <span className={`font-mono font-black text-xs sm:text-sm ${netMargin >= 0 ? 'text-[#007d48]' : 'text-[#bf050b]'}`}>
+                {netMargin >= 0 ? '+' : ''}₱{netMargin.toFixed(2)}
               </span>
             </div>
           </div>

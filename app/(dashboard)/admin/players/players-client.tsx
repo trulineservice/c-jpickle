@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useCallback, useTransition, useRef, useEffect } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,16 +9,9 @@ import { Label } from '@/components/ui/label';
 import {
   Users,
   Search,
-  Calendar,
-  Clock,
-  DollarSign,
   Trophy,
   History,
   X,
-  CreditCard,
-  Banknote,
-  QrCode,
-  ShieldCheck,
   CheckCircle2,
   AlertCircle,
   Plus,
@@ -29,11 +21,11 @@ import {
   Archive,
   UserCheck,
   UserX,
-  Phone,
-  Mail,
   Award,
   FileText,
   AlertTriangle,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import {
   adminCreatePlayerAction,
@@ -42,6 +34,10 @@ import {
   adminRestorePlayerAction,
   type AdminPlayerInput,
 } from '@/app/actions';
+import { PaginationBar } from '@/components/ui/pagination-bar';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import type { PaginationMeta } from '@/lib/pagination';
+import type { PlayerGlobalStats } from './page';
 
 export interface PlayerMatchRecord {
   id: string;
@@ -88,13 +84,33 @@ const SKILL_LEVEL_OPTIONS = [
   { value: '5.0+', label: '5.0+ - Pro / Master Tier (Elite Competitive)' },
 ];
 
-export default function PlayersClient({ players: initialPlayers }: { players: PlayerSummary[] }) {
+export default function PlayersClient({
+  players,
+  meta,
+  globalStats,
+  activeTab,
+  currentSearch,
+  currentSort,
+}: {
+  players: PlayerSummary[];
+  meta: PaginationMeta;
+  globalStats: PlayerGlobalStats;
+  activeTab: 'active' | 'archived' | 'all';
+  currentSearch: string;
+  currentSort: string;
+}) {
   const router = useRouter();
-  const [players, setPlayers] = useState<PlayerSummary[]>(initialPlayers);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active');
-  const [roleFilter, setRoleFilter] = useState<'all' | 'registered' | 'guest'>('all');
-  const [sortBy, setSortBy] = useState<'matches_desc' | 'hours_desc' | 'spend_desc' | 'recent' | 'name_asc'>('matches_desc');
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
+  // Local optimistic state for CRUD operations
+  const [localPlayers, setLocalPlayers] = useState<PlayerSummary[]>(players);
+  // Sync when server refreshes props
+  useEffect(() => { setLocalPlayers(players); }, [players]);
+
+  const [searchInput, setSearchInput] = useState(currentSearch);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Modal states
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerSummary | null>(null);
@@ -123,52 +139,43 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
     setTimeout(() => setFeedbackMsg(null), 5000);
   };
 
-  // Facility Player Metrics
-  const activePlayersCount = useMemo(() => players.filter((p) => !p.isDeleted).length, [players]);
-  const archivedPlayersCount = useMemo(() => players.filter((p) => p.isDeleted).length, [players]);
-  const registeredCount = useMemo(() => players.filter((p) => p.isRegistered && !p.isDeleted).length, [players]);
-  const totalMatchesPlayed = useMemo(() => players.filter((p) => !p.isDeleted).reduce((sum, p) => sum + p.totalPlayed, 0), [players]);
-  const totalHoursPlayed = useMemo(() => players.filter((p) => !p.isDeleted).reduce((sum, p) => sum + p.totalHours, 0), [players]);
+  // URL navigation helper
+  const pushParams = useCallback(
+    (updates: Record<string, string | number>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([k, v]) => params.set(k, String(v)));
+      startTransition(() => router.push(`${pathname}?${params.toString()}`));
+    },
+    [router, pathname, searchParams]
+  );
 
-  // Filter and Sort Players
-  const filteredPlayers = useMemo(() => {
-    return players
-      .filter((p) => {
-        // Status filter (Active vs Soft-Deleted)
-        if (statusFilter === 'active' && p.isDeleted) return false;
-        if (statusFilter === 'archived' && !p.isDeleted) return false;
+  // Tab change → reset to page 1
+  const handleTabChange = (tab: 'active' | 'archived' | 'all') => {
+    pushParams({ tab, page: 1, search: '' });
+    setSearchInput('');
+  };
 
-        // Role filter
-        if (roleFilter === 'registered' && !p.isRegistered) return false;
-        if (roleFilter === 'guest' && p.isRegistered) return false;
+  // Debounced search → page 1
+  const handleSearchChange = (val: string) => {
+    setSearchInput(val);
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      pushParams({ search: val, page: 1 });
+    }, 400);
+  };
 
-        // Search query
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase().trim();
-          const matches =
-            p.fullName.toLowerCase().includes(q) ||
-            p.email.toLowerCase().includes(q) ||
-            p.phone.includes(q) ||
-            (p.skillLevel && p.skillLevel.toLowerCase().includes(q)) ||
-            (p.notes && p.notes.toLowerCase().includes(q));
-          if (!matches) return false;
-        }
+  // Sort change → page 1
+  const handleSortChange = (sort: string) => pushParams({ sort, page: 1 });
 
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'matches_desc') return b.totalPlayed - a.totalPlayed;
-        if (sortBy === 'hours_desc') return b.totalHours - a.totalHours;
-        if (sortBy === 'spend_desc') return b.totalSpend - a.totalSpend;
-        if (sortBy === 'recent') {
-          const aTime = a.lastPlayed ? new Date(a.lastPlayed).getTime() : 0;
-          const bTime = b.lastPlayed ? new Date(b.lastPlayed).getTime() : 0;
-          return bTime - aTime;
-        }
-        if (sortBy === 'name_asc') return a.fullName.localeCompare(b.fullName);
-        return 0;
-      });
-  }, [players, searchQuery, statusFilter, roleFilter, sortBy]);
+  // Pagination
+  const handlePageChange = (page: number) => pushParams({ page });
+  const handleLimitChange = (limit: number) => pushParams({ limit, page: 1 });
+
+  // Global stats from full DB (never affected by current page/filter)
+  const { totalActive, totalArchived, totalAll, totalMatchesPlayed, totalHoursPlayed } = globalStats;
+
+  // Display list — use local optimistic state
+  const displayPlayers = localPlayers;
 
   // Handle Create Player
   const handleOpenCreate = () => {
@@ -225,7 +232,7 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
       lastPlayed: null,
       bookings: [],
     };
-    setPlayers((prev) => [newPlayer, ...prev]);
+    setLocalPlayers((prev) => [newPlayer, ...prev]);
     router.refresh();
   };
 
@@ -259,8 +266,8 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
     showFeedback('success', `Player profile for "${formData.fullName}" updated.`);
     setEditingPlayer(null);
 
-    // Update state
-    setPlayers((prev) =>
+    // Optimistic update
+    setLocalPlayers((prev) =>
       prev.map((p) =>
         p.id === editingPlayer.id
           ? {
@@ -306,7 +313,7 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
     setDeletingPlayer(null);
 
     // Optimistic update
-    setPlayers((prev) =>
+    setLocalPlayers((prev) =>
       prev.map((p) =>
         p.id === deletingPlayer.id
           ? { ...p, isDeleted: true, deletedAt: new Date().toISOString(), deletedReason: finalReason }
@@ -333,7 +340,7 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
     showFeedback('success', `Player "${player.fullName}" has been restored to active status.`);
 
     // Optimistic update
-    setPlayers((prev) =>
+    setLocalPlayers((prev) =>
       prev.map((p) =>
         p.id === player.id
           ? { ...p, isDeleted: false, deletedAt: null, deletedReason: null }
@@ -429,7 +436,7 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
         </div>
       </div>
 
-      {/* Facility KPI Metrics Grid (Crisp Non-Rounded Box Grid) */}
+      {/* Facility KPI Metrics Grid — always reflects full DB, never paginated slice */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs">
           <div className="flex items-center justify-between">
@@ -439,11 +446,9 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-[#007d48] dark:text-emerald-400 my-1">
-            {activePlayersCount}
+            {totalActive.toLocaleString()}
           </div>
-          <p className="text-[11px] text-slate-500">
-            {registeredCount} Registered &bull; {activePlayersCount - registeredCount} Walk-in Guests
-          </p>
+          <p className="text-[11px] text-slate-500">Entire database — all active members</p>
         </div>
 
         <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs">
@@ -454,11 +459,9 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-[#bf050b] dark:text-rose-400 my-1">
-            {archivedPlayersCount}
+            {totalArchived.toLocaleString()}
           </div>
-          <p className="text-[11px] text-slate-500">
-            Audit-preserved &bull; Restore anytime
-          </p>
+          <p className="text-[11px] text-slate-500">Audit-preserved &bull; Restore anytime</p>
         </div>
 
         <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs">
@@ -469,10 +472,10 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-[#0B2A67] dark:text-white my-1">
-            {totalMatchesPlayed}
+            {totalMatchesPlayed.toLocaleString()}
           </div>
           <p className="text-[11px] text-slate-500">
-            {totalHoursPlayed} Cumulative Court Hours
+            {totalHoursPlayed.toLocaleString()} Cumulative Court Hours
           </p>
         </div>
 
@@ -484,70 +487,68 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
             </div>
           </div>
           <div className="text-2xl font-black font-mono text-foreground my-1">
-            {players.length}
+            {totalAll.toLocaleString()}
           </div>
-          <p className="text-[11px] text-slate-500">
-            Complete Player Historical Roster
-          </p>
+          <p className="text-[11px] text-slate-500">Complete Player Historical Roster</p>
         </div>
       </div>
 
       {/* Filter and Search Controls (Tabular Grid Controls) */}
       <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
         
-        {/* Status Tab Switcher (Active vs Archived) */}
+        {/* Status Tab Switcher (URL-driven) */}
         <div className="flex items-center border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-black/40">
           <button
             type="button"
-            onClick={() => setStatusFilter('active')}
+            onClick={() => handleTabChange('active')}
             className={`px-3.5 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
-              statusFilter === 'active'
+              activeTab === 'active'
                 ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]'
                 : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67]'
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Active Players ({activePlayersCount})</span>
+            <span>Active Players ({totalActive.toLocaleString()})</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setStatusFilter('archived')}
+            onClick={() => handleTabChange('archived')}
             className={`px-3.5 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
-              statusFilter === 'archived'
+              activeTab === 'archived'
                 ? 'bg-[#bf050b] text-white dark:bg-red-700 dark:text-white'
                 : 'text-slate-600 dark:text-slate-300 hover:text-[#bf050b]'
             }`}
           >
             <UserX className="w-3.5 h-3.5" />
-            <span>Archived ({archivedPlayersCount})</span>
+            <span>Archived ({totalArchived.toLocaleString()})</span>
           </button>
 
           <button
             type="button"
-            onClick={() => setStatusFilter('all')}
+            onClick={() => handleTabChange('all')}
             className={`px-3.5 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
-              statusFilter === 'all'
+              activeTab === 'all'
                 ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]'
                 : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67]'
             }`}
           >
-            <span>All ({players.length})</span>
+            <span>All ({totalAll.toLocaleString()})</span>
           </button>
         </div>
 
-        {/* Search */}
+        {/* Search (debounced → URL) */}
         <div className="relative flex-1 max-w-sm">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search name, email, phone, skill..."
             className="pl-9 h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
           />
-          {searchQuery && (
+          {searchInput && (
             <button
-              onClick={() => setSearchQuery('')}
+              onClick={() => handleSearchChange('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-foreground text-xs"
             >
               ✕
@@ -555,21 +556,11 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
           )}
         </div>
 
-        {/* Sort Controls */}
+        {/* Sort Controls (URL-driven) */}
         <div className="flex items-center gap-2">
           <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as any)}
-            className="h-9 px-3 text-xs font-bold rounded-none bg-[#EDF4FC] dark:bg-[#0c1a3b] border border-[#0B2A67]/20 dark:border-white/15 text-[#0B2A67] dark:text-white outline-none cursor-pointer"
-          >
-            <option value="all">All Types</option>
-            <option value="registered">Registered Members</option>
-            <option value="guest">Walk-in Guests</option>
-          </select>
-
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            value={currentSort || 'matches_desc'}
+            onChange={(e) => handleSortChange(e.target.value)}
             className="h-9 px-3 text-xs font-bold rounded-none bg-[#EDF4FC] dark:bg-[#0c1a3b] border border-[#0B2A67]/20 dark:border-white/15 text-[#0B2A67] dark:text-white outline-none cursor-pointer"
           >
             <option value="matches_desc">Sort: Most Played</option>
@@ -597,14 +588,16 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredPlayers.length === 0 ? (
+            {isPending ? (
+              <TableSkeleton rows={Math.min(meta.limit, 8)} columns={8} />
+            ) : displayPlayers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-16 text-slate-400 text-xs font-medium">
                   No players found matching your filter criteria.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredPlayers.map((player) => (
+              displayPlayers.map((player) => (
                 <TableRow
                   key={player.id}
                   className={`border-b border-slate-100 dark:border-white/10 hover:bg-[#EDF4FC]/40 dark:hover:bg-white/5 transition-colors cursor-pointer ${
@@ -755,6 +748,17 @@ export default function PlayersClient({ players: initialPlayers }: { players: Pl
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination Bar */}
+        <div className="px-4 pb-4">
+          <PaginationBar
+            meta={meta}
+            onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
+            label={activeTab === 'archived' ? 'archived players' : activeTab === 'all' ? 'players' : 'active players'}
+            isLoading={isPending}
+          />
+        </div>
       </div>
 
       {/* ========================================================================= */}

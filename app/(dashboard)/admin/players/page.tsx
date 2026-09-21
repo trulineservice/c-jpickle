@@ -1,17 +1,35 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import PlayersClient, { type PlayerSummary, type PlayerMatchRecord } from './players-client';
+import PlayersClient, { type PlayerSummary } from './players-client';
+import {
+  parsePaginationParams,
+  buildRangeFromPage,
+  buildPaginationMeta,
+  type PaginationMeta,
+} from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminPlayersPage() {
-  const supabase = await createClient();
+export interface PlayerGlobalStats {
+  totalActive: number;
+  totalArchived: number;
+  totalAll: number;
+  totalMatchesPlayed: number;
+  totalHoursPlayed: number;
+}
 
-  // 1. Authenticate user and verify Owner or Admin access
+export default async function AdminPlayersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const supabase = await createClient();
+  const sp = await searchParams;
+
+  // 1. Auth guard
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) redirect('/login');
 
   const { data: profile } = await supabase
@@ -24,60 +42,136 @@ export default async function AdminPlayersPage() {
     redirect('/dashboard');
   }
 
-  // 2. Fetch all Profiles (including email synced from auth)
-  const { data: profilesData } = await supabase
-    .from('profiles')
-    .select('id, full_name, email, phone, role, created_at, is_deleted, deleted_at, deleted_reason, skill_level, emergency_contact, notes')
-    .order('created_at', { ascending: false });
+  // 2. Parse URL params
+  const { page, limit, search, sort, tab } = parsePaginationParams(sp, {
+    tab: 'active',
+    sort: 'matches_desc',
+    limit: 25,
+  });
 
-  // 3. Fetch all Bookings with Court Information
-  const { data: bookingsData } = await supabase
-    .from('bookings')
+  const activeTab = (tab === 'archived' || tab === 'all') ? tab : 'active';
+
+  // 3. Build Supabase filters
+  const { from, to } = buildRangeFromPage(page, limit);
+
+  // Base query — profile + joined player_stats view
+  type ProfileRow = {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    role: string;
+    created_at: string;
+    is_deleted: boolean;
+    deleted_at: string | null;
+    deleted_reason: string | null;
+    skill_level: string | null;
+    emergency_contact: string | null;
+    notes: string | null;
+    player_stats: {
+      total_played: number;
+      total_hours: number;
+      total_spend: number;
+      last_played: string | null;
+    } | null;
+  };
+
+  let countQuery = supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true });
+
+  let dataQuery = supabase
+    .from('profiles')
     .select(`
       id,
-      court_id,
-      user_id,
-      guest_name,
-      guest_email,
-      guest_phone,
-      start_time,
-      end_time,
-      duration_hours,
-      total_price,
-      status,
-      payment_method,
-      notes,
+      full_name,
+      email,
+      phone,
+      role,
       created_at,
-      courts ( name )
-    `)
-    .order('start_time', { ascending: false });
+      is_deleted,
+      deleted_at,
+      deleted_reason,
+      skill_level,
+      emergency_contact,
+      notes,
+      player_stats ( total_played, total_hours, total_spend, last_played )
+    `);
 
-  // 4. Aggregate player profiles and histories
-  const playersMap = new Map<string, {
-    id: string;
-    fullName: string;
-    email: string;
-    phone: string;
-    role: string;
-    isRegistered: boolean;
-    memberSince: string;
-    isDeleted: boolean;
-    deletedAt: string | null;
-    deletedReason: string | null;
-    skillLevel: string;
-    emergencyContact: string | null;
-    notes: string | null;
-    courtCounts: Map<string, number>;
-    bookings: PlayerMatchRecord[];
-  }>();
+  // Tab filter (is_deleted)
+  if (activeTab === 'active') {
+    countQuery = countQuery.eq('is_deleted', false);
+    dataQuery = dataQuery.eq('is_deleted', false);
+  } else if (activeTab === 'archived') {
+    countQuery = countQuery.eq('is_deleted', true);
+    dataQuery = dataQuery.eq('is_deleted', true);
+  }
 
-  // Initialize registered profiles
-  (profilesData || []).forEach((p: any) => {
-    playersMap.set(p.id, {
+  // Search filter
+  if (search.trim()) {
+    const searchLike = `%${search.trim()}%`;
+    countQuery = countQuery.or(
+      `full_name.ilike.${searchLike},email.ilike.${searchLike},phone.ilike.${searchLike}`
+    );
+    dataQuery = dataQuery.or(
+      `full_name.ilike.${searchLike},email.ilike.${searchLike},phone.ilike.${searchLike}`
+    );
+  }
+
+  // Sort
+  const sortMap: Record<string, { column: string; ascending: boolean }> = {
+    name_asc: { column: 'full_name', ascending: true },
+    recent: { column: 'created_at', ascending: false },
+    matches_desc: { column: 'created_at', ascending: false }, // fallback; stats sort below
+    hours_desc: { column: 'created_at', ascending: false },
+    spend_desc: { column: 'created_at', ascending: false },
+  };
+  const sortOpt = sortMap[sort] ?? { column: 'created_at', ascending: false };
+  dataQuery = dataQuery.order(sortOpt.column, { ascending: sortOpt.ascending });
+
+  // Apply pagination range
+  dataQuery = dataQuery.range(from, to);
+
+  // 4. Global stats (always full-DB, no filters except non-deleted for totals)
+  const [
+    { count: totalActive },
+    { count: totalArchived },
+    { count: totalAll },
+    { count: totalCount },
+    { data: rawPlayers },
+    { data: globalStatsRows },
+  ] = await Promise.all([
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_deleted', true),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    countQuery,
+    dataQuery,
+    supabase.from('player_stats').select('total_played, total_hours'),
+  ]);
+
+  const globalStats: PlayerGlobalStats = {
+    totalActive: totalActive ?? 0,
+    totalArchived: totalArchived ?? 0,
+    totalAll: totalAll ?? 0,
+    totalMatchesPlayed: (globalStatsRows ?? []).reduce(
+      (sum: number, r: { total_played: number }) => sum + Number(r.total_played || 0),
+      0
+    ),
+    totalHoursPlayed: (globalStatsRows ?? []).reduce(
+      (sum: number, r: { total_hours: number }) => sum + Number(r.total_hours || 0),
+      0
+    ),
+  };
+
+  // 5. Map raw rows to PlayerSummary
+  const playerSummaries: PlayerSummary[] = (rawPlayers ?? []).map((p) => {
+    const statsArr = p.player_stats as Array<{ total_played: number; total_hours: number; total_spend: number; last_played: string | null }> | null;
+    const stats = Array.isArray(statsArr) ? statsArr[0] : (statsArr as { total_played: number; total_hours: number; total_spend: number; last_played: string | null } | null);
+    return {
       id: p.id,
       fullName: p.full_name || 'Member Player',
-      email: p.email || '',
-      phone: p.phone || '',
+      email: p.email || '—',
+      phone: p.phone || '—',
       role: p.role || 'client',
       isRegistered: true,
       memberSince: p.created_at,
@@ -87,131 +181,26 @@ export default async function AdminPlayersPage() {
       skillLevel: p.skill_level || '3.0',
       emergencyContact: p.emergency_contact || null,
       notes: p.notes || null,
-      courtCounts: new Map<string, number>(),
+      totalPlayed: Number(stats?.total_played ?? 0),
+      totalHours: Number(stats?.total_hours ?? 0),
+      totalSpend: Number(stats?.total_spend ?? 0),
+      favoriteCourt: 'Court',
+      lastPlayed: stats?.last_played || null,
       bookings: [],
-    });
-  });
-
-  // Assign bookings to players (match by user_id or by guest_email)
-  (bookingsData || []).forEach((b) => {
-    const courtData = b.courts as unknown as { name: string } | { name: string }[] | null;
-    const courtName = Array.isArray(courtData) ? courtData[0]?.name : courtData?.name || 'Indoor Court';
-    
-    const matchRecord: PlayerMatchRecord = {
-      id: b.id,
-      courtName,
-      startTime: b.start_time,
-      endTime: b.end_time,
-      durationHours: Number(b.duration_hours) || 1,
-      totalPrice: Number(b.total_price) || 0,
-      status: b.status,
-      paymentMethod: b.payment_method || 'paymongo',
-      notes: b.notes,
-      createdAt: b.created_at,
-    };
-
-    let targetPlayer = b.user_id ? playersMap.get(b.user_id) : undefined;
-
-    // If booking was made with a registered email but missing user_id
-    if (!targetPlayer && b.guest_email) {
-      for (const p of playersMap.values()) {
-        if (p.email && p.email.toLowerCase() === b.guest_email.toLowerCase()) {
-          targetPlayer = p;
-          break;
-        }
-      }
-    }
-
-    // If still not found, aggregate under guest player identifier
-    if (!targetPlayer) {
-      const guestKey = b.guest_email ? `guest:${b.guest_email.toLowerCase()}` : `guest-name:${b.guest_name || 'walk-in'}`;
-      if (!playersMap.has(guestKey)) {
-        playersMap.set(guestKey, {
-          id: guestKey,
-          fullName: b.guest_name || 'Walk-in Player',
-          email: b.guest_email || '—',
-          phone: b.guest_phone || '—',
-          role: 'guest',
-          isRegistered: false,
-          memberSince: b.created_at,
-          isDeleted: false,
-          deletedAt: null,
-          deletedReason: null,
-          skillLevel: '3.0',
-          emergencyContact: null,
-          notes: null,
-          courtCounts: new Map<string, number>(),
-          bookings: [],
-        });
-      }
-      targetPlayer = playersMap.get(guestKey)!;
-    }
-
-    // Backfill contact details if missing
-    if ((!targetPlayer.email || targetPlayer.email === '—') && b.guest_email) {
-      targetPlayer.email = b.guest_email;
-    }
-    if ((!targetPlayer.phone || targetPlayer.phone === '—') && b.guest_phone) {
-      targetPlayer.phone = b.guest_phone;
-    }
-    if ((!targetPlayer.fullName || targetPlayer.fullName === 'Member Player') && b.guest_name) {
-      targetPlayer.fullName = b.guest_name;
-    }
-
-    targetPlayer.bookings.push(matchRecord);
-    const curCount = targetPlayer.courtCounts.get(courtName) || 0;
-    targetPlayer.courtCounts.set(courtName, curCount + 1);
-  });
-
-  // 5. Build final PlayerSummary objects
-  const playerSummaries: PlayerSummary[] = Array.from(playersMap.values()).map((p) => {
-    // Only count completed, checked-in, or walk-in matches as "played"
-    const playedBookings = p.bookings.filter((b) => 
-      ['paid', 'checked_in', 'walk_in'].includes(b.status)
-    );
-
-    const totalPlayed = playedBookings.length;
-    const totalHours = playedBookings.reduce((sum, b) => sum + b.durationHours, 0);
-    const totalSpend = playedBookings.reduce((sum, b) => sum + b.totalPrice, 0);
-
-    // Favorite court
-    let favoriteCourt = 'None';
-    let maxPlays = 0;
-    for (const [cName, count] of p.courtCounts.entries()) {
-      if (count > maxPlays) {
-        maxPlays = count;
-        favoriteCourt = cName;
-      }
-    }
-
-    // Most recent match date
-    const lastPlayed = playedBookings.length > 0 ? playedBookings[0].startTime : null;
-
-    return {
-      id: p.id,
-      fullName: p.fullName || 'Player',
-      email: p.email || '—',
-      phone: p.phone || '—',
-      role: p.role,
-      isRegistered: p.isRegistered,
-      memberSince: p.memberSince,
-      isDeleted: p.isDeleted,
-      deletedAt: p.deletedAt,
-      deletedReason: p.deletedReason,
-      skillLevel: p.skillLevel,
-      emergencyContact: p.emergencyContact,
-      notes: p.notes,
-      totalPlayed,
-      totalHours,
-      totalSpend,
-      favoriteCourt,
-      lastPlayed,
-      bookings: p.bookings,
     };
   });
 
-  // Sort by default: most played descending
-  playerSummaries.sort((a, b) => b.totalPlayed - a.totalPlayed);
+  // 6. Build pagination meta
+  const meta: PaginationMeta = buildPaginationMeta(page, limit, totalCount ?? 0);
 
-  return <PlayersClient players={playerSummaries} />;
+  return (
+    <PlayersClient
+      players={playerSummaries}
+      meta={meta}
+      globalStats={globalStats}
+      activeTab={activeTab}
+      currentSearch={search}
+      currentSort={sort || 'matches_desc'}
+    />
+  );
 }
