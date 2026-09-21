@@ -177,7 +177,8 @@ export default function BookPage() {
 
     try {
       const res = await fetch(
-        `/api/availability?courtId=${selectedCourt.id}&date=${rawDateStr}&durationHours=1`
+        `/api/availability?courtId=${selectedCourt.id}&date=${rawDateStr}&durationHours=1`,
+        { cache: 'no-store' }
       );
       if (!res.ok) throw new Error('Could not fetch slot availability.');
 
@@ -215,7 +216,7 @@ export default function BookPage() {
     const monthNum = String(visibleMonth.getMonth() + 1).padStart(2, '0');
     const monthStr = `${yearNum}-${monthNum}`;
 
-    fetch(`/api/availability?courtId=${selectedCourt.id}&month=${monthStr}`)
+    fetch(`/api/availability?courtId=${selectedCourt.id}&month=${monthStr}`, { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
         if (data.monthOverview) {

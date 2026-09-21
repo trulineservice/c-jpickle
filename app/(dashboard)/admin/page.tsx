@@ -6,7 +6,8 @@ import type {
   AdminMetrics, 
   AdminPosProductRecord, 
   AdminPosTransactionRecord,
-  AdminExpenseRecord
+  AdminExpenseRecord,
+  AdminDutySessionRecord,
 } from './admin-dashboard-client';
 
 export const dynamic = 'force-dynamic';
@@ -62,6 +63,7 @@ export default async function AdminOverviewPage() {
     { data: rawProducts },
     { data: settingData },
     { data: rawExpenses },
+    { data: rawDutySessions },
   ] = await Promise.all([
     supabase
       .from('bookings')
@@ -95,6 +97,8 @@ export default async function AdminOverviewPage() {
         id,
         invoice_number,
         customer_name,
+        cashier_id,
+        cashier:profiles!pos_transactions_cashier_id_fkey ( full_name, email, role ),
         total_amount,
         gross_amount,
         vatable_sales,
@@ -136,12 +140,69 @@ export default async function AdminOverviewPage() {
       `)
       .order('expense_date', { ascending: false })
       .order('created_at', { ascending: false }),
+    supabase
+      .from('cashier_duty_sessions')
+      .select(`
+        id,
+        cashier_id,
+        started_at,
+        ended_at,
+        status,
+        opening_float,
+        closing_cash,
+        notes,
+        created_at,
+        profiles:cashier_id ( full_name, email, phone, role )
+      `)
+      .order('started_at', { ascending: false })
+      .limit(100),
   ]);
 
   const rawBookings = (rawData as unknown as RawAdminBooking[]) || [];
-  const posTransactions = (rawPosTransactions || []) as AdminPosTransactionRecord[];
+  const posTransactions: AdminPosTransactionRecord[] = (rawPosTransactions || []).map((tx: any) => {
+    const prof = Array.isArray(tx.cashier) ? tx.cashier[0] : tx.cashier;
+    return {
+      id: tx.id,
+      invoice_number: tx.invoice_number,
+      customer_name: tx.customer_name,
+      cashier_id: tx.cashier_id,
+      cashier_name: prof?.full_name || 'Staff Member',
+      cashier_role: prof?.role || 'cashier',
+      total_amount: Number(tx.total_amount) || 0,
+      gross_amount: tx.gross_amount !== null ? Number(tx.gross_amount) : null,
+      vatable_sales: tx.vatable_sales !== null ? Number(tx.vatable_sales) : null,
+      vat_amount: tx.vat_amount !== null ? Number(tx.vat_amount) : null,
+      vat_exempt_sales: tx.vat_exempt_sales !== null ? Number(tx.vat_exempt_sales) : null,
+      discount_amount: tx.discount_amount !== null ? Number(tx.discount_amount) : null,
+      discount_type: tx.discount_type,
+      payment_method: tx.payment_method,
+      status: tx.status,
+      created_at: tx.created_at,
+      void_reason: tx.void_reason,
+      voided_at: tx.voided_at,
+    };
+  });
   const posProducts = (rawProducts || []) as AdminPosProductRecord[];
   const masterPin = settingData?.value || process.env.POS_MASTER_PIN || '8888';
+
+  const adminDutySessions: AdminDutySessionRecord[] = (rawDutySessions || []).map((s: any) => {
+    const prof = Array.isArray(s.profiles) ? s.profiles[0] : s.profiles;
+    return {
+      id: s.id,
+      cashier_id: s.cashier_id,
+      cashier_name: prof?.full_name || 'Staff Member',
+      cashier_email: prof?.email || '',
+      cashier_phone: prof?.phone || '',
+      cashier_role: prof?.role || 'cashier',
+      started_at: s.started_at,
+      ended_at: s.ended_at,
+      status: s.status,
+      opening_float: Number(s.opening_float || 0),
+      closing_cash: s.closing_cash !== null ? Number(s.closing_cash) : null,
+      notes: s.notes,
+      created_at: s.created_at,
+    };
+  });
 
   const adminExpenses: AdminExpenseRecord[] = (rawExpenses || []).map((e) => {
     const prof = Array.isArray(e.profiles) ? e.profiles[0] : e.profiles;
@@ -349,6 +410,7 @@ export default async function AdminOverviewPage() {
       products={posProducts}
       posTransactions={posTransactions}
       expenses={adminExpenses}
+      dutySessions={adminDutySessions}
       initialMasterPin={masterPin}
     />
   );

@@ -103,18 +103,27 @@ export async function updateSession(request: NextRequest) {
 
       const userRole = profile?.role || 'client'
       const isOwnerOrAdmin = userRole === 'owner' || userRole === 'admin'
-      const isStaff = isOwnerOrAdmin || userRole === 'cashier'
+      const isCashier = userRole === 'cashier'
+      const isCoordinator = userRole === 'coordinator'
 
       if (pathname.startsWith('/admin') && !isOwnerOrAdmin) {
         const url = request.nextUrl.clone()
-        url.pathname = '/dashboard'
+        url.pathname = isCoordinator ? '/cashier/schedule' : '/dashboard'
         return NextResponse.redirect(url)
       }
 
-      if (pathname.startsWith('/cashier') && !isStaff) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/dashboard'
-        return NextResponse.redirect(url)
+      if (pathname.startsWith('/cashier')) {
+        if (isCoordinator) {
+          if (!pathname.startsWith('/cashier/schedule')) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/cashier/schedule'
+            return NextResponse.redirect(url)
+          }
+        } else if (!isOwnerOrAdmin && !isCashier) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/dashboard'
+          return NextResponse.redirect(url)
+        }
       }
     }
 

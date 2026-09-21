@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/utils/supabase/server';
 import { pushBookingToGoogleCalendar } from '@/lib/google-calendar-sync-engine';
 
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (!profile || !['owner', 'admin', 'cashier'].includes(profile.role)) {
+    if (!profile || !['owner', 'admin', 'cashier', 'coordinator'].includes(profile.role)) {
       return NextResponse.json({ error: 'Forbidden. Staff access required.' }, { status: 403 });
     }
 
@@ -92,15 +93,43 @@ export async function POST(request: NextRequest) {
     const hourlyRate = court.hourly_rate !== undefined && court.hourly_rate !== null ? Number(court.hourly_rate) : 1;
     const totalPrice = hourlyRate * duration;
 
+    // Check if guest matches an existing registered user profile
+    let targetUserId = user.id;
+    let targetCustomerId: string | null = null;
+    const cleanEmail = guestEmail ? String(guestEmail).trim().toLowerCase() : null;
+    const cleanPhone = guestPhone ? String(guestPhone).trim() : null;
+
+    if (cleanEmail || cleanPhone) {
+      let profileQuery = supabase
+        .from('profiles')
+        .select('id, full_name, email, phone')
+        .limit(1);
+
+      if (cleanEmail && cleanPhone) {
+        profileQuery = profileQuery.or(`email.ilike.${cleanEmail},phone.eq.${cleanPhone}`);
+      } else if (cleanEmail) {
+        profileQuery = profileQuery.ilike('email', cleanEmail);
+      } else if (cleanPhone) {
+        profileQuery = profileQuery.eq('phone', cleanPhone);
+      }
+
+      const { data: matchedProfile } = await profileQuery.maybeSingle();
+      if (matchedProfile) {
+        targetUserId = matchedProfile.id;
+        targetCustomerId = matchedProfile.id;
+      }
+    }
+
     // 4. Insert Confirmed Walk-In Booking
     const { data: newBooking, error: insertError } = await supabase
       .from('bookings')
       .insert({
         court_id: court.id,
-        user_id: user.id,
+        user_id: targetUserId,
+        customer_id: targetCustomerId,
         guest_name: guestName,
-        guest_phone: guestPhone || null,
-        guest_email: guestEmail || null,
+        guest_phone: cleanPhone,
+        guest_email: cleanEmail,
         start_time: startTime.toISOString(),
         end_time: endTime.toISOString(),
         duration_hours: duration,
@@ -108,7 +137,7 @@ export async function POST(request: NextRequest) {
         currency: 'PHP',
         status: 'walk_in',
         payment_method: paymentMethod === 'counter_qr' ? 'counter_qr' : 'cash',
-        notes: notes || `Walk-in registered by ${profile.full_name || 'Cashier'}`,
+        notes: notes || `Walk-in registered by ${profile.full_name || profile.role || 'Staff'}`,
       })
       .select('id')
       .single();
@@ -123,6 +152,14 @@ export async function POST(request: NextRequest) {
       await pushBookingToGoogleCalendar(newBooking.id);
     } catch (calErr) {
       console.error('[POS Walk-in] Google Calendar auto-sync error:', calErr);
+    }
+
+    try {
+      revalidatePath('/cashier/expenses');
+      revalidatePath('/cashier/schedule');
+      revalidatePath('/cashier/reports');
+    } catch (revErr) {
+      console.warn('[POS Walk-in] Revalidate path warning:', revErr);
     }
 
     return NextResponse.json({

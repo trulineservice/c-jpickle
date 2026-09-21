@@ -15,25 +15,32 @@ import { playHapticSound } from "@/lib/motion-feedback";
 
 interface DashboardNavLinksProps {
   isOwnerOrAdmin: boolean;
+  userRole?: string;
 }
 
-export function DashboardNavLinks({ isOwnerOrAdmin }: DashboardNavLinksProps) {
+export function DashboardNavLinks({ isOwnerOrAdmin, userRole }: DashboardNavLinksProps) {
   const pathname = usePathname();
 
   const handleLinkClick = () => {
     playHapticSound("tap");
   };
 
-  const navItems = [
-    {
-      section: "OPERATIONS",
-      items: [
+  const isCoordinator = userRole === "coordinator";
+
+  const operationsItems = isCoordinator
+    ? [{ href: "/cashier/schedule", label: "Daily Court Schedule", icon: Calendar }]
+    : [
         { href: "/cashier", label: "POS Register", icon: ShoppingCart },
         { href: "/cashier/inventory", label: "Inventory Table", icon: Boxes },
         { href: "/cashier/expenses", label: "Daily Expenses & Margins", icon: TrendingDown },
         { href: "/cashier/reports", label: "Shift Reports", icon: ShoppingCart },
         { href: "/cashier/schedule", label: "Daily Court Schedule", icon: Calendar },
-      ],
+      ];
+
+  const navItems = [
+    {
+      section: isCoordinator ? "SCHEDULING" : "OPERATIONS",
+      items: operationsItems,
     },
   ];
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ShoppingCart, Plus, Minus, Trash2, Banknote, CreditCard, QrCode, Loader2 } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Trash2, Banknote, CreditCard, QrCode, Loader2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface PosCartItem {
@@ -219,6 +219,11 @@ export function PosCartPanel({
           </>
         )}
       </Button>
+
+      <div className="flex items-center justify-center gap-1.5 text-[10px] text-[#64748B] dark:text-white/60 font-semibold pt-0.5">
+        <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+        <span>Auto-Print Active &bull; Instant thermal dispatch</span>
+      </div>
     </div>
   );
 }

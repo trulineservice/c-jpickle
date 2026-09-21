@@ -44,8 +44,8 @@ export default async function UserDashboardPage() {
     .eq('id', user.id)
     .single();
 
-  // 3. Fetch user's bookings
-  const { data: rawData } = await supabase
+  // 3. Fetch user's bookings (matched by user_id, customer_id, or login email)
+  let bookingsQuery = supabase
     .from('bookings')
     .select(`
       id,
@@ -64,9 +64,15 @@ export default async function UserDashboardPage() {
       refund_reference,
       created_at,
       courts ( name )
-    `)
-    .eq('user_id', user.id)
-    .order('start_time', { ascending: false });
+    `);
+
+  if (user.email) {
+    bookingsQuery = bookingsQuery.or(`user_id.eq.${user.id},customer_id.eq.${user.id},guest_email.ilike.${user.email}`);
+  } else {
+    bookingsQuery = bookingsQuery.or(`user_id.eq.${user.id},customer_id.eq.${user.id}`);
+  }
+
+  const { data: rawData } = await bookingsQuery.order('start_time', { ascending: false });
 
   const rawBookings = (rawData as unknown as RawUserBooking[]) || [];
 

@@ -33,6 +33,9 @@ export default async function CashierInventoryPage() {
     .maybeSingle();
 
   if (!profile || !['owner', 'admin', 'cashier'].includes(profile.role)) {
+    if (profile?.role === 'coordinator') {
+      redirect('/cashier/schedule');
+    }
     redirect('/dashboard');
   }
 

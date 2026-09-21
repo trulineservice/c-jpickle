@@ -58,7 +58,7 @@ async function redirectBasedOnRole(userId: string, nextUrl?: string | null): Pro
 
   if (role === 'owner' || role === 'admin') {
     redirect('/admin');
-  } else if (role === 'cashier') {
+  } else if (role === 'cashier' || role === 'coordinator') {
     redirect('/cashier/schedule');
   } else if (nextUrl && nextUrl.startsWith('/')) {
     redirect(nextUrl);
@@ -785,6 +785,7 @@ export async function processPosTransaction(
   revalidatePath('/cashier');
   revalidatePath('/cashier/reports');
   revalidatePath('/admin');
+  revalidatePath('/cashier/expenses');
 
   return {
     success: true,
@@ -993,6 +994,7 @@ export async function voidPosTransactionWithPin(payload: {
   revalidatePath('/cashier');
   revalidatePath('/cashier/reports');
   revalidatePath('/admin');
+  revalidatePath('/cashier/expenses');
 
   return {
     success: true,
@@ -1569,7 +1571,7 @@ export async function recordDownPayment(params: {
       .eq('id', user.id)
       .single();
 
-    if (!profile || !['owner', 'admin', 'cashier'].includes(profile.role)) {
+    if (!profile || !['owner', 'admin', 'cashier', 'coordinator'].includes(profile.role)) {
       return { success: false, error: 'Forbidden. Staff permissions required.' };
     }
 
@@ -1796,5 +1798,385 @@ export async function getGoogleCalendarSettingsAction(): Promise<{
     return { success: false, error: err instanceof Error ? err.message : 'Failed to load settings' };
   }
 }
+
+// ============================================================================
+// CASHIER DUTY & SHIFT SYSTEM ACTIONS
+// ============================================================================
+
+export async function clockInCashierAction(params?: {
+  openingFloat?: number;
+  notes?: string;
+}): Promise<{ success: boolean; session?: any; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized. Staff login required.' };
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, role, full_name')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || !['owner', 'admin', 'cashier', 'coordinator'].includes(profile.role)) {
+      return { success: false, error: 'Forbidden. Staff access required.' };
+    }
+
+    // Check if already on duty
+    const { data: existingActive } = await supabase
+      .from('cashier_duty_sessions')
+      .select('*')
+      .eq('cashier_id', user.id)
+      .eq('status', 'on_duty')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingActive) {
+      return { success: true, session: existingActive };
+    }
+
+    const { data: newSession, error } = await supabase
+      .from('cashier_duty_sessions')
+      .insert({
+        cashier_id: user.id,
+        started_at: new Date().toISOString(),
+        status: 'on_duty',
+        opening_float: params?.openingFloat ?? 0,
+        notes: params?.notes || null,
+      })
+      .select()
+      .single();
+
+    if (error || !newSession) {
+      return { success: false, error: error?.message || 'Failed to clock in for duty' };
+    }
+
+    revalidatePath('/cashier');
+    revalidatePath('/cashier/schedule');
+    revalidatePath('/admin');
+    return { success: true, session: newSession };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Clock in failed' };
+  }
+}
+
+export async function clockOutCashierAction(params?: {
+  sessionId?: string;
+  closingCash?: number;
+  notes?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Unauthorized. Staff login required.' };
+
+    let query = supabase
+      .from('cashier_duty_sessions')
+      .update({
+        ended_at: new Date().toISOString(),
+        status: 'off_duty',
+        closing_cash: params?.closingCash ?? null,
+        notes: params?.notes ? params.notes : undefined,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (params?.sessionId) {
+      query = query.eq('id', params.sessionId);
+    } else {
+      query = query.eq('cashier_id', user.id).eq('status', 'on_duty');
+    }
+
+    const { error } = await query;
+    if (error) return { success: false, error: error.message };
+
+    revalidatePath('/cashier');
+    revalidatePath('/cashier/schedule');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Clock out failed' };
+  }
+}
+
+export async function getActiveDutySessionAction(): Promise<{
+  onDuty: boolean;
+  session?: any;
+  cashierName?: string;
+}> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { onDuty: false };
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, role')
+      .eq('id', user.id)
+      .single();
+
+    const { data: session } = await supabase
+      .from('cashier_duty_sessions')
+      .select('*')
+      .eq('cashier_id', user.id)
+      .eq('status', 'on_duty')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!session) return { onDuty: false, cashierName: profile?.full_name || 'Staff' };
+
+    return {
+      onDuty: true,
+      session,
+      cashierName: profile?.full_name || 'Staff',
+    };
+  } catch {
+    return { onDuty: false };
+  }
+}
+
+export async function getCashiersOnDutyAtAction(targetTimeIso: string): Promise<{
+  success: boolean;
+  targetTime: string;
+  cashiers: Array<{
+    sessionId: string;
+    cashierId: string;
+    cashierName: string;
+    cashierEmail: string;
+    cashierPhone: string;
+    cashierRole: string;
+    startedAt: string;
+    endedAt: string | null;
+    status: string;
+    openingFloat: number;
+    closingCash: number | null;
+    notes: string | null;
+  }>;
+  error?: string;
+}> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { success: false, targetTime: targetTimeIso, cashiers: [], error: 'Unauthorized' };
+
+    const { data, error } = await supabase.rpc('get_cashiers_on_duty_at', {
+      p_target_time: targetTimeIso,
+    });
+
+    if (error) {
+      return { success: false, targetTime: targetTimeIso, cashiers: [], error: error.message };
+    }
+
+    const cashiers = (data || []).map((row: any) => ({
+      sessionId: row.session_id,
+      cashierId: row.cashier_id,
+      cashierName: row.cashier_name,
+      cashierEmail: row.cashier_email,
+      cashierPhone: row.cashier_phone,
+      cashierRole: row.cashier_role,
+      startedAt: row.started_at,
+      endedAt: row.ended_at,
+      status: row.status,
+      openingFloat: Number(row.opening_float || 0),
+      closingCash: row.closing_cash !== null ? Number(row.closing_cash) : null,
+      notes: row.notes,
+    }));
+
+    return {
+      success: true,
+      targetTime: targetTimeIso,
+      cashiers,
+    };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      targetTime: targetTimeIso,
+      cashiers: [],
+      error: err instanceof Error ? err.message : 'Failed to query duty roster',
+    };
+  }
+}
+
+// ============================================================================
+// 10. ADMIN PLAYER MANAGEMENT CRUD (WITH SOFT DELETE)
+// ============================================================================
+
+export interface AdminPlayerInput {
+  fullName: string;
+  email?: string;
+  phone?: string;
+  role?: 'client' | 'customer';
+  skillLevel?: string;
+  emergencyContact?: string;
+  notes?: string;
+}
+
+export async function adminCreatePlayerAction(payload: AdminPlayerInput): Promise<{ success: boolean; error?: string; playerId?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Authentication required' };
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    if (!profile || !['owner', 'admin'].includes(profile.role)) {
+      return { success: false, error: 'Unauthorized: Admin privileges required' };
+    }
+
+    if (!payload.fullName?.trim()) {
+      return { success: false, error: 'Full name is required' };
+    }
+
+    const cleanEmail = payload.email?.trim().toLowerCase() || null;
+    const cleanPhone = payload.phone?.trim() || null;
+
+    if (cleanEmail) {
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('email', cleanEmail)
+        .maybeSingle();
+
+      if (existing) {
+        return { success: false, error: 'A player with this email address already exists.' };
+      }
+    }
+
+    const newId = crypto.randomUUID();
+    const { error: insertErr } = await supabase.from('profiles').insert({
+      id: newId,
+      full_name: payload.fullName.trim(),
+      email: cleanEmail,
+      phone: cleanPhone,
+      role: payload.role || 'client',
+      skill_level: payload.skillLevel?.trim() || '3.0',
+      emergency_contact: payload.emergencyContact?.trim() || null,
+      notes: payload.notes?.trim() || null,
+      is_deleted: false,
+    });
+
+    if (insertErr) {
+      console.error('[Admin Create Player Error]:', insertErr);
+      return { success: false, error: insertErr.message };
+    }
+
+    revalidatePath('/admin/players');
+    revalidatePath('/admin');
+    return { success: true, playerId: newId };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to create player profile' };
+  }
+}
+
+export async function adminUpdatePlayerAction(
+  playerId: string,
+  payload: AdminPlayerInput
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Authentication required' };
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    if (!profile || !['owner', 'admin'].includes(profile.role)) {
+      return { success: false, error: 'Unauthorized: Admin privileges required' };
+    }
+
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (payload.fullName !== undefined) updateData.full_name = payload.fullName.trim();
+    if (payload.email !== undefined) updateData.email = payload.email.trim().toLowerCase() || null;
+    if (payload.phone !== undefined) updateData.phone = payload.phone.trim() || null;
+    if (payload.role !== undefined) updateData.role = payload.role;
+    if (payload.skillLevel !== undefined) updateData.skill_level = payload.skillLevel.trim() || '3.0';
+    if (payload.emergencyContact !== undefined) updateData.emergency_contact = payload.emergencyContact.trim() || null;
+    if (payload.notes !== undefined) updateData.notes = payload.notes.trim() || null;
+
+    const { error } = await supabase.from('profiles').update(updateData).eq('id', playerId);
+
+    if (error) {
+      console.error('[Admin Update Player Error]:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/admin/players');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update player profile' };
+  }
+}
+
+export async function adminSoftDeletePlayerAction(
+  playerId: string,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Authentication required' };
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    if (!profile || !['owner', 'admin'].includes(profile.role)) {
+      return { success: false, error: 'Unauthorized: Admin privileges required' };
+    }
+
+    const { data, error } = await supabase.rpc('soft_delete_player', {
+      p_player_id: playerId,
+      p_reason: reason.trim() || 'Archived by Administrator',
+    });
+
+    if (error) {
+      console.error('[Soft Delete Player RPC Error]:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/admin/players');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to archive player profile' };
+  }
+}
+
+export async function adminRestorePlayerAction(playerId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: 'Authentication required' };
+
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    if (!profile || !['owner', 'admin'].includes(profile.role)) {
+      return { success: false, error: 'Unauthorized: Admin privileges required' };
+    }
+
+    const { data, error } = await supabase.rpc('restore_player', {
+      p_player_id: playerId,
+    });
+
+    if (error) {
+      console.error('[Restore Player RPC Error]:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/admin/players');
+    revalidatePath('/admin');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to restore player profile' };
+  }
+}
+
+
 
 

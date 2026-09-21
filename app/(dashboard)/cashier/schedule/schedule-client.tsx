@@ -45,6 +45,7 @@ import {
   Activity,
   LayoutGrid,
   ListTodo,
+  CalendarDays,
   Eye,
   Zap,
   AlertCircle,
@@ -107,9 +108,16 @@ export default function ScheduleClient({
 }) {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState<string>(initialDateStr);
-  const [viewMode, setViewMode] = useState<'month_grid' | 'timeline'>('month_grid');
+  const [viewMode, setViewMode] = useState<'month_grid' | 'timeline' | 'day_agenda'>('month_grid');
   const [selectedCourtFilter, setSelectedCourtFilter] = useState<string>('all');
   
+  // Auto-switch to Day Agenda view on small mobile viewports for optimal scheduling coordinator UX
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setViewMode('day_agenda');
+    }
+  }, []);
+
   // Date state for month grid navigation
   const [gridMonthDate, setGridMonthDate] = useState<Date>(() => {
     const [y, m] = initialDateStr.split('-').map(Number);
@@ -145,6 +153,47 @@ export default function ScheduleClient({
     const mm = String(gridMonthDate.getMonth() + 1).padStart(2, '0');
     return `${yyyy}-${mm}`;
   }, [gridMonthDate]);
+
+  // Horizontal Date Strip for Mobile Day Agenda
+  const agendaDateStrip = useMemo(() => {
+    const [y, m, d] = currentDate.split('-').map(Number);
+    const centerDate = new Date(y, m - 1, d);
+    const strip: {
+      dateStr: string;
+      dayOfWeek: string;
+      dayNumber: number;
+      isToday: boolean;
+      isSelected: boolean;
+      count: number;
+    }[] = [];
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    for (let offset = -4; offset <= 9; offset++) {
+      const target = new Date(centerDate);
+      target.setDate(target.getDate() + offset);
+      const targetY = target.getFullYear();
+      const targetM = String(target.getMonth() + 1).padStart(2, '0');
+      const targetD = String(target.getDate()).padStart(2, '0');
+      const dateStr = `${targetY}-${targetM}-${targetD}`;
+      const dayOfWeek = new Intl.DateTimeFormat('en-PH', { weekday: 'short' }).format(target);
+      const bList = monthBookings[dateStr] || [];
+      const validCount = bList.filter(
+        (b) => b.status !== 'cancelled' && b.status !== 'expired'
+      ).length;
+
+      strip.push({
+        dateStr,
+        dayOfWeek,
+        dayNumber: target.getDate(),
+        isToday: dateStr === todayStr,
+        isSelected: dateStr === currentDate,
+        count: validCount,
+      });
+    }
+    return strip;
+  }, [currentDate, monthBookings]);
 
   // Fetch all bookings for the visible month to populate the Calendar Grid
   const fetchMonthAllBookings = useCallback(async (monthStr: string) => {
@@ -658,23 +707,24 @@ export default function ScheduleClient({
       )}
 
       {/* Top Header & View Mode Switcher */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-[#cacacb] dark:border-[#222226] pb-6">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 border-b border-slate-200 dark:border-white/10 pb-6">
         
         {/* Left Title & Live Pulse */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93]">
+            <span className="w-2 h-2 rounded-full bg-[#bf050b] animate-pulse shrink-0" />
+            <span className="text-xs font-black uppercase tracking-widest text-[#0B2A67] dark:text-[#FFD21C]">
               Operations
             </span>
-            <span className="text-xs text-[#cacacb] dark:text-[#333338]">•</span>
-            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-[#111111] dark:text-foreground border border-[#cacacb] dark:border-[#27272a]">
+            <span className="text-xs text-slate-300 dark:text-white/20">•</span>
+            <span className="text-[10px] font-black uppercase px-3 py-1 rounded-full bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-[#FFD21C] border border-[#0B2A67]/20 dark:border-[#FFD21C]/30 shadow-2xs">
               Live Court Scheduler
             </span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-[#111111] dark:text-foreground">
+          <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-[#0B2A67] dark:text-white">
             TIMELINE &amp; RESERVATIONS
           </h1>
-          <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium max-w-xl">
             Real-time court availability matrix, scheduled player check-ins, and walk-in registry.
           </p>
         </div>
@@ -682,15 +732,15 @@ export default function ScheduleClient({
         {/* View Mode Toggle & Actions */}
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           
-          {/* Primary View Switcher: Calendar Grid vs Day Timeline */}
-          <div className="flex items-center bg-[#f5f5f5] dark:bg-[#18181c] p-1 rounded-full border border-[#cacacb] dark:border-[#27272a]">
+          {/* Primary View Switcher: Calendar Grid vs Mobile Day Agenda vs Day Timeline */}
+          <div className="flex items-center bg-[#EDF4FC] dark:bg-[#0c1a3b] p-1 border border-[#0B2A67]/20 dark:border-white/10 rounded-none shadow-2xs">
             <button
               type="button"
               onClick={() => setViewMode('month_grid')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all ${
+              className={`px-3 sm:px-4 py-2 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
                 viewMode === 'month_grid'
-                  ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
-                  : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
+                  ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
@@ -699,11 +749,24 @@ export default function ScheduleClient({
             </button>
             <button
               type="button"
+              onClick={() => setViewMode('day_agenda')}
+              className={`px-3 sm:px-4 py-2 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
+                viewMode === 'day_agenda'
+                  ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
+              }`}
+            >
+              <CalendarDays className="w-3.5 h-3.5 shrink-0 text-[#FFD21C] dark:text-[#0B2A67]" />
+              <span className="hidden sm:inline">Mobile Day Agenda</span>
+              <span className="sm:hidden">Agenda</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setViewMode('timeline')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all ${
+              className={`px-3 sm:px-4 py-2 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
                 viewMode === 'timeline'
-                  ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
-                  : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
+                  ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67] dark:hover:text-white'
               }`}
             >
               <ListTodo className="w-3.5 h-3.5 shrink-0" />
@@ -714,18 +777,18 @@ export default function ScheduleClient({
 
           {/* Client Search Bar */}
           <div className="relative flex-1 sm:w-52">
-            <Search className="w-3.5 h-3.5 text-[#707072] dark:text-[#8a8a93] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search player name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-9 pr-8 bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-[#111111] dark:text-foreground rounded-full text-xs font-medium focus:outline-none focus:border-[#111111] dark:focus:border-white placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa]"
+              className="w-full h-10 pl-8 pr-8 bg-white dark:bg-black/40 border border-slate-300 dark:border-white/15 text-foreground rounded-none text-xs font-medium focus:outline-none focus:ring-1 focus:ring-[#0B2A67] dark:focus:ring-[#FFD21C] placeholder:text-slate-400"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground text-xs"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-foreground text-xs cursor-pointer"
               >
                 ✕
               </button>
@@ -741,9 +804,9 @@ export default function ScheduleClient({
               fetchMonthAllBookings(currentMonthStr);
             }}
             disabled={isLoading}
-            className="border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full h-10 px-4 text-xs font-semibold"
+            className="border-slate-300 dark:border-white/15 text-[#0B2A67] dark:text-white hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none h-10 px-3.5 text-xs font-bold cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? 'animate-spin text-[#0B2A67]' : ''}`} />
             Sync
           </Button>
 
@@ -753,14 +816,15 @@ export default function ScheduleClient({
             variant="outline"
             size="sm"
             onClick={() => setIsGCalModalOpen(true)}
-            className="border-emerald-300 dark:border-emerald-800/80 text-[#007d48] dark:text-[#10b981] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-full h-10 px-4 text-xs font-semibold cursor-pointer shadow-xs"
+            className="border-emerald-400 dark:border-emerald-800 text-[#007d48] dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-none h-10 px-3.5 text-xs font-bold cursor-pointer"
           >
-            <CalendarIcon className="w-3.5 h-3.5 mr-1.5 text-[#007d48] dark:text-[#10b981]" />
-            <span>Google Calendar Live</span>
-            <span className="w-2 h-2 rounded-full bg-[#007d48] dark:bg-[#10b981] animate-pulse ml-1.5" />
+            <CalendarIcon className="w-3.5 h-3.5 mr-1.5 text-[#007d48] dark:text-emerald-400" />
+            <span className="hidden sm:inline">Google Calendar</span>
+            <span className="sm:hidden">GCal</span>
+            <span className="w-2 h-2 rounded-full bg-[#007d48] dark:bg-emerald-400 animate-pulse ml-1.5" />
           </Button>
 
-          {/* Quick Walk-in Modal Trigger */}
+          {/* Quick Walk-in Modal Trigger (Gold C&J Action Button) */}
           <Dialog
             open={isWalkInOpen}
             onOpenChange={(open) => {
@@ -768,16 +832,17 @@ export default function ScheduleClient({
               setIsWalkInOpen(open);
             }}
           >
-            <DialogTrigger className="inline-flex items-center justify-center rounded-full text-xs font-semibold bg-[#111111] dark:bg-white hover:bg-[#222222] dark:hover:bg-[#ededed] text-white dark:text-[#111111] h-10 px-5 cursor-pointer">
-              <Plus className="h-4 w-4 mr-1" /> + Walk-in
+            <DialogTrigger className="inline-flex items-center justify-center rounded-none text-xs font-black bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] h-10 px-4 shadow-sm transition-all cursor-pointer">
+              <Plus className="h-4 w-4 mr-1 stroke-[2.5]" />
+              <span>Walk-in Booking</span>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground rounded-none p-6 sm:p-8 shadow-2xl">
+            <DialogContent className="sm:max-w-md bg-white dark:bg-[#071E4B] border border-slate-200 dark:border-white/15 text-foreground rounded-3xl p-6 sm:p-8 shadow-2xl">
               <form onSubmit={handleCreateWalkIn}>
                 <DialogHeader className="space-y-1 pb-2">
-                  <DialogTitle className="text-2xl font-bold tracking-tight text-[#111111] dark:text-foreground">
+                  <DialogTitle className="text-2xl font-black tracking-tight text-[#0B2A67] dark:text-white">
                     Walk-In Court Booking
                   </DialogTitle>
-                  <DialogDescription className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                  <DialogDescription className="text-xs text-slate-500 dark:text-slate-300 font-medium">
                     Immediately reserve a court slot and record counter cash or QR tender.
                   </DialogDescription>
                 </DialogHeader>
@@ -954,11 +1019,14 @@ export default function ScheduleClient({
       {/* ========================================================================= */}
       {/* VIEW 1: MONTH CALENDAR GRID */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* VIEW 1: MONTH CALENDAR GRID (TABLE GRID SYSTEM - NON-ROUNDED) */}
+      {/* ========================================================================= */}
       {viewMode === 'month_grid' && (
         <div className="space-y-4">
           
           {/* Calendar Grid Controls Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215]">
+          <div className="p-3.5 sm:p-4 rounded-none border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             
             {/* Month Navigation */}
             <div className="flex items-center gap-2">
@@ -966,13 +1034,13 @@ export default function ScheduleClient({
                 variant="outline"
                 size="icon"
                 onClick={() => handleOffsetMonth(-1)}
-                className="h-8 w-8 text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
+                className="h-9 w-9 text-[#0B2A67] dark:text-white border-slate-300 dark:border-white/20 hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none cursor-pointer transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
 
-              <h2 className="text-xl font-display uppercase tracking-tight text-[#111111] dark:text-foreground px-2 flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-[#111111] dark:text-foreground" />
+              <h2 className="text-lg sm:text-2xl font-black uppercase tracking-tight text-[#0B2A67] dark:text-white px-2 flex items-center gap-2">
+                <CalendarIcon className="w-5 h-5 text-[#FFD21C]" />
                 <span>{monthFormattedTitle}</span>
               </h2>
 
@@ -980,7 +1048,7 @@ export default function ScheduleClient({
                 variant="outline"
                 size="icon"
                 onClick={() => handleOffsetMonth(1)}
-                className="h-8 w-8 text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
+                className="h-9 w-9 text-[#0B2A67] dark:text-white border-slate-300 dark:border-white/20 hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none cursor-pointer transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -993,73 +1061,430 @@ export default function ScheduleClient({
                   setGridMonthDate(new Date(today.getFullYear(), today.getMonth(), 1));
                   handleDateSelect(getTodayStr());
                 }}
-                className="h-8 px-3 text-xs font-semibold text-[#111111] dark:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
+                className="h-9 px-3 text-xs font-black bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-[#FFD21C] hover:bg-[#0B2A67] hover:text-white dark:hover:bg-[#FFD21C] dark:hover:text-[#0B2A67] border border-[#0B2A67]/20 dark:border-[#FFD21C]/30 rounded-none transition-all cursor-pointer"
               >
                 Today
               </Button>
             </div>
 
-            {/* Court Filter Pills */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-[#707072] dark:text-[#8a8a93] font-semibold mr-1">Filter Court:</span>
+            {/* Court Filter Buttons */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-[#0B2A67] dark:text-slate-300 font-bold mr-1">Filter Court:</span>
               <button
                 type="button"
                 onClick={() => setSelectedCourtFilter('all')}
-                className={`px-3.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                className={`px-3 py-1.5 rounded-none text-xs font-black transition-all cursor-pointer ${
                   selectedCourtFilter === 'all'
-                    ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
-                    : 'bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#e5e5e5] dark:hover:bg-[#222226]'
+                    ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67] shadow-sm'
+                    : 'bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white/80 hover:bg-[#EDF4FC] hover:text-[#0B2A67] border border-slate-200 dark:border-white/10'
                 }`}
               >
                 All Courts
               </button>
-              {courts.map((court) => (
-                <button
-                  key={court.id}
-                  type="button"
-                  onClick={() => setSelectedCourtFilter(court.id)}
-                  className={`px-3.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                    selectedCourtFilter === court.id
-                      ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
-                      : 'bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#e5e5e5] dark:hover:bg-[#222226]'
-                  }`}
-                >
-                  {court.name.split(' - ')[0]}
-                </button>
-              ))}
+              {courts.map((court) => {
+                const isCourt1 = court.name.includes('1');
+                const isCourt2 = court.name.includes('2');
+                const isEvent = court.name.toLowerCase().includes('event') || court.name.toLowerCase().includes('banquet');
+                const isView = court.name.toLowerCase().includes('view');
+
+                const activeBg = isEvent
+                  ? 'bg-[#7c3aed] text-white shadow-sm'
+                  : isView
+                  ? 'bg-[#ea580c] text-white shadow-sm'
+                  : isCourt2
+                  ? 'bg-[#007d48] text-white shadow-sm'
+                  : 'bg-[#0B2A67] text-white shadow-sm';
+
+                return (
+                  <button
+                    key={court.id}
+                    type="button"
+                    onClick={() => setSelectedCourtFilter(court.id)}
+                    className={`px-3 py-1.5 rounded-none text-xs font-black transition-all cursor-pointer ${
+                      selectedCourtFilter === court.id
+                        ? activeBg
+                        : 'bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white/80 hover:bg-[#EDF4FC] hover:text-[#0B2A67] border border-slate-200 dark:border-white/10'
+                    }`}
+                  >
+                    {court.name.split(' - ')[0]}
+                  </button>
+                );
+              })}
             </div>
 
           </div>
 
-          {/* 7-Column Calendar Grid Matrix */}
-          <div className="border border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215] overflow-hidden">
+          {/* Mobile Swiping Hint Banner */}
+          <div className="lg:hidden flex items-center justify-between text-[11px] text-slate-500 font-semibold px-1 py-0.5">
+            <span>⟵ Swipe horizontally to view full 7-day grid ⟶</span>
+            <button
+              type="button"
+              onClick={() => setViewMode('day_agenda')}
+              className="text-[#0B2A67] dark:text-[#FFD21C] font-black underline cursor-pointer"
+            >
+              Switch to Mobile Agenda
+            </button>
+          </div>
+
+          {/* 7-Column Non-Rounded Calendar Table Grid */}
+          <div className="overflow-x-auto pb-2 -mx-2 sm:mx-0 px-2 sm:px-0">
+            <div className="min-w-[760px] lg:min-w-0 border border-slate-300 dark:border-white/15 bg-slate-300 dark:bg-zinc-800 rounded-none shadow-xs">
+              
+              {/* Weekday Header Row */}
+              <div className="grid grid-cols-7 bg-[#0B2A67] text-white border-b border-slate-300 dark:border-white/15 rounded-none">
+                {[
+                  { short: 'Sun', full: 'Sunday' },
+                  { short: 'Mon', full: 'Monday' },
+                  { short: 'Tue', full: 'Tuesday' },
+                  { short: 'Wed', full: 'Wednesday' },
+                  { short: 'Thu', full: 'Thursday' },
+                  { short: 'Fri', full: 'Friday' },
+                  { short: 'Sat', full: 'Saturday' },
+                ].map((day) => (
+                  <div
+                    key={day.short}
+                    className="py-2.5 sm:py-3 px-2 text-center border-r border-[#071E4B] last:border-r-0 flex flex-col items-center justify-center rounded-none"
+                  >
+                    <span className="text-xs font-black uppercase tracking-widest text-white">
+                      {day.short}
+                    </span>
+                    <span className="text-[9px] font-semibold text-white/60 tracking-wider hidden md:inline">
+                      {day.full}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Month Day Cells Grid (1px dividing grid lines without rounded borders) */}
+              <div className="grid grid-cols-7 gap-px bg-slate-300 dark:bg-white/15 rounded-none">
+                {calendarGridDays.map((dayObj) => {
+                  const rawDayBookings = monthBookings[dayObj.dateStr] || [];
+                  const dayBookings = rawDayBookings.filter((b) => {
+                    if (b.status === 'expired' || b.status === 'cancelled') {
+                      return false;
+                    }
+                    if (b.status === 'pending_payment' && b.expires_at && new Date(b.expires_at) <= new Date()) {
+                      return false;
+                    }
+                    if (selectedCourtFilter !== 'all' && (b.court_id !== selectedCourtFilter && b.courts?.id !== selectedCourtFilter)) {
+                      return false;
+                    }
+                    if (searchQuery.trim()) {
+                      const q = searchQuery.toLowerCase();
+                      const name = (b.guest_name || b.profiles?.full_name || '').toLowerCase();
+                      return name.includes(q);
+                    }
+                    return true;
+                  });
+
+                  return (
+                    <div
+                      key={dayObj.dateStr}
+                      className={`min-h-[140px] sm:min-h-[190px] p-2 sm:p-2.5 rounded-none flex flex-col justify-between transition-colors relative ${
+                        !dayObj.isCurrentMonth
+                          ? 'bg-slate-50 dark:bg-black/40 text-slate-400 opacity-60'
+                          : dayObj.isToday
+                          ? 'bg-[#EDF4FC] dark:bg-[#0c1e48] ring-2 ring-inset ring-[#FFD21C]'
+                          : 'bg-white dark:bg-[#071E4B] hover:bg-slate-50/80 dark:hover:bg-[#0a235c]'
+                      }`}
+                    >
+                      {/* Day Header Row */}
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-white/10">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-xs sm:text-sm font-black w-6 h-6 sm:w-7 sm:h-7 rounded-none flex items-center justify-center transition-all ${
+                              dayObj.isToday
+                                ? 'bg-[#FFD21C] text-[#0B2A67] font-black'
+                                : dayObj.isCurrentMonth
+                                ? 'bg-slate-100 dark:bg-white/10 text-[#0B2A67] dark:text-white'
+                                : 'text-slate-400 dark:text-slate-600'
+                            }`}
+                          >
+                            {dayObj.dayNumber}
+                          </span>
+                          {dayObj.isToday && (
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-none bg-[#0B2A67] text-[#FFD21C] tracking-wider hidden sm:inline">
+                              TODAY
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Booking Count Badge or + Add Walkin Button */}
+                        <div className="flex items-center gap-1">
+                          {dayBookings.length > 0 ? (
+                            <span className="text-[10px] font-black px-1.5 py-0.2 rounded-none bg-[#FFD21C] text-[#0B2A67] font-mono shadow-2xs">
+                              {dayBookings.length}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openWalkInForSlot(courts[0]?.id || '', 8, dayObj.dateStr)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold text-[#0B2A67] dark:text-[#FFD21C] hover:bg-[#0B2A67] hover:text-white dark:hover:bg-[#FFD21C] dark:hover:text-[#0B2A67] bg-[#EDF4FC] dark:bg-[#0c1a3b] px-1.5 py-0.2 rounded-none border border-[#0B2A67]/20 dark:border-[#FFD21C]/30 cursor-pointer"
+                              title="Add Walk-in for this date"
+                            >
+                              + Book
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Booked Sessions Chips (Non-rounded sharp cards) */}
+                      <div className="flex-1 py-1.5 space-y-1 overflow-y-auto max-h-[135px] scrollbar-none">
+                        {dayBookings.length === 0 ? (
+                          <div className="h-full flex items-center justify-center py-4">
+                            <span className="text-[10px] text-slate-300 dark:text-slate-600 font-medium">
+                              {dayObj.isCurrentMonth ? '—' : ''}
+                            </span>
+                          </div>
+                        ) : (
+                          dayBookings.slice(0, 4).map((b) => {
+                            const courtName = b.courts?.name || (b.court_id?.includes('80d4') ? 'Court 1' : 'Court 2');
+                            const isCourt2 = courtName.includes('2');
+                            const isEvent = courtName.toLowerCase().includes('event') || courtName.toLowerCase().includes('banquet');
+                            const isViewDeck = courtName.toLowerCase().includes('view');
+
+                            const borderLeftColor = isEvent
+                              ? 'border-l-[#7c3aed]'
+                              : isViewDeck
+                              ? 'border-l-[#ea580c]'
+                              : isCourt2
+                              ? 'border-l-[#007d48]'
+                              : 'border-l-[#0B2A67]';
+
+                            const isCheckedIn = b.status === 'checked_in';
+                            const isCancelled = b.status === 'cancelled';
+                            const clientDisplayName = b.guest_name || b.profiles?.full_name || 'Client';
+
+                            return (
+                              <div
+                                key={b.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedBooking(b);
+                                }}
+                                className={`p-1.5 rounded-none border-l-[3.5px] border-t-0 border-r border-b border-slate-200 dark:border-white/10 ${borderLeftColor} text-left cursor-pointer transition-colors hover:bg-slate-100 dark:hover:bg-[#0d1d45] bg-white dark:bg-[#0a1633] flex flex-col gap-0.5 ${
+                                  isCancelled
+                                    ? 'opacity-50 line-through'
+                                    : ''
+                                }`}
+                                title={`Click details: ${clientDisplayName} (${formatTimeSlot(b.start_time, b.end_time)})`}
+                              >
+                                <div className="flex items-center justify-between gap-1 truncate">
+                                  <span className="text-[11px] font-black text-[#0B2A67] dark:text-white truncate">
+                                    {clientDisplayName}
+                                  </span>
+                                  <span className="text-[8px] font-bold uppercase text-slate-400 dark:text-slate-400 shrink-0">
+                                    {courtName.split(' - ')[0]}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[9px] font-mono">
+                                  <span className="font-semibold text-slate-500 dark:text-slate-400">
+                                    {formatTimeSlot(b.start_time, b.end_time)}
+                                  </span>
+                                  {isCheckedIn ? (
+                                    <span className="px-1 py-0.2 rounded-none bg-emerald-100 dark:bg-emerald-950/60 text-[#007d48] dark:text-emerald-400 font-extrabold text-[8px] uppercase tracking-wider">
+                                      ARRIVED
+                                    </span>
+                                  ) : isCancelled ? (
+                                    <span className="px-1 py-0.2 rounded-none bg-red-100 text-red-700 font-extrabold text-[8px] uppercase">
+                                      CANCELLED
+                                    </span>
+                                  ) : (
+                                    <span className="px-1 py-0.2 rounded-none bg-blue-50 dark:bg-blue-950/60 text-[#0B2A67] dark:text-blue-300 font-extrabold text-[8px] uppercase">
+                                      {b.status === 'paid' ? 'PAID' : 'BOOKED'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+
+                        {dayBookings.length > 4 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleDateSelect(dayObj.dateStr);
+                              setViewMode('day_agenda');
+                            }}
+                            className="w-full text-center text-[9px] font-black text-[#0B2A67] dark:text-[#FFD21C] hover:underline bg-[#EDF4FC] dark:bg-[#0c1a3b] py-1 rounded-none border border-[#0B2A67]/20 dark:border-[#FFD21C]/30 block shadow-2xs"
+                          >
+                            +{dayBookings.length - 4} more • Agenda →
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Footer link to switch to day agenda */}
+                      <div className="pt-1.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleDateSelect(dayObj.dateStr);
+                            setViewMode('day_agenda');
+                          }}
+                          className="text-[10px] text-[#0B2A67] dark:text-[#FFD21C] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3 h-3 text-[#0B2A67] dark:text-[#FFD21C]" />
+                          <span>View Day</span>
+                        </button>
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VIEW 2: MOBILE-REACTIVE DAY AGENDA (OPTIMIZED FOR SCHEDULING COORDINATOR) */}
+      {/* ========================================================================= */}
+      {viewMode === 'day_agenda' && (
+        <div className="space-y-4">
+          
+          {/* Day Navigation Header Card */}
+          <div className="p-4 sm:p-5 rounded-none border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] shadow-xs flex flex-col gap-4">
             
-            {/* Weekday Header */}
-            <div className="grid grid-cols-7 border-b border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] text-center">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                <div
-                  key={day}
-                  className="py-2.5 text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]"
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* Date Header with Arrow Controls */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleOffsetDay(-1)}
+                  className="h-9 w-9 text-[#0B2A67] dark:text-white border-slate-300 dark:border-white/20 hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none cursor-pointer"
                 >
-                  {day}
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                <div>
+                  <h2 className="text-base sm:text-xl font-black uppercase text-[#0B2A67] dark:text-white tracking-tight flex items-center gap-2">
+                    <CalendarDays className="w-5 h-5 text-[#FFD21C]" />
+                    <span>{displayFormattedDate}</span>
+                  </h2>
                 </div>
-              ))}
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleOffsetDay(1)}
+                  className="h-9 w-9 text-[#0B2A67] dark:text-white border-slate-300 dark:border-white/20 hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none cursor-pointer"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDateSelect(getTodayStr())}
+                  className="h-9 px-3 text-xs font-black bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-[#FFD21C] hover:bg-[#0B2A67] hover:text-white dark:hover:bg-[#FFD21C] dark:hover:text-[#0B2A67] border border-[#0B2A67]/20 dark:border-[#FFD21C]/30 rounded-none transition-all cursor-pointer"
+                >
+                  Today
+                </Button>
+              </div>
+
+              {/* Date Input for fast jump */}
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={currentDate}
+                  onChange={(e) => handleDateSelect(e.target.value)}
+                  className="h-9 px-3 rounded-none bg-slate-50 dark:bg-black/40 border border-slate-300 dark:border-white/20 text-xs font-mono font-bold w-auto"
+                />
+              </div>
             </div>
 
-            {/* Month Day Cells */}
-            <div className="grid grid-cols-7 divide-x divide-y divide-[#cacacb] dark:divide-[#27272a] bg-white dark:bg-[#121215]">
-              {calendarGridDays.map((dayObj) => {
-                const rawDayBookings = monthBookings[dayObj.dateStr] || [];
-                const dayBookings = rawDayBookings.filter((b) => {
-                  if (b.status === 'expired' || b.status === 'cancelled') {
-                    return false;
-                  }
-                  if (b.status === 'pending_payment' && b.expires_at && new Date(b.expires_at) <= new Date()) {
-                    return false;
-                  }
-                  if (selectedCourtFilter !== 'all' && (b.court_id !== selectedCourtFilter && b.courts?.id !== selectedCourtFilter)) {
-                    return false;
-                  }
+            {/* Horizontal Scrollable 14-Day Selector Strip (Reactive on mobile) */}
+            <div className="overflow-x-auto pb-1 pt-1 scrollbar-none border-t border-slate-100 dark:border-white/10">
+              <div className="flex items-center gap-1.5 min-w-max">
+                {agendaDateStrip.map((item) => (
+                  <button
+                    key={item.dateStr}
+                    type="button"
+                    onClick={() => handleDateSelect(item.dateStr)}
+                    className={`flex flex-col items-center justify-center min-w-[54px] py-2 px-1 border transition-all cursor-pointer rounded-none ${
+                      item.isSelected
+                        ? 'bg-[#0B2A67] text-white border-[#0B2A67] dark:bg-[#FFD21C] dark:text-[#0B2A67] dark:border-[#FFD21C] shadow-sm font-black'
+                        : item.isToday
+                        ? 'bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-[#FFD21C] border-[#0B2A67]/40 dark:border-[#FFD21C]/40 font-bold'
+                        : 'bg-white dark:bg-white/5 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-[10px] uppercase font-bold tracking-wider">{item.dayOfWeek}</span>
+                    <span className="text-base font-black leading-tight">{item.dayNumber}</span>
+                    {item.count > 0 ? (
+                      <span className={`text-[9px] font-mono px-1 py-0.2 rounded-none mt-0.5 ${
+                        item.isSelected
+                          ? 'bg-[#FFD21C] text-[#0B2A67] dark:bg-[#0B2A67] dark:text-white'
+                          : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200'
+                      }`}>
+                        {item.count}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] text-slate-400 mt-0.5">—</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-white/10 text-xs">
+              <div className="flex items-center gap-3">
+                <span className="font-semibold text-slate-600 dark:text-slate-300">
+                  Day Occupancy: <span className="font-black text-[#0B2A67] dark:text-[#FFD21C]">{bookings.length} Bookings</span>
+                </span>
+                <span className="text-slate-300 dark:text-white/20">•</span>
+                <span className="font-semibold text-[#007d48] dark:text-emerald-400">
+                  {checkedInCount} Checked In
+                </span>
+              </div>
+
+              {/* Quick Court Filter */}
+              <div className="flex items-center gap-1 overflow-x-auto max-w-full">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCourtFilter('all')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-none border cursor-pointer ${
+                    selectedCourtFilter === 'all'
+                      ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]'
+                      : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
+                  }`}
+                >
+                  All
+                </button>
+                {courts.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedCourtFilter(c.id)}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded-none border cursor-pointer shrink-0 ${
+                      selectedCourtFilter === c.id
+                        ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]'
+                        : 'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10'
+                    }`}
+                  >
+                    {c.name.split(' - ')[0]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Court-by-Court Schedule Feed for Mobile */}
+          <div className="space-y-4">
+            {courts
+              .filter((c) => selectedCourtFilter === 'all' || selectedCourtFilter === c.id)
+              .map((court) => {
+                const courtBookings = bookings.filter((b) => {
+                  const bCourtId = b.courts?.id || b.court_id;
+                  if (bCourtId !== court.id) return false;
                   if (searchQuery.trim()) {
                     const q = searchQuery.toLowerCase();
                     const name = (b.guest_name || b.profiles?.full_name || '').toLowerCase();
@@ -1068,70 +1493,63 @@ export default function ScheduleClient({
                   return true;
                 });
 
+                const isCourt2 = court.name.includes('2');
+                const isEvent = court.name.toLowerCase().includes('event') || court.name.toLowerCase().includes('banquet');
+                const isViewDeck = court.name.toLowerCase().includes('view');
+
+                const bannerColor = isEvent
+                  ? 'border-l-4 border-l-[#7c3aed]'
+                  : isViewDeck
+                  ? 'border-l-4 border-l-[#ea580c]'
+                  : isCourt2
+                  ? 'border-l-4 border-l-[#007d48]'
+                  : 'border-l-4 border-l-[#0B2A67]';
+
                 return (
                   <div
-                    key={dayObj.dateStr}
-                    className={`min-h-[150px] sm:min-h-[190px] p-2.5 flex flex-col justify-between transition-colors group relative ${
-                      !dayObj.isCurrentMonth
-                        ? 'bg-[#f5f5f5]/50 dark:bg-[#18181c]/30 text-[#707072] dark:text-[#66666e] opacity-50'
-                        : dayObj.isToday
-                        ? 'bg-[#f5f5f5] dark:bg-[#18181c] ring-1 ring-inset ring-[#111111] dark:ring-white/40'
-                        : 'hover:bg-[#f5f5f5]/40 dark:hover:bg-[#18181c]/40'
-                    }`}
+                    key={court.id}
+                    className={`border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] rounded-none shadow-xs overflow-hidden ${bannerColor}`}
                   >
-                    
-                    {/* Day Cell Header */}
-                    <div className="flex items-center justify-between pb-1.5 border-b border-[#e5e5e5] dark:border-[#222226]">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-xs sm:text-sm font-bold w-6 h-6 rounded-full flex items-center justify-center ${
-                            dayObj.isToday
-                              ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111]'
-                              : dayObj.isCurrentMonth
-                              ? 'text-[#111111] dark:text-foreground'
-                              : 'text-[#707072] dark:text-[#66666e]'
-                          }`}
-                        >
-                          {dayObj.dayNumber}
+                    {/* Court Header */}
+                    <div className="p-3 sm:p-4 bg-slate-50 dark:bg-black/30 border-b border-slate-200 dark:border-white/10 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-black text-[#0B2A67] dark:text-white uppercase tracking-tight">
+                          {court.name}
+                        </h3>
+                        <span className="text-[11px] text-slate-500 font-semibold">
+                          ₱{Number(court.hourly_rate ?? 300).toFixed(2)}/hr &bull; {courtBookings.length} Bookings Today
                         </span>
-                        {dayObj.isToday && (
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-[#111111] dark:text-foreground hidden sm:inline">
-                            Today
-                          </span>
-                        )}
                       </div>
 
-                      {/* Booking Count Badge or + Add Walkin Button */}
-                      <div className="flex items-center gap-1">
-                        {dayBookings.length > 0 ? (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-[#111111] dark:text-foreground border border-[#cacacb] dark:border-[#27272a]">
-                            {dayBookings.length}
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => openWalkInForSlot(courts[0]?.id || '', 8, dayObj.dateStr)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-semibold text-[#111111] dark:text-foreground hover:bg-[#111111] dark:hover:bg-white hover:text-white dark:hover:text-[#111111] bg-[#f5f5f5] dark:bg-[#18181c] px-2 py-0.5 rounded-full border border-[#cacacb] dark:border-[#27272a] cursor-pointer"
-                            title="Add Walk-in for this date"
-                          >
-                            + Book
-                          </button>
-                        )}
-                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => openWalkInForSlot(court.id, 8, currentDate)}
+                        className="h-8 px-3 text-xs font-bold bg-[#FFD21C] text-[#0B2A67] hover:bg-[#E8BA00] rounded-none cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Book Slot
+                      </Button>
                     </div>
 
-                    {/* Booked Sessions Chips */}
-                    <div className="flex-1 py-1.5 space-y-1 overflow-y-auto max-h-[135px] scrollbar-none">
-                      {dayBookings.length === 0 ? (
-                        <div className="h-full flex items-center justify-center py-4">
-                          <span className="text-[10px] text-[#707072] dark:text-[#66666e] font-medium">
-                            {dayObj.isCurrentMonth ? 'Available' : ''}
-                          </span>
+                    {/* Bookings List */}
+                    <div className="p-3 sm:p-4 divide-y divide-slate-100 dark:divide-white/10">
+                      {courtBookings.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-slate-400">
+                          <p className="font-semibold text-slate-600 dark:text-slate-400">No reservations scheduled for this court on {currentDate}.</p>
+                          <p className="text-[11px] text-slate-400 mt-1">Operating hours 6:00 AM – 12:00 AM are open.</p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openWalkInForSlot(court.id, 8, currentDate)}
+                            className="mt-3 text-xs rounded-none border-dashed border-[#0B2A67]/30 text-[#0B2A67] dark:text-[#FFD21C] hover:bg-[#EDF4FC] cursor-pointer"
+                          >
+                            + Add Walk-in on this Court
+                          </Button>
                         </div>
                       ) : (
-                        dayBookings.slice(0, 4).map((b) => {
-                          const courtName = b.courts?.name || (b.court_id?.includes('80d4') ? 'Court 1' : 'Court 2');
-                          const courtLabel = courtName.includes('2') ? 'Court 2' : 'Court 1';
+                        courtBookings.map((b) => {
                           const isCheckedIn = b.status === 'checked_in';
                           const isCancelled = b.status === 'cancelled';
                           const clientDisplayName = b.guest_name || b.profiles?.full_name || 'Client';
@@ -1139,150 +1557,163 @@ export default function ScheduleClient({
                           return (
                             <div
                               key={b.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedBooking(b);
-                              }}
-                              className={`p-1.5 rounded-md border text-left cursor-pointer transition-all hover:border-[#111111] dark:hover:border-white/50 flex flex-col gap-0.5 ${
-                                isCancelled
-                                  ? 'bg-[#f5f5f5] dark:bg-[#18181c] border-[#cacacb] dark:border-[#27272a] text-[#707072] dark:text-[#66666e] line-through opacity-60'
-                                  : isCheckedIn
-                                  ? 'bg-[#f5f5f5] dark:bg-[#007d48]/10 border-[#007d48]/50 text-[#007d48]'
-                                  : 'bg-[#f5f5f5] dark:bg-[#1a1a1f] border-[#cacacb] dark:border-[#2a2a30] text-[#111111] dark:text-foreground'
-                              }`}
-                              title={`Click to check in: ${clientDisplayName} (${formatTimeSlot(b.start_time, b.end_time)})`}
+                              className="py-3 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                             >
-                              {/* Client Full Name */}
-                              <div className="flex items-center justify-between gap-1 truncate">
-                                <span className="text-[11px] font-bold text-[#111111] dark:text-foreground truncate">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs font-black text-[#0B2A67] dark:text-white bg-slate-100 dark:bg-white/10 px-2 py-0.5 rounded-none">
+                                    {formatTimeSlot(b.start_time, b.end_time)}
+                                  </span>
+                                  {isCheckedIn ? (
+                                    <span className="px-2 py-0.5 rounded-none bg-emerald-100 dark:bg-emerald-950 text-[#007d48] dark:text-emerald-400 text-[10px] font-black uppercase">
+                                      ARRIVED
+                                    </span>
+                                  ) : isCancelled ? (
+                                    <span className="px-2 py-0.5 rounded-none bg-red-100 text-red-700 text-[10px] font-black uppercase">
+                                      CANCELLED
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-none bg-blue-100 text-[#0B2A67] dark:bg-blue-950 dark:text-blue-300 text-[10px] font-black uppercase">
+                                      {b.status === 'paid' ? 'PAID' : 'BOOKED'}
+                                    </span>
+                                  )}
+                                  {b.duration_hours && (
+                                    <span className="text-[11px] text-slate-500 font-semibold">
+                                      ({b.duration_hours} hr{b.duration_hours > 1 ? 's' : ''})
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="text-sm font-bold text-foreground">
                                   {clientDisplayName}
-                                </span>
-                                <span className="text-[8px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] shrink-0">
-                                  {courtLabel}
-                                </span>
+                                </div>
+
+                                {(b.guest_phone || b.guest_email) && (
+                                  <div className="text-xs text-slate-500 flex items-center gap-3">
+                                    {b.guest_phone && (
+                                      <span className="flex items-center gap-1 font-mono">
+                                        <Phone className="w-3 h-3 text-slate-400" />
+                                        {b.guest_phone}
+                                      </span>
+                                    )}
+                                    {b.guest_email && (
+                                      <span className="flex items-center gap-1 truncate max-w-[200px]">
+                                        <Mail className="w-3 h-3 text-slate-400" />
+                                        {b.guest_email}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Time Range */}
-                              <div className="flex items-center justify-between text-[9px] text-[#707072] dark:text-[#8a8a93] font-mono">
-                                <span>{formatTimeSlot(b.start_time, b.end_time)}</span>
-                                {isCheckedIn && (
-                                  <span className="text-[8px] font-bold text-[#007d48]">ARRIVED</span>
+                              <div className="flex items-center gap-2 self-end sm:self-center">
+                                {!isCheckedIn && !isCancelled && (
+                                  <Button
+                                    size="sm"
+                                    onClick={async () => {
+                                      await checkInBooking(b.id);
+                                      fetchBookingsForDate(currentDate);
+                                      fetchMonthAllBookings(currentMonthStr);
+                                    }}
+                                    className="h-8 px-3 text-xs font-bold bg-[#007d48] text-white hover:bg-[#00663a] rounded-none cursor-pointer"
+                                  >
+                                    <Check className="w-3.5 h-3.5 mr-1" />
+                                    Check In
+                                  </Button>
                                 )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedBooking(b)}
+                                  className="h-8 px-3 text-xs font-bold border-slate-300 dark:border-white/20 rounded-none cursor-pointer"
+                                >
+                                  Details
+                                </Button>
                               </div>
                             </div>
                           );
                         })
                       )}
-
-                      {dayBookings.length > 4 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleDateSelect(dayObj.dateStr);
-                            setViewMode('timeline');
-                          }}
-                          className="w-full text-center text-[9px] font-bold text-[#111111] dark:text-foreground hover:underline bg-[#f5f5f5] dark:bg-[#18181c] py-1 rounded border border-[#cacacb] dark:border-[#27272a] block"
-                        >
-                          +{dayBookings.length - 4} more • Timeline →
-                        </button>
-                      )}
                     </div>
-
-                    {/* Footer link to switch to single day timeline */}
-                    <div className="pt-1 border-t border-[#e5e5e5] dark:border-[#222226] flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleDateSelect(dayObj.dateStr);
-                          setViewMode('timeline');
-                        }}
-                        className="text-[9px] text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground font-semibold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Eye className="w-3 h-3" /> Day Timeline
-                      </button>
-                    </div>
-
                   </div>
                 );
               })}
-            </div>
-
           </div>
 
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* VIEW 2: HOURLY MULTI-COURT DAY TIMELINE */}
+      {/* VIEW 3: HOURLY MULTI-COURT DAY TIMELINE */}
       {/* ========================================================================= */}
       {viewMode === 'timeline' && (
         <div className="space-y-4 flex-1 flex flex-col min-h-0">
           
           {/* Day Selector & Occupancy Ribbon */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 border border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215]">
+          <div className="p-3.5 sm:p-4 rounded-none border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => handleOffsetDay(-1)}
-                  className="h-8 w-8 text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
+                  className="h-9 w-9 text-[#0B2A67] dark:text-white border-slate-300 dark:border-white/20 hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none cursor-pointer"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="font-bold text-sm uppercase text-[#111111] dark:text-foreground tracking-wide">{displayFormattedDate}</span>
+                <span className="font-black text-sm uppercase text-[#0B2A67] dark:text-white tracking-wide px-1">{displayFormattedDate}</span>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => handleOffsetDay(1)}
-                  className="h-8 w-8 text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
+                  className="h-9 w-9 text-[#0B2A67] dark:text-white border-slate-300 dark:border-white/20 hover:bg-[#EDF4FC] dark:hover:bg-white/10 rounded-none cursor-pointer"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 {isTodayActive && (
-                  <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#111111] dark:bg-white text-white dark:text-[#111111]">
+                  <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-none bg-[#0B2A67] text-[#FFD21C]">
                     Today
                   </span>
                 )}
               </div>
 
               {/* Facility Occupancy Meter */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] text-xs">
-                <Activity className="w-3.5 h-3.5 text-[#111111] dark:text-foreground shrink-0" />
-                <span className="text-[#707072] dark:text-[#8a8a93] font-medium">Occupancy:</span>
-                <span className="font-bold text-[#111111] dark:text-foreground">
+              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-none bg-[#EDF4FC] dark:bg-[#0c1a3b] border border-[#0B2A67]/20 dark:border-[#FFD21C]/30 text-xs shadow-2xs">
+                <Activity className="w-3.5 h-3.5 text-[#0B2A67] dark:text-[#FFD21C] shrink-0" />
+                <span className="text-slate-600 dark:text-slate-300 font-semibold">Occupancy:</span>
+                <span className="font-black text-[#0B2A67] dark:text-[#FFD21C]">
                   {occupancyPercent}% ({totalHoursBooked}/{totalCapacityHours} hrs)
                 </span>
-                <div className="w-16 h-1.5 bg-[#cacacb] dark:bg-[#333338] rounded-full overflow-hidden ml-1">
+                <div className="w-16 h-2 bg-slate-200 dark:bg-black/40 rounded-none overflow-hidden ml-1">
                   <div
-                    className="h-full bg-[#111111] dark:bg-white rounded-full transition-all duration-300"
+                    className="h-full bg-gradient-to-r from-[#0B2A67] to-[#007d48] rounded-none transition-all duration-300"
                     style={{ width: `${Math.min(100, occupancyPercent)}%` }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 text-xs font-semibold">
-              <div className="flex items-center gap-1.5 text-[#707072] dark:text-[#8a8a93]">
+            <div className="flex items-center gap-4 text-xs font-bold">
+              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                 <span>Active Bookings:</span>
-                <span className="font-bold text-[#111111] dark:text-foreground">{bookings.length}</span>
+                <span className="font-black text-[#0B2A67] dark:text-white bg-[#EDF4FC] dark:bg-[#0c1a3b] px-2.5 py-0.5 rounded-none">{bookings.length}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[#707072] dark:text-[#8a8a93]">
+              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                 <span>Checked In:</span>
-                <span className="font-bold text-[#007d48]">{checkedInCount} / {bookings.length}</span>
+                <span className="font-black text-[#007d48] dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 rounded-none border border-emerald-200 dark:border-emerald-800">{checkedInCount} / {bookings.length}</span>
               </div>
             </div>
           </div>
 
           {/* TIMELINE GRID CONTAINER */}
-          <div className="flex-1 bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] overflow-hidden flex flex-col min-h-0">
+          <div className="flex-1 bg-white dark:bg-[#071E4B] rounded-none border border-slate-300 dark:border-white/15 overflow-hidden shadow-sm flex flex-col min-h-0">
             <ScrollArea className="flex-1">
               <div className="min-w-[2000px]">
                 
                 {/* Timeline Header: Fixed Court Column + 16 Hourly Slot Columns */}
-                <div className="flex border-b border-[#cacacb] dark:border-[#27272a] sticky top-0 z-30 bg-[#f5f5f5] dark:bg-[#18181c]">
-                  <div className="w-[260px] min-w-[260px] p-4 font-bold text-xs uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] border-r border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] flex items-center gap-2 sticky left-0 z-40">
-                    <Trophy className="w-4 h-4 text-[#111111] dark:text-foreground" />
+                <div className="flex border-b border-[#071E4B] sticky top-0 z-30 bg-[#0B2A67] text-white">
+                  <div className="w-[260px] min-w-[260px] p-4 font-black text-xs uppercase tracking-wider text-white border-r border-[#071E4B] bg-[#0B2A67] flex items-center gap-2 sticky left-0 z-40">
+                    <Trophy className="w-4 h-4 text-[#FFD21C]" />
                     <span>Arena Courts</span>
                   </div>
 
@@ -1296,7 +1727,7 @@ export default function ScheduleClient({
                       <div
                         key={hour}
                         style={{ gridColumn: idx + 1 }}
-                        className="p-3 text-center text-xs font-bold text-[#707072] dark:text-[#8a8a93] border-r border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] flex items-center justify-center font-mono"
+                        className="p-3 text-center text-xs font-black text-white/90 border-r border-white/10 bg-[#071E4B] flex items-center justify-center font-mono"
                       >
                         {formatHour(hour)}
                       </div>
@@ -1306,9 +1737,9 @@ export default function ScheduleClient({
                     {isTodayActive && isLiveOperating && (
                       <div
                         style={{ left: `${liveOffsetPercent}%` }}
-                        className="absolute top-0 bottom-0 w-[2px] bg-[#d30005] z-50 pointer-events-none"
+                        className="absolute top-0 bottom-0 w-[2.5px] bg-[#bf050b] z-50 pointer-events-none"
                       >
-                        <span className="absolute -bottom-2 -translate-x-1/2 bg-[#d30005] text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">
+                        <span className="absolute -bottom-2.5 -translate-x-1/2 bg-[#bf050b] text-white text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap shadow-md">
                           LIVE {formatHour(currentPhtHour)}:{String(currentPhtMinute).padStart(2, '0')}
                         </span>
                       </div>
@@ -1317,26 +1748,29 @@ export default function ScheduleClient({
                 </div>
 
                 {/* Timeline Rows per Court */}
-                <div className="relative divide-y divide-[#cacacb] dark:divide-[#27272a]">
+                <div className="relative divide-y divide-slate-200 dark:divide-white/10">
                   {courts.map((court) => {
                     const courtBookings = bookings.filter((b) => {
                       const bCourtId = b.courts?.id || b.court_id;
                       return bCourtId === court.id;
                     });
 
+                    const isCourt2 = court.name.includes('2');
+                    const dotColor = isCourt2 ? 'bg-[#007d48]' : 'bg-[#0B2A67]';
+
                     return (
                       <div
                         key={court.id}
-                        className="flex border-b border-[#cacacb] dark:border-[#27272a] min-h-[115px] relative group hover:bg-[#f5f5f5]/30 dark:hover:bg-[#18181c]/30 transition-colors"
+                        className="flex border-b border-slate-200 dark:border-white/10 min-h-[120px] relative group hover:bg-[#EDF4FC]/20 dark:hover:bg-white/5 transition-colors"
                       >
                         {/* Court Info */}
-                        <div className="w-[260px] min-w-[260px] p-4 text-xs font-bold text-[#111111] dark:text-foreground border-r border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215] sticky left-0 z-20 flex flex-col justify-between">
+                        <div className="w-[260px] min-w-[260px] p-4 text-xs font-bold text-foreground border-r border-slate-200 dark:border-white/10 bg-white dark:bg-[#071E4B] sticky left-0 z-20 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full bg-[#007d48]" />
-                              <span className="font-bold text-sm text-[#111111] dark:text-foreground tracking-tight">{court.name}</span>
+                              <span className={`w-3 h-3 rounded-full ${dotColor} shadow-2xs`} />
+                              <span className="font-black text-sm text-[#0B2A67] dark:text-white tracking-tight">{court.name}</span>
                             </div>
-                            <div className="flex items-center gap-2 mt-1 ml-4.5 text-[11px] font-medium text-[#707072] dark:text-[#8a8a93]">
+                            <div className="flex items-center gap-2 mt-1 ml-5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                               <span>₱{Number(court.hourly_rate ?? 300).toFixed(2)} / hr</span>
                               <span>•</span>
                               <span>Pro Cushion</span>
@@ -1346,7 +1780,7 @@ export default function ScheduleClient({
 
                         {/* 16 Hourly Slots Track */}
                         <div
-                          className="flex-1 grid relative bg-white dark:bg-[#121215]"
+                          className="flex-1 grid relative bg-white dark:bg-[#0a1633]"
                           style={{
                             gridTemplateColumns: `repeat(${OPERATING_SLOTS.length}, minmax(110px, 1fr))`,
                           }}
@@ -1355,14 +1789,14 @@ export default function ScheduleClient({
                             <div
                               key={hour}
                               style={{ gridColumn: idx + 1, gridRow: 1 }}
-                              className="border-r border-[#e5e5e5] dark:border-[#222226] h-full relative group/slot flex items-center justify-center p-2"
+                              className="border-r border-slate-100 dark:border-white/10 h-full relative group/slot flex items-center justify-center p-2"
                             >
                               <button
                                 type="button"
                                 onClick={() => openWalkInForSlot(court.id, hour)}
-                                className="opacity-0 group-hover/slot:opacity-100 transition-all text-[10px] font-semibold bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-[#ededed] px-2.5 py-1 rounded-full flex items-center gap-1 z-10 cursor-pointer"
+                                className="opacity-0 group-hover/slot:opacity-100 transition-all text-[10px] font-black bg-[#FFD21C] text-[#0B2A67] hover:bg-[#E8BA00] px-3 py-1 rounded-full flex items-center gap-1 z-10 cursor-pointer shadow-sm"
                               >
-                                <Plus className="w-3 h-3" /> Book
+                                <Plus className="w-3 h-3 stroke-[2.5]" /> Book
                               </button>
                             </div>
                           ))}
@@ -1373,32 +1807,34 @@ export default function ScheduleClient({
                             const isCancelled = booking.status === 'cancelled';
                             const clientDisplayName = booking.guest_name || booking.profiles?.full_name || 'Client';
 
+                            const bgStyle = isCancelled
+                              ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 opacity-60 line-through'
+                              : isCheckedIn
+                              ? 'bg-[#007d48] border-[#005e36] text-white shadow-md'
+                              : isCourt2
+                              ? 'bg-[#007d48] border-[#005e36] text-white shadow-md'
+                              : 'bg-[#0B2A67] border-[#071E4B] text-white shadow-md';
+
                             return (
                               <div
                                 key={booking.id}
                                 onClick={() => setSelectedBooking(booking)}
-                                className={`absolute inset-y-2 rounded-none p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 z-10 border ${
-                                  isCancelled
-                                    ? 'bg-[#f5f5f5] dark:bg-[#18181c] border-[#cacacb] dark:border-[#27272a] text-[#707072] dark:text-[#8a8a93] opacity-60 line-through'
-                                    : isCheckedIn
-                                    ? 'bg-[#007d48] border-[#007d48] text-white'
-                                    : 'bg-[#111111] dark:bg-[#222228] border-[#111111] dark:border-[#33333a] text-white'
-                                }`}
+                                className={`absolute inset-y-2 inset-x-1 rounded-xl p-3 flex flex-col justify-between cursor-pointer transition-all duration-200 z-10 border hover:scale-[1.01] ${bgStyle}`}
                                 style={{
                                   gridColumn: getGridColumn(booking.start_time, booking.end_time),
                                   gridRow: 1,
                                 }}
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="font-bold text-xs truncate">
+                                  <span className="font-black text-xs truncate drop-shadow-xs">
                                     {clientDisplayName}
                                   </span>
-                                  <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-white/20 text-white">
-                                    {booking.status}
+                                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-white/20 text-white backdrop-blur-xs">
+                                    {isCheckedIn ? 'ARRIVED' : booking.status}
                                   </span>
                                 </div>
 
-                                <div className="flex items-center justify-between text-[10px] pt-1 border-t border-white/20 font-mono">
+                                <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-white/20 font-mono font-bold">
                                   <span>{formatTimeSlot(booking.start_time, booking.end_time)}</span>
                                   <span>#{booking.id.slice(0, 6)}</span>
                                 </div>
@@ -1431,26 +1867,26 @@ export default function ScheduleClient({
           }
         }}
       >
-        <DialogContent className="sm:max-w-lg bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground rounded-none p-6 sm:p-8 shadow-2xl">
+        <DialogContent className="sm:max-w-lg bg-white dark:bg-[#071E4B] border border-slate-200 dark:border-white/15 text-foreground rounded-3xl p-6 sm:p-8 shadow-2xl">
           <DialogHeader>
             <div className="flex items-center justify-between pb-2">
-              <DialogTitle className="text-2xl font-bold tracking-tight text-[#111111] dark:text-foreground">
+              <DialogTitle className="text-2xl font-black tracking-tight text-[#0B2A67] dark:text-white">
                 Reservation Details
               </DialogTitle>
               <span
-                className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${
+                className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border shadow-2xs ${
                   selectedBooking?.status === 'checked_in'
-                    ? 'bg-[#f5f5f5] dark:bg-[#007d48]/10 text-[#007d48] border-[#007d48]/40'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-[#007d48] dark:text-emerald-400 border-emerald-300 dark:border-emerald-800'
                     : selectedBooking?.status === 'cancelled'
-                    ? 'bg-[#f5f5f5] dark:bg-[#d30005]/10 text-[#d30005] border-[#d30005]/40'
-                    : 'bg-[#f5f5f5] dark:bg-[#18181c] text-[#111111] dark:text-foreground border-[#cacacb] dark:border-[#27272a]'
+                    ? 'bg-red-50 dark:bg-red-950/60 text-[#bf050b] border-red-300 dark:border-red-800'
+                    : 'bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-[#FFD21C] border-[#0B2A67]/20 dark:border-[#FFD21C]/30'
                 }`}
               >
                 {selectedBooking?.status?.toUpperCase()}
               </span>
             </div>
-            <DialogDescription className="text-xs text-[#707072] dark:text-[#8a8a93]">
-              Booking Identifier: <strong className="font-mono text-[#111111] dark:text-foreground">#{selectedBooking?.id}</strong>
+            <DialogDescription className="text-xs text-slate-500 dark:text-slate-300 font-medium">
+              Booking Identifier: <strong className="font-mono text-[#0B2A67] dark:text-[#FFD21C]">#{selectedBooking?.id}</strong>
             </DialogDescription>
           </DialogHeader>
 
@@ -1458,47 +1894,54 @@ export default function ScheduleClient({
             <div className="space-y-4 py-4">
               
               {/* Client Identity Card */}
-              <div className="p-4 border border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] space-y-2">
+              <div className="p-4 rounded-2xl border border-[#d2e4f7] dark:border-white/10 bg-[#EDF4FC] dark:bg-[#0c1a3b] space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-[#111111] dark:text-foreground" />
-                    <span className="font-bold text-sm text-[#111111] dark:text-foreground">
-                      {selectedBooking.guest_name || 'Walk-in Client'}
-                    </span>
+                    <div className="w-8 h-8 rounded-xl bg-[#0B2A67] text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+                      {(selectedBooking.guest_name || 'C').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <span className="font-black text-sm text-[#0B2A67] dark:text-white block">
+                        {selectedBooking.guest_name || 'Walk-in Client'}
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                        Registered Player
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-xs font-bold text-[#111111] dark:text-foreground bg-white dark:bg-[#121215] px-2.5 py-0.5 rounded-full border border-[#cacacb] dark:border-[#27272a]">
+                  <span className="text-xs font-black text-[#0B2A67] dark:text-[#FFD21C] bg-white dark:bg-[#071E4B] px-3 py-1 rounded-full border border-slate-200 dark:border-white/10 shadow-2xs">
                     ₱{Number(selectedBooking.total_price || 300).toFixed(2)}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#cacacb] dark:border-[#27272a] text-xs text-[#707072] dark:text-[#8a8a93]">
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#d2e4f7] dark:border-white/10 text-xs text-slate-600 dark:text-slate-300">
                   {selectedBooking.guest_phone && (
                     <div className="flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5" />
-                      <span>{selectedBooking.guest_phone}</span>
+                      <Phone className="w-3.5 h-3.5 text-[#0B2A67] dark:text-[#FFD21C]" />
+                      <span className="font-semibold">{selectedBooking.guest_phone}</span>
                     </div>
                   )}
                   {selectedBooking.guest_email && (
                     <div className="flex items-center gap-1.5 truncate">
-                      <Mail className="w-3.5 h-3.5" />
-                      <span className="truncate">{selectedBooking.guest_email}</span>
+                      <Mail className="w-3.5 h-3.5 text-[#0B2A67] dark:text-[#FFD21C]" />
+                      <span className="truncate font-semibold">{selectedBooking.guest_email}</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Session Details Grid */}
-              <div className="grid grid-cols-2 gap-3 text-xs border border-[#cacacb] dark:border-[#27272a] bg-white dark:bg-[#121215] p-4">
+              <div className="grid grid-cols-2 gap-3 text-xs border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#0a1633] rounded-2xl p-4">
                 <div>
-                  <p className="text-[#707072] dark:text-[#8a8a93] font-semibold mb-0.5">Assigned Court</p>
-                  <p className="font-bold text-[#111111] dark:text-foreground">
+                  <p className="text-slate-500 dark:text-slate-400 font-bold mb-0.5 uppercase tracking-wider text-[10px]">Assigned Court</p>
+                  <p className="font-black text-[#0B2A67] dark:text-white text-sm">
                     {selectedBooking.courts?.name || 'Court 1 - Indoor'}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[#707072] dark:text-[#8a8a93] font-semibold mb-0.5">Payment Tender</p>
-                  <p className="font-bold text-[#111111] dark:text-foreground capitalize">
+                  <p className="text-slate-500 dark:text-slate-400 font-bold mb-0.5 uppercase tracking-wider text-[10px]">Payment Tender</p>
+                  <p className="font-black text-[#0B2A67] dark:text-white text-sm capitalize">
                     {selectedBooking.payment_method === 'counter_qr'
                       ? 'Counter QR Ph'
                       : selectedBooking.payment_method || 'Online Gateway'}
@@ -1506,15 +1949,15 @@ export default function ScheduleClient({
                 </div>
 
                 <div>
-                  <p className="text-[#707072] dark:text-[#8a8a93] font-semibold mb-0.5">Session Time</p>
-                  <p className="font-bold text-[#111111] dark:text-foreground">
+                  <p className="text-slate-500 dark:text-slate-400 font-bold mb-0.5 uppercase tracking-wider text-[10px]">Session Time</p>
+                  <p className="font-black text-[#0B2A67] dark:text-white font-mono">
                     {formatTimeSlot(selectedBooking.start_time, selectedBooking.end_time)}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[#707072] dark:text-[#8a8a93] font-semibold mb-0.5">Duration</p>
-                  <p className="font-bold text-[#111111] dark:text-foreground">
+                  <p className="text-slate-500 dark:text-slate-400 font-bold mb-0.5 uppercase tracking-wider text-[10px]">Duration</p>
+                  <p className="font-black text-[#0B2A67] dark:text-white">
                     {selectedBooking.duration_hours || 1} Hour Session
                   </p>
                 </div>
@@ -1531,20 +1974,20 @@ export default function ScheduleClient({
                 const isSynced = !!selectedBooking.google_calendar_event_id;
 
                 return (
-                  <div className="p-4 border border-[#cacacb] dark:border-[#27272a] bg-[#f9f9fa] dark:bg-[#151518] rounded-2xl space-y-3">
+                  <div className="p-4 border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0c1a3b] rounded-2xl space-y-3 shadow-xs">
                     {/* Status row */}
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-[#0B2A67] dark:text-[#FFD21C]">
                           Payment &amp; Google Calendar
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-[#111111] dark:text-foreground">
-                            Paid: <strong className="text-[#007d48] dark:text-[#10b981]">₱{downPaymentPaid.toFixed(2)}</strong>
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            Paid: <strong className="text-[#007d48] dark:text-emerald-400 font-black">₱{downPaymentPaid.toFixed(2)}</strong>
                           </span>
                           {remainingBalance > 0 && (
-                            <span className="text-xs font-semibold text-[#d30005]">
-                              Due: <strong>₱{remainingBalance.toFixed(2)}</strong>
+                            <span className="text-xs font-semibold text-[#bf050b]">
+                              Due: <strong className="font-black">₱{remainingBalance.toFixed(2)}</strong>
                             </span>
                           )}
                         </div>
@@ -1553,7 +1996,7 @@ export default function ScheduleClient({
                       {/* Google Calendar Direct Push Badge / Trigger */}
                       <div className="flex items-center gap-1.5">
                         {isSynced ? (
-                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-[#007d48] dark:text-[#10b981] border border-emerald-200 dark:border-emerald-800">
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-[#007d48] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                             <CheckCircle2 className="w-3 h-3" />
                             <span>G-Cal Synced</span>
                           </div>
@@ -1564,7 +2007,7 @@ export default function ScheduleClient({
                             variant="outline"
                             onClick={handleManualGCalSync}
                             disabled={isSyncingGCal}
-                            className="h-7 px-2.5 text-[10px] font-bold rounded-full border-emerald-300 dark:border-emerald-800 text-[#007d48] dark:text-[#10b981] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                            className="h-7 px-2.5 text-[10px] font-bold rounded-full border-emerald-300 dark:border-emerald-800 text-[#007d48] dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
                           >
                             {isSyncingGCal ? (
                               <>
@@ -1588,7 +2031,7 @@ export default function ScheduleClient({
                         className={`p-2.5 rounded-xl text-[11px] font-medium flex items-center gap-2 ${
                           dpFeedback.type === 'success'
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 text-[#007d48] dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900'
-                            : 'bg-red-50 dark:bg-red-950/40 text-[#d30005] border border-red-200 dark:border-red-900'
+                            : 'bg-red-50 dark:bg-red-950/40 text-[#bf050b] border border-red-200 dark:border-red-900'
                         }`}
                       >
                         {dpFeedback.type === 'success' ? (
@@ -1602,23 +2045,23 @@ export default function ScheduleClient({
 
                     {/* Record Down Payment Form if balance due */}
                     {remainingBalance > 0 && (
-                      <div className="pt-2 border-t border-[#cacacb] dark:border-[#27272a] space-y-2">
+                      <div className="pt-2 border-t border-slate-100 dark:border-white/10 space-y-2">
                         <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-[#111111] dark:text-foreground">
+                          <label className="text-[11px] font-bold text-[#0B2A67] dark:text-white">
                             Record Down Payment / Deposit
                           </label>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => setDownPaymentAmountInput((remainingBalance * 0.5).toFixed(0))}
-                              className="px-2 py-0.5 rounded-md bg-[#e5e5e5] dark:bg-[#27272a] text-[10px] font-bold hover:bg-[#cacacb] cursor-pointer"
+                              className="px-2.5 py-0.5 rounded-lg bg-[#EDF4FC] dark:bg-white/10 text-[10px] font-black text-[#0B2A67] dark:text-[#FFD21C] hover:bg-[#d2e4f7] cursor-pointer"
                             >
                               50% (₱{(remainingBalance * 0.5).toFixed(0)})
                             </button>
                             <button
                               type="button"
                               onClick={() => setDownPaymentAmountInput(remainingBalance.toFixed(0))}
-                              className="px-2 py-0.5 rounded-md bg-[#e5e5e5] dark:bg-[#27272a] text-[10px] font-bold hover:bg-[#cacacb] cursor-pointer"
+                              className="px-2.5 py-0.5 rounded-lg bg-[#EDF4FC] dark:bg-white/10 text-[10px] font-black text-[#0B2A67] dark:text-[#FFD21C] hover:bg-[#d2e4f7] cursor-pointer"
                             >
                               Full (₱{remainingBalance.toFixed(0)})
                             </button>
@@ -1627,7 +2070,7 @@ export default function ScheduleClient({
 
                         <div className="flex items-center gap-2">
                           <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#707072] font-bold">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">
                               ₱
                             </span>
                             <Input
@@ -1637,14 +2080,14 @@ export default function ScheduleClient({
                               placeholder="Amount"
                               value={downPaymentAmountInput}
                               onChange={(e) => setDownPaymentAmountInput(e.target.value)}
-                              className="h-9 pl-7 pr-2 rounded-xl text-xs bg-white dark:bg-black font-semibold"
+                              className="h-9 pl-7 pr-2 rounded-xl text-xs bg-slate-50 dark:bg-black/40 font-bold"
                             />
                           </div>
 
                           <select
                             value={downPaymentMethodInput}
                             onChange={(e) => setDownPaymentMethodInput(e.target.value as any)}
-                            className="h-9 px-2.5 rounded-xl border border-[#cacacb] dark:border-[#3f3f46] text-xs font-semibold bg-white dark:bg-black text-foreground outline-none cursor-pointer"
+                            className="h-9 px-2.5 rounded-xl border border-slate-200 dark:border-white/15 text-xs font-bold bg-white dark:bg-black/40 text-foreground outline-none cursor-pointer"
                           >
                             <option value="cash">Cash</option>
                             <option value="gcash">GCash</option>
@@ -1656,7 +2099,7 @@ export default function ScheduleClient({
                             size="sm"
                             disabled={isRecordingDP || !downPaymentAmountInput}
                             onClick={handleRecordDownPayment}
-                            className="h-9 px-3 rounded-xl text-xs font-bold bg-[#007d48] hover:bg-[#006037] text-white shrink-0 cursor-pointer"
+                            className="h-9 px-3 rounded-xl text-xs font-black bg-[#007d48] hover:bg-[#006037] text-white shrink-0 cursor-pointer shadow-2xs"
                           >
                             {isRecordingDP ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1675,8 +2118,8 @@ export default function ScheduleClient({
               })()}
 
               {selectedBooking.notes && (
-                <div className="p-3 border border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] text-xs text-[#111111] dark:text-foreground">
-                  <strong>Special Note:</strong> {selectedBooking.notes}
+                <div className="p-3 border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#0a1633] text-xs text-slate-700 dark:text-slate-300 rounded-xl">
+                  <strong className="text-[#0B2A67] dark:text-[#FFD21C]">Special Note:</strong> {selectedBooking.notes}
                 </div>
               )}
             </div>
@@ -1687,7 +2130,7 @@ export default function ScheduleClient({
               <Button
                 variant="outline"
                 onClick={() => setSelectedBooking(null)}
-                className="border-[#cacacb] dark:border-[#27272a] text-[#111111] dark:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] rounded-full"
+                className="border-slate-200 dark:border-white/15 text-foreground hover:bg-slate-100 dark:hover:bg-white/10 rounded-full"
               >
                 Close
               </Button>
@@ -1710,9 +2153,9 @@ export default function ScheduleClient({
                   })}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-full border border-emerald-300 dark:border-emerald-800 text-[#007d48] dark:text-[#10b981] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-xs font-semibold cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 h-10 rounded-full border border-emerald-300 dark:border-emerald-800 text-[#007d48] dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-xs font-bold cursor-pointer shadow-2xs"
                 >
-                  <CalendarIcon className="w-3.5 h-3.5 text-[#007d48] dark:text-[#10b981]" />
+                  <CalendarIcon className="w-3.5 h-3.5 text-[#007d48] dark:text-emerald-400" />
                   <span>Add to Google Calendar</span>
                 </a>
               )}
@@ -1721,12 +2164,12 @@ export default function ScheduleClient({
               <Button
                 onClick={handleCheckIn}
                 disabled={isPending}
-                className="bg-[#111111] dark:bg-white hover:bg-[#222222] dark:hover:bg-[#ededed] text-white dark:text-[#111111] font-semibold rounded-full px-6"
+                className="bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black rounded-full px-6 h-10 shadow-sm cursor-pointer active:scale-[0.98]"
               >
                 {isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
                 ) : (
-                  <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                  <CheckCircle2 className="w-4 h-4 mr-1.5 stroke-[2.5]" />
                 )}
                 Confirm Player Arrival
               </Button>

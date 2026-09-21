@@ -246,3 +246,46 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #52525b;
 }
+
+/* ========================================================================= */
+/* POS THERMAL RECEIPT PRINTER STYLESHEET (58mm / 80mm Continuous Roll)     */
+/* Strips browser page headers, dates, margins, and dashboard UI chrome      */
+/* ========================================================================= */
+@media print {
+  /* Hide all dashboard application chrome, sidebars, and overlays */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Expose only the dedicated thermal receipt container */
+  #thermal-receipt-container,
+  #thermal-receipt-container * {
+    visibility: visible !important;
+  }
+
+  #thermal-receipt-container {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 3mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-family: 'Courier New', Courier, monospace, system-ui !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    z-index: 9999999 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Strip browser URL, date, and page count headers/footers */
+  @page {
+    size: 80mm auto;
+    margin: 0mm;
+  }
+}

@@ -43,7 +43,7 @@ export function DashboardMobileNav({
         <ThemeToggle variant="icon" />
         
         <span className="text-[10px] font-bold uppercase tracking-wider text-foreground bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] px-2.5 py-0.5 rounded-full">
-          {userRole}
+          {userRole === 'coordinator' ? 'Coordinator' : userRole}
         </span>
         <form action={logout}>
           <SignOutButton
@@ -76,7 +76,7 @@ export function DashboardMobileNav({
                 <div className="truncate">
                   <p className="text-xs font-bold text-foreground truncate">{userName}</p>
                   <span className="text-[10px] uppercase font-bold tracking-wider text-[#707072] dark:text-[#a1a1aa]">
-                    {userRole} Terminal
+                    {userRole === 'coordinator' ? 'Coordinator' : userRole} Terminal
                   </span>
                 </div>
               </div>
@@ -85,49 +85,57 @@ export function DashboardMobileNav({
 
             <nav className="space-y-2">
               <div className="text-[10px] font-bold text-[#707072] dark:text-[#a1a1aa] uppercase tracking-widest px-2 mb-2">
-                Operations
+                {userRole === 'coordinator' ? 'Scheduling' : 'Operations'}
               </div>
 
-              <Link
-                href="/cashier"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs font-semibold text-foreground"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                POS Register
-              </Link>
+              {userRole !== 'coordinator' && (
+                <>
+                  <Link
+                    href="/cashier"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-xs font-semibold text-foreground"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    POS Register
+                  </Link>
 
-              <Link
-                href="/cashier/inventory"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
-              >
-                <Boxes className="w-4 h-4" />
-                Inventory Table
-              </Link>
+                  <Link
+                    href="/cashier/inventory"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
+                  >
+                    <Boxes className="w-4 h-4" />
+                    Inventory Table
+                  </Link>
 
-              <Link
-                href="/cashier/expenses"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
-              >
-                <TrendingDown className="w-4 h-4" />
-                Daily Expenses &amp; Margins
-              </Link>
+                  <Link
+                    href="/cashier/expenses"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
+                  >
+                    <TrendingDown className="w-4 h-4" />
+                    Daily Expenses &amp; Margins
+                  </Link>
 
-              <Link
-                href="/cashier/reports"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                Shift Reports
-              </Link>
+                  <Link
+                    href="/cashier/reports"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Shift Reports
+                  </Link>
+                </>
+              )}
 
               <Link
                 href="/cashier/schedule"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-full border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]"
+                className={`flex items-center gap-3 px-4 py-3 rounded-full text-xs font-semibold ${
+                  userRole === 'coordinator'
+                    ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]'
+                    : 'border border-[#cacacb] dark:border-[#27272a] text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c]'
+                }`}
               >
                 <Calendar className="w-4 h-4" />
                 Daily Court Schedule

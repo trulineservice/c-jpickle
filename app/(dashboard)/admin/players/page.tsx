@@ -27,7 +27,7 @@ export default async function AdminPlayersPage() {
   // 2. Fetch all Profiles (including email synced from auth)
   const { data: profilesData } = await supabase
     .from('profiles')
-    .select('id, full_name, email, phone, role, created_at')
+    .select('id, full_name, email, phone, role, created_at, is_deleted, deleted_at, deleted_reason, skill_level, emergency_contact, notes')
     .order('created_at', { ascending: false });
 
   // 3. Fetch all Bookings with Court Information
@@ -61,12 +61,18 @@ export default async function AdminPlayersPage() {
     role: string;
     isRegistered: boolean;
     memberSince: string;
+    isDeleted: boolean;
+    deletedAt: string | null;
+    deletedReason: string | null;
+    skillLevel: string;
+    emergencyContact: string | null;
+    notes: string | null;
     courtCounts: Map<string, number>;
     bookings: PlayerMatchRecord[];
   }>();
 
   // Initialize registered profiles
-  (profilesData || []).forEach((p) => {
+  (profilesData || []).forEach((p: any) => {
     playersMap.set(p.id, {
       id: p.id,
       fullName: p.full_name || 'Member Player',
@@ -75,6 +81,12 @@ export default async function AdminPlayersPage() {
       role: p.role || 'client',
       isRegistered: true,
       memberSince: p.created_at,
+      isDeleted: Boolean(p.is_deleted),
+      deletedAt: p.deleted_at || null,
+      deletedReason: p.deleted_reason || null,
+      skillLevel: p.skill_level || '3.0',
+      emergencyContact: p.emergency_contact || null,
+      notes: p.notes || null,
       courtCounts: new Map<string, number>(),
       bookings: [],
     });
@@ -122,6 +134,12 @@ export default async function AdminPlayersPage() {
           role: 'guest',
           isRegistered: false,
           memberSince: b.created_at,
+          isDeleted: false,
+          deletedAt: null,
+          deletedReason: null,
+          skillLevel: '3.0',
+          emergencyContact: null,
+          notes: null,
           courtCounts: new Map<string, number>(),
           bookings: [],
         });
@@ -177,6 +195,12 @@ export default async function AdminPlayersPage() {
       role: p.role,
       isRegistered: p.isRegistered,
       memberSince: p.memberSince,
+      isDeleted: p.isDeleted,
+      deletedAt: p.deletedAt,
+      deletedReason: p.deletedReason,
+      skillLevel: p.skillLevel,
+      emergencyContact: p.emergencyContact,
+      notes: p.notes,
       totalPlayed,
       totalHours,
       totalSpend,

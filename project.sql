@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "btree_gist";
 -- Profiles Table
 CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid NOT NULL PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  role text NOT NULL DEFAULT 'client' CHECK (role IN ('owner', 'admin', 'cashier', 'client')),
+  role text NOT NULL DEFAULT 'client' CHECK (role IN ('owner', 'admin', 'cashier', 'client', 'coordinator')),
   full_name text,
   phone text,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),

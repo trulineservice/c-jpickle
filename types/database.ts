@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'admin' | 'cashier' | 'client';
+export type UserRole = 'owner' | 'admin' | 'cashier' | 'client' | 'coordinator';
 
 export type BookingStatus = 
   | 'pending_payment'
@@ -63,6 +63,7 @@ export interface Booking {
   refund_reference?: string | null;
   refund_processed_at?: string | null;
   refund_processed_by?: string | null;
+  cashier_id?: string | null;
 }
 
 export type RefundStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'completed' | 'voided_no_refund';
@@ -259,4 +260,22 @@ export interface PayMongoCheckoutResponse {
       }>;
     };
   };
+}
+
+export interface CashierDutySession {
+  id: string;
+  cashier_id: string;
+  started_at: string;
+  ended_at: string | null;
+  status: 'on_duty' | 'off_duty';
+  opening_float: number;
+  closing_cash: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  profiles?: Profile | null;
+  cashier_name?: string;
+  cashier_email?: string;
+  cashier_phone?: string;
+  cashier_role?: string;
 }

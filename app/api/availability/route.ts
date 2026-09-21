@@ -89,21 +89,35 @@ export async function GET(request: NextRequest) {
         console.warn('[Availability API] Could not auto-expire pending holds:', cleanErr);
       }
 
-      // Query bookings using privileged server-side client (zero PII selected)
-      let bookingsQuery = adminSupabase
-        .from('bookings')
-        .select('id, start_time, end_time, status, expires_at')
-        .gte('end_time', startOfMonth.toISOString())
-        .lte('start_time', endOfMonth.toISOString())
-        .in('status', ['paid', 'checked_in', 'walk_in', 'pending_payment']);
+      // Query bookings using SECURITY DEFINER RPC (bypasses RLS safely with zero PII)
+      const { data: rpcBookings, error: rpcErr } = await adminSupabase.rpc(
+        'get_court_availability_bookings',
+        {
+          p_start_time: startOfMonth.toISOString(),
+          p_end_time: endOfMonth.toISOString(),
+          p_court_id: targetCourtId,
+        }
+      );
 
-      if (targetCourtId) {
-        bookingsQuery = bookingsQuery.eq('court_id', targetCourtId);
-      }
+      if (!rpcErr && rpcBookings) {
+        allBookings = rpcBookings;
+      } else {
+        // Fallback: direct table select
+        let bookingsQuery = adminSupabase
+          .from('bookings')
+          .select('id, start_time, end_time, status, expires_at')
+          .gte('end_time', startOfMonth.toISOString())
+          .lte('start_time', endOfMonth.toISOString())
+          .in('status', ['paid', 'checked_in', 'walk_in', 'pending_payment']);
 
-      const { data: dbBookings, error: queryErr } = await bookingsQuery;
-      if (!queryErr && dbBookings) {
-        allBookings = dbBookings;
+        if (targetCourtId) {
+          bookingsQuery = bookingsQuery.eq('court_id', targetCourtId);
+        }
+
+        const { data: dbBookings, error: queryErr } = await bookingsQuery;
+        if (!queryErr && dbBookings) {
+          allBookings = dbBookings;
+        }
       }
 
       // Check for court maintenance schedules
@@ -243,7 +257,7 @@ export async function GET(request: NextRequest) {
         },
         {
           headers: {
-            'Cache-Control': 'public, s-maxage=20, stale-while-revalidate=60',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
           },
         }
       );
@@ -330,7 +344,7 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         },
       }
     );

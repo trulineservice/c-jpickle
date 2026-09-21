@@ -11,6 +11,19 @@ export default async function CashierReportsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || !['owner', 'admin', 'cashier'].includes(profile.role)) {
+    if (profile?.role === 'coordinator') {
+      redirect('/cashier/schedule');
+    }
+    redirect('/dashboard');
+  }
+
   // 2. Fetch all POS transactions processed by this cashier with BIR tax breakdown and void audit columns
   const { data: rawTransactions } = await supabase
     .from("pos_transactions")

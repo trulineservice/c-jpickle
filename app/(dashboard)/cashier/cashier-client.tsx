@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { 
   Search, 
@@ -13,6 +14,7 @@ import {
   Ban, 
   CheckCircle2, 
   History,
+  TrendingDown,
   X,
   Clock,
   Banknote,
@@ -28,7 +30,9 @@ import {
 import { 
   processPosTransaction, 
   verifyPosMasterPin, 
-  voidPosTransactionWithPin, 
+  voidPosTransactionWithPin,
+  clockInCashierAction,
+  clockOutCashierAction,
   type PosCheckoutResult 
 } from "@/app/actions";
 import { ComplianceDiscountPanel } from "@/components/pos/compliance-discount-panel";
@@ -45,6 +49,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 export type Product = {
   id: string;
@@ -68,12 +73,27 @@ export interface PosRecentTransaction {
   voided_at?: string | null;
 }
 
+export interface StaffDutySessionInfo {
+  id: string;
+  cashier_id: string;
+  started_at: string;
+  ended_at?: string | null;
+  status: 'on_duty' | 'off_duty';
+  opening_float?: number | null;
+  closing_cash?: number | null;
+  notes?: string | null;
+}
+
 export default function CashierClient({
   initialProducts,
   initialRecentTransactions = [],
+  currentStaff = null,
+  initialDutySession = null,
 }: {
   initialProducts: Product[];
   initialRecentTransactions?: PosRecentTransaction[];
+  currentStaff?: { id: string; full_name?: string | null; email?: string | null; role?: string | null } | null;
+  initialDutySession?: StaffDutySessionInfo | null;
 }) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [recentTransactions, setRecentTransactions] = useState<PosRecentTransaction[]>(initialRecentTransactions);
@@ -82,7 +102,17 @@ export default function CashierClient({
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
+
+  // Cashier Duty Shift State
+  const [dutySession, setDutySession] = useState<StaffDutySessionInfo | null>(initialDutySession);
+  const [dutyModalOpen, setDutyModalOpen] = useState(false);
+  const [dutyModalMode, setDutyModalMode] = useState<'clock_in' | 'clock_out'>('clock_in');
+  const [floatAmountInput, setFloatAmountInput] = useState('500');
+  const [closingCashInput, setClosingCashInput] = useState('');
+  const [dutyNotesInput, setDutyNotesInput] = useState('');
+  const [isSubmittingDuty, setIsSubmittingDuty] = useState(false);
+  const [dutyFeedback, setDutyFeedback] = useState<string | null>(null);
 
   // Philippine Compliance & Statutory Discount State
   const [discountType, setDiscountType] = useState<"none" | "senior_citizen" | "pwd">("none");
@@ -352,6 +382,61 @@ export default function CashierClient({
     }
   };
 
+  const handleOpenDutyModal = (mode: 'clock_in' | 'clock_out') => {
+    setDutyModalMode(mode);
+    setDutyFeedback(null);
+    setDutyNotesInput('');
+    if (mode === 'clock_in') {
+      setFloatAmountInput('500');
+    } else {
+      setClosingCashInput('');
+    }
+    setDutyModalOpen(true);
+  };
+
+  const handleDutySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingDuty(true);
+    setDutyFeedback(null);
+
+    try {
+      if (dutyModalMode === 'clock_in') {
+        const floatVal = parseFloat(floatAmountInput) || 0;
+        const res = await clockInCashierAction({
+          openingFloat: floatVal,
+          notes: dutyNotesInput.trim() || undefined,
+        });
+
+        if (!res.success) {
+          setDutyFeedback(res.error || 'Failed to clock in.');
+        } else {
+          setDutySession(res.session as StaffDutySessionInfo);
+          setDutyModalOpen(false);
+          playHapticSound('success');
+        }
+      } else {
+        const closingVal = closingCashInput.trim() !== '' ? parseFloat(closingCashInput) : undefined;
+        const res = await clockOutCashierAction({
+          sessionId: dutySession?.id,
+          closingCash: closingVal,
+          notes: dutyNotesInput.trim() || undefined,
+        });
+
+        if (!res.success) {
+          setDutyFeedback(res.error || 'Failed to clock out.');
+        } else {
+          setDutySession(null);
+          setDutyModalOpen(false);
+          playHapticSound('success');
+        }
+      }
+    } catch (err: unknown) {
+      setDutyFeedback(err instanceof Error ? err.message : 'Action failed');
+    } finally {
+      setIsSubmittingDuty(false);
+    }
+  };
+
   const formatDateTime = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleTimeString("en-US", {
@@ -415,16 +500,56 @@ export default function CashierClient({
     <div className="flex-1 flex flex-col font-sans bg-[#fafafa] dark:bg-background text-[#111111] dark:text-foreground min-h-screen">
       {/* Top Header */}
       <div className="bg-white dark:bg-[#121215] border-b border-[#e5e5e5] dark:border-[#222226] px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#bf050b] animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#bf050b]">
-              Arena Cockpit Terminal &bull; Active Shift
-            </span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#007d48] animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#007d48]">
+                Arena Cockpit Terminal &bull; POS Register
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-[#111111] dark:text-foreground">
+              Point of Sale &amp; Pro Shop
+            </h1>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-[#111111] dark:text-foreground">
-            Point of Sale &amp; Pro Shop
-          </h1>
+
+          {/* Cashier Duty Status Pill */}
+          <div className="flex items-center gap-2 sm:ml-4">
+            {dutySession ? (
+              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1.5 rounded-full shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                    ON DUTY: {currentStaff?.full_name || 'Cashier'}
+                  </span>
+                  <span className="text-[9px] text-[#707072] dark:text-[#8a8a93]">
+                    Float ₱{Number(dutySession.opening_float || 0).toFixed(0)} &bull; {new Date(dutySession.started_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleOpenDutyModal('clock_out')}
+                  className="ml-1 px-2.5 py-1 text-[10px] font-bold uppercase bg-white dark:bg-black text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 rounded-full hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition-colors"
+                >
+                  Clock Out
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 px-3 py-1.5 rounded-full shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  {currentStaff?.full_name ? `${currentStaff.full_name} (Off Duty)` : 'Shift Inactive'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleOpenDutyModal('clock_in')}
+                  className="ml-1 px-2.5 py-1 text-[10px] font-bold uppercase bg-[#111111] dark:bg-white text-white dark:text-[#111111] rounded-full hover:bg-[#222222] dark:hover:bg-zinc-200 cursor-pointer transition-colors"
+                >
+                  Clock In
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Global Controls: Search, View Switcher, Recent Sales */}
@@ -443,6 +568,15 @@ export default function CashierClient({
               {recentTransactions.length}
             </span>
           </Button>
+
+          {/* Daily Expenses & Shift Margin Link */}
+          <Link
+            href="/cashier/expenses"
+            className="h-10 px-3.5 rounded-full border border-slate-300 dark:border-[#3f3f46] text-xs font-bold flex items-center gap-1.5 text-[#0B2A67] dark:text-[#FFD21C] bg-[#EDF4FC] dark:bg-[#0c1a3b] hover:bg-[#dbeafe] dark:hover:bg-[#13285c] transition-colors cursor-pointer"
+          >
+            <TrendingDown className="w-4 h-4 text-[#bf050b]" />
+            <span className="hidden md:inline">Expenses &amp; Margins</span>
+          </Link>
 
           {/* Table / Grid Switcher */}
           <div className="flex items-center bg-[#f5f5f5] dark:bg-[#18181c] p-1 rounded-full border border-[#cacacb] dark:border-[#3f3f46]">
@@ -653,9 +787,9 @@ export default function CashierClient({
             })}
           </div>
 
-          {/* TABLE VIEW (Default: Full Menu at a glance) */}
+          {/* TABLE VIEW */}
           {viewMode === "table" ? (
-            <div className="border border-[#e5e5e5] dark:border-[#222226] bg-white dark:bg-[#121215] rounded-none shadow-xs overflow-hidden">
+            <div className="border border-slate-200 dark:border-white/10 bg-white dark:bg-[#121215] rounded-3xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto max-h-[580px] overflow-y-auto">
                 <Table className="w-full">
                   <TableHeader className="bg-[#0B2A67] dark:bg-[#071E4B] sticky top-0 z-10 border-b-2 border-[#FFD21C]">
@@ -1060,6 +1194,130 @@ export default function CashierClient({
         requireReason={pendingPinAction?.type === "void_transaction"}
         onSuccess={handlePinSuccess}
       />
+      {/* Cashier Duty Clock In / Clock Out Modal */}
+      {dutyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] text-foreground rounded-2xl p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-150">
+            <button
+              type="button"
+              onClick={() => setDutyModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#707072] dark:text-[#8a8a93] hover:text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#1c1c20] transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <form onSubmit={handleDutySubmit}>
+              <div className="space-y-1 pb-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 border ${
+                  dutyModalMode === 'clock_in'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900'
+                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900'
+                }`}>
+                  <Clock className="w-5 h-5" />
+                </div>
+                <h3 className="text-xl font-bold tracking-tight text-foreground">
+                  {dutyModalMode === 'clock_in' ? 'Start Shift & Clock In' : 'End Shift & Clock Out'}
+                </h3>
+                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                  {dutyModalMode === 'clock_in'
+                    ? `Clocking in as ${currentStaff?.full_name || 'Staff'}. Verify drawer starting cash.`
+                    : `Ending shift for ${currentStaff?.full_name || 'Staff'}. Reconcile cash drawer.`}
+                </p>
+              </div>
+
+              {dutyFeedback && (
+                <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs text-[#d30005] font-semibold">
+                  {dutyFeedback}
+                </div>
+              )}
+
+              <div className="space-y-4 py-2">
+                {dutyModalMode === 'clock_in' ? (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="openingFloat" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      Opening Cash Float (₱)
+                    </Label>
+                    <Input
+                      id="openingFloat"
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={floatAmountInput}
+                      onChange={(e) => setFloatAmountInput(e.target.value)}
+                      required
+                      placeholder="500"
+                      className="h-10 px-4 rounded-xl bg-[#f5f5f5] dark:bg-black text-sm font-mono"
+                    />
+                    <p className="text-[11px] text-[#707072]">
+                      Initial cash change provided in the POS cash drawer.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="closingCash" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      Closing Cash Count in Drawer (₱)
+                    </Label>
+                    <Input
+                      id="closingCash"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={closingCashInput}
+                      onChange={(e) => setClosingCashInput(e.target.value)}
+                      placeholder="Actual counted cash"
+                      className="h-10 px-4 rounded-xl bg-[#f5f5f5] dark:bg-black text-sm font-mono"
+                    />
+                    <p className="text-[11px] text-[#707072]">
+                      Count physical bills and coins in drawer before turning over.
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="dutyNotes" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Shift Notes / Handover Remarks
+                  </Label>
+                  <Input
+                    id="dutyNotes"
+                    type="text"
+                    value={dutyNotesInput}
+                    onChange={(e) => setDutyNotesInput(e.target.value)}
+                    placeholder={dutyModalMode === 'clock_in' ? "e.g. Counter 1, Morning shift" : "e.g. Handed over to afternoon cashier"}
+                    className="h-10 px-4 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDutyModalOpen(false)}
+                  className="flex-1 h-10 text-xs rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmittingDuty}
+                  className={`flex-1 h-10 text-xs rounded-xl font-bold cursor-pointer text-white ${
+                    dutyModalMode === 'clock_in'
+                      ? 'bg-[#007d48] hover:bg-[#00663a]'
+                      : 'bg-[#d30005] hover:bg-[#b00004]'
+                  }`}
+                >
+                  {isSubmittingDuty
+                    ? 'Recording...'
+                    : dutyModalMode === 'clock_in'
+                    ? 'Confirm Clock In'
+                    : 'Confirm Clock Out'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -50,7 +50,11 @@ import {
   Loader2,
   FileSpreadsheet,
   Eye,
-  EyeOff
+  EyeOff,
+  Users,
+  UserCheck,
+  Timer,
+  Activity
 } from 'lucide-react';
 import { 
   createCashierAccount, 
@@ -58,7 +62,8 @@ import {
   voidPosTransactionWithPin,
   addDailyExpense,
   deleteDailyExpense,
-  updateInventoryItem
+  updateInventoryItem,
+  getCashiersOnDutyAtAction
 } from '@/app/actions';
 import { AdminVoidRefundModal } from '@/components/admin-void-refund-modal';
 import { PosMasterPinModal } from '@/components/pos/pos-master-pin-modal';
@@ -116,6 +121,9 @@ export interface AdminPosTransactionRecord {
   id: string;
   invoice_number?: string | null;
   customer_name?: string | null;
+  cashier_id?: string | null;
+  cashier_name?: string | null;
+  cashier_role?: string | null;
   total_amount: number;
   gross_amount?: number | null;
   vatable_sales?: number | null;
@@ -128,6 +136,22 @@ export interface AdminPosTransactionRecord {
   created_at: string;
   void_reason?: string | null;
   voided_at?: string | null;
+}
+
+export interface AdminDutySessionRecord {
+  id: string;
+  cashier_id: string;
+  cashier_name: string;
+  cashier_email?: string;
+  cashier_phone?: string;
+  cashier_role?: string;
+  started_at: string;
+  ended_at: string | null;
+  status: 'on_duty' | 'off_duty';
+  opening_float: number;
+  closing_cash: number | null;
+  notes: string | null;
+  created_at: string;
 }
 
 export interface AdminMetrics {
@@ -160,6 +184,7 @@ export default function AdminDashboardClient({
   products = [],
   posTransactions = [],
   expenses = [],
+  dutySessions = [],
   initialMasterPin = '8888',
 }: {
   metrics: AdminMetrics;
@@ -167,10 +192,11 @@ export default function AdminDashboardClient({
   products?: AdminPosProductRecord[];
   posTransactions?: AdminPosTransactionRecord[];
   expenses?: AdminExpenseRecord[];
+  dutySessions?: AdminDutySessionRecord[];
   initialMasterPin?: string;
 }) {
-  // Navigation Tabs: 'bookings' | 'inventory' | 'expenses_margin' | 'pos_invoices'
-  const [activeTab, setActiveTab] = useState<'bookings' | 'inventory' | 'expenses_margin' | 'pos_invoices'>('bookings');
+  // Navigation Tabs: 'bookings' | 'inventory' | 'expenses_margin' | 'pos_invoices' | 'duty_roster'
+  const [activeTab, setActiveTab] = useState<'bookings' | 'inventory' | 'expenses_margin' | 'pos_invoices' | 'duty_roster'>('bookings');
 
   // Bookings Filter State
   const [bookingSearch, setBookingSearch] = useState('');
@@ -216,6 +242,25 @@ export default function AdminDashboardClient({
   const [txStatusFilter, setTxStatusFilter] = useState('all');
   const [selectedTxForVoid, setSelectedTxForVoid] = useState<AdminPosTransactionRecord | null>(null);
   const [txVoidModalOpen, setTxVoidModalOpen] = useState(false);
+
+  // Cashier Duty Roster & Time Inspector State
+  const [dutySessionList, setDutySessionList] = useState<AdminDutySessionRecord[]>(dutySessions);
+  const [inspectorDate, setInspectorDate] = useState<string>(() => {
+    const d = new Date();
+    const pht = new Date(d.getTime() + 8 * 3600 * 1000);
+    return pht.toISOString().split('T')[0];
+  });
+  const [inspectorTime, setInspectorTime] = useState<string>(() => {
+    const d = new Date();
+    const pht = new Date(d.getTime() + 8 * 3600 * 1000);
+    const hh = String(pht.getUTCHours()).padStart(2, '0');
+    const mm = String(pht.getUTCMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  });
+  const [inspectorResults, setInspectorResults] = useState<AdminDutySessionRecord[] | null>(null);
+  const [isInspecting, setIsInspecting] = useState(false);
+  const [dutySearch, setDutySearch] = useState('');
+  const [dutyStatusFilter, setDutyStatusFilter] = useState<'all' | 'on_duty' | 'off_duty'>('all');
 
   // Master PIN Management State
   const [masterPinState, setMasterPinState] = useState(initialMasterPin);
@@ -324,16 +369,82 @@ export default function AdminDashboardClient({
     const query = (txSearch || '').toLowerCase().trim();
     const invNum = (tx.invoice_number || '').toLowerCase();
     const custName = (tx.customer_name || '').toLowerCase();
+    const cashierName = (tx.cashier_name || '').toLowerCase();
     const payMethod = (tx.payment_method || '').toLowerCase();
 
     const matchesSearch =
       !query ||
       invNum.includes(query) ||
       custName.includes(query) ||
+      cashierName.includes(query) ||
       payMethod.includes(query);
     const matchesStatus = txStatusFilter === 'all' || tx.status === txStatusFilter;
     return Boolean(matchesSearch && matchesStatus);
   });
+
+  // Duty Roster Calculations & Handlers
+  const activeOnDutySessions = dutySessionList.filter((s) => s.status === 'on_duty');
+  const activeOnDutyCount = activeOnDutySessions.length;
+
+  const filteredDutySessions = dutySessionList.filter((s) => {
+    if (dutyStatusFilter !== 'all' && s.status !== dutyStatusFilter) return false;
+    const q = (dutySearch || '').toLowerCase().trim();
+    if (!q) return true;
+    return (
+      s.cashier_name.toLowerCase().includes(q) ||
+      (s.cashier_email && s.cashier_email.toLowerCase().includes(q)) ||
+      (s.notes && s.notes.toLowerCase().includes(q))
+    );
+  });
+
+  const handleInspectDutyTime = async (overrideDate?: string, overrideTime?: string) => {
+    const targetDate = overrideDate ?? inspectorDate;
+    const targetTime = overrideTime ?? inspectorTime;
+    if (!targetDate || !targetTime) return;
+
+    setIsInspecting(true);
+    try {
+      const targetIso = new Date(`${targetDate}T${targetTime}:00+08:00`).toISOString();
+      const res = await getCashiersOnDutyAtAction(targetIso);
+      if (res.success && res.cashiers) {
+        setInspectorResults(
+          res.cashiers.map((c) => ({
+            id: c.sessionId,
+            cashier_id: c.cashierId,
+            cashier_name: c.cashierName,
+            cashier_email: c.cashierEmail,
+            cashier_phone: c.cashierPhone,
+            cashier_role: c.cashierRole,
+            started_at: c.startedAt,
+            ended_at: c.endedAt,
+            status: c.status as 'on_duty' | 'off_duty',
+            opening_float: c.openingFloat,
+            closing_cash: c.closingCash,
+            notes: c.notes,
+            created_at: c.startedAt,
+          }))
+        );
+      } else {
+        const targetDateObj = new Date(`${targetDate}T${targetTime}:00+08:00`);
+        const matched = dutySessionList.filter((s) => {
+          const start = new Date(s.started_at);
+          const end = s.ended_at ? new Date(s.ended_at) : null;
+          return start <= targetDateObj && (!end || end >= targetDateObj);
+        });
+        setInspectorResults(matched);
+      }
+    } catch {
+      const targetDateObj = new Date(`${targetDate}T${targetTime}:00+08:00`);
+      const matched = dutySessionList.filter((s) => {
+        const start = new Date(s.started_at);
+        const end = s.ended_at ? new Date(s.ended_at) : null;
+        return start <= targetDateObj && (!end || end >= targetDateObj);
+      });
+      setInspectorResults(matched);
+    } finally {
+      setIsInspecting(false);
+    }
+  };
 
   const pendingRefunds = bookings.filter(
     (b) => b.status === 'cancelled_refund_pending' || (b.refund_status === 'pending' && b.status !== 'voided')
@@ -806,6 +917,7 @@ export default function AdminDashboardClient({
                       className="w-full h-10 px-4 rounded-full bg-[#f5f5f5] dark:bg-black border border-[#cacacb] dark:border-[#3f3f46] text-foreground text-xs font-medium outline-none focus:border-[#111111] dark:focus:border-white cursor-pointer"
                     >
                       <option value="cashier" className="dark:bg-black">Cashier Staff</option>
+                      <option value="coordinator" className="dark:bg-black">Scheduling Coordinator (Daily Schedule Only)</option>
                       <option value="owner" className="dark:bg-black">Owner / Co-Admin</option>
                     </select>
                   </div>
@@ -1091,6 +1203,19 @@ export default function AdminDashboardClient({
           >
             <Receipt className="w-4 h-4" />
             <span>POS Sales Invoices &amp; Audit ({txList.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('duty_roster')}
+            className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+              activeTab === 'duty_roster'
+                ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
+                : 'text-[#707072] dark:text-[#8a8a93] hover:text-[#111111] dark:hover:text-foreground'
+            }`}
+          >
+            <Users className="w-4 h-4 text-emerald-500" />
+            <span>Staff on Duty &amp; Shifts ({activeOnDutyCount} Active)</span>
           </button>
         </div>
 
@@ -1853,6 +1978,7 @@ export default function AdminDashboardClient({
                   <TableRow className="border-[#cacacb] dark:border-[#222226]">
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Invoice No</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Customer</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Cashier on Duty</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Timestamp</TableHead>
                     <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Channel</TableHead>
                     <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Gross</TableHead>
@@ -1865,7 +1991,7 @@ export default function AdminDashboardClient({
                 <TableBody>
                   {filteredTransactions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-12 text-[#707072] text-xs font-medium">
+                      <TableCell colSpan={10} className="text-center py-12 text-[#707072] text-xs font-medium">
                         No POS transactions matched your search criteria.
                       </TableCell>
                     </TableRow>
@@ -1888,6 +2014,21 @@ export default function AdminDashboardClient({
                                 {tx.discount_type === 'senior_citizen' ? 'Senior (20%)' : 'PWD (20%)'}
                               </span>
                             )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center text-[10px] font-bold shrink-0">
+                                {(tx.cashier_name || 'C')[0].toUpperCase()}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-foreground">{tx.cashier_name || 'System / Staff'}</span>
+                                {tx.cashier_role && (
+                                  <span className="block text-[9px] text-[#707072] uppercase font-bold tracking-wider">
+                                    {tx.cashier_role}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell className="text-xs text-[#707072]">
                             {formatDateTime(tx.created_at)}
@@ -1947,6 +2088,398 @@ export default function AdminDashboardClient({
               </Table>
             </div>
           </div>
+          </div>
+        )}
+
+        {/* TAB 5: STAFF ON DUTY & SHIFT INSPECTOR */}
+        {activeTab === 'duty_roster' && (
+          <div className="space-y-6">
+            {/* Real-time Summary Header */}
+            <div className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold tracking-tight text-foreground">
+                    Cashier Shift &amp; Duty Roster Manager
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/60 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    {activeOnDutyCount} Active On Duty
+                  </span>
+                </div>
+                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                  Inspect which cashiers and coordinators are currently clocked in, or look up exact duty coverage at any past date and hour.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const d = new Date();
+                    const pht = new Date(d.getTime() + 8 * 3600 * 1000);
+                    const curDate = pht.toISOString().split('T')[0];
+                    const curTime = `${String(pht.getUTCHours()).padStart(2, '0')}:${String(pht.getUTCMinutes()).padStart(2, '0')}`;
+                    setInspectorDate(curDate);
+                    setInspectorTime(curTime);
+                    handleInspectDutyTime(curDate, curTime);
+                  }}
+                  className="border-[#cacacb] dark:border-[#27272a] text-xs h-9 px-4 rounded-full font-medium cursor-pointer"
+                >
+                  <Activity className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
+                  Live Duty Check
+                </Button>
+              </div>
+            </div>
+
+            {/* Currently Active On-Duty Cashiers Grid */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-emerald-500" />
+                  Active Cashiers On Duty Right Now ({activeOnDutyCount})
+                </h4>
+                <span className="text-[11px] text-[#707072]">Auto-synced with POS clock-ins</span>
+              </div>
+
+              {activeOnDutySessions.length === 0 ? (
+                <div className="border border-dashed border-[#cacacb] dark:border-[#27272a] bg-[#fafafa] dark:bg-[#141417] p-8 text-center rounded-xl">
+                  <Clock className="w-8 h-8 text-[#a0a0a2] mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-foreground">No cashiers currently on duty</p>
+                  <p className="text-xs text-[#707072] dark:text-[#8a8a93] mt-1">
+                    Cashiers appear here automatically when they clock in at the cashier terminal.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activeOnDutySessions.map((session) => {
+                    const startD = new Date(session.started_at);
+                    const nowD = new Date();
+                    const diffMins = Math.max(0, Math.floor((nowD.getTime() - startD.getTime()) / (1000 * 60)));
+                    const diffHrs = Math.floor(diffMins / 60);
+                    const remMins = diffMins % 60;
+                    const durationText = diffHrs > 0 ? `${diffHrs}h ${remMins}m` : `${remMins}m`;
+
+                    return (
+                      <div
+                        key={session.id}
+                        className="border border-emerald-200 dark:border-emerald-900/60 bg-white dark:bg-[#121215] p-5 rounded-xl shadow-xs relative overflow-hidden"
+                      >
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-8 -mt-8 pointer-events-none" />
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 font-bold flex items-center justify-center text-sm ring-2 ring-emerald-500/20">
+                              {(session.cashier_name || 'C')[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <h5 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                                {session.cashier_name}
+                              </h5>
+                              <span className="text-[11px] text-[#707072] dark:text-[#8a8a93] block">
+                                {session.cashier_email}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                            ON DUTY
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#f0f0f0] dark:border-[#222226] text-xs">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">Shift Started</span>
+                            <p className="font-semibold text-foreground">{formatDateTime(session.started_at)}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">Active Duration</span>
+                            <p className="font-semibold text-emerald-600 dark:text-emerald-400">{durationText}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">Opening Float</span>
+                            <p className="font-semibold text-foreground">₱{Number(session.opening_float || 0).toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072]">Role</span>
+                            <p className="font-semibold text-foreground uppercase text-[11px]">{session.cashier_role || 'Staff'}</p>
+                          </div>
+                        </div>
+
+                        {session.notes && (
+                          <div className="mt-3 p-2 bg-[#f5f5f5] dark:bg-[#18181c] rounded-md text-[11px] text-[#707072] italic">
+                            &quot;{session.notes}&quot;
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* INTERACTIVE DUTY TIME INSPECTOR CARD */}
+            <div className="border border-sky-200 dark:border-sky-950 bg-gradient-to-br from-sky-50/40 via-white to-sky-50/20 dark:from-sky-950/20 dark:via-[#121215] dark:to-sky-950/10 p-6 rounded-2xl shadow-xs">
+              <div className="flex items-start gap-4 mb-5">
+                <div className="w-11 h-11 rounded-xl bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 border border-sky-200 dark:border-sky-800">
+                  <Timer className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold tracking-tight text-foreground">
+                    Duty Time Inspector &mdash; &quot;Who was on duty at that time?&quot;
+                  </h4>
+                  <p className="text-xs text-[#707072] dark:text-[#8a8a93] mt-0.5">
+                    Pick any target date and time to verify the exact cashier roster active at that exact minute, cross-referenced with POS receipts and court lock logs.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div className="space-y-1.5">
+                  <Label htmlFor="inspDate" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Target Date
+                  </Label>
+                  <Input
+                    id="inspDate"
+                    type="date"
+                    value={inspectorDate}
+                    onChange={(e) => setInspectorDate(e.target.value)}
+                    className="h-10 px-3.5 rounded-xl bg-white dark:bg-black text-xs font-medium border-[#cacacb] dark:border-[#3f3f46]"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="inspTime" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Target Time (24-Hour)
+                  </Label>
+                  <Input
+                    id="inspTime"
+                    type="time"
+                    value={inspectorTime}
+                    onChange={(e) => setInspectorTime(e.target.value)}
+                    className="h-10 px-3.5 rounded-xl bg-white dark:bg-black text-xs font-medium border-[#cacacb] dark:border-[#3f3f46]"
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={() => handleInspectDutyTime()}
+                  disabled={isInspecting}
+                  className="h-10 rounded-xl bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 font-bold text-xs cursor-pointer shadow-xs"
+                >
+                  {isInspecting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Inspecting Roster...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" /> Inspect Duty Roster
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Quick Shift Presets */}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#707072] mr-1">Quick Shifts:</span>
+                {[
+                  { label: 'Now', time: 'now' },
+                  { label: 'Morning (08:00)', time: '08:00' },
+                  { label: 'Noon (12:00)', time: '12:00' },
+                  { label: 'Afternoon (15:00)', time: '15:00' },
+                  { label: 'Prime Evening (19:00)', time: '19:00' },
+                  { label: 'Closing (22:00)', time: '22:00' },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => {
+                      if (preset.time === 'now') {
+                        const d = new Date();
+                        const pht = new Date(d.getTime() + 8 * 3600 * 1000);
+                        const curDate = pht.toISOString().split('T')[0];
+                        const curTime = `${String(pht.getUTCHours()).padStart(2, '0')}:${String(pht.getUTCMinutes()).padStart(2, '0')}`;
+                        setInspectorDate(curDate);
+                        setInspectorTime(curTime);
+                        handleInspectDutyTime(curDate, curTime);
+                      } else {
+                        setInspectorTime(preset.time);
+                        handleInspectDutyTime(inspectorDate, preset.time);
+                      }
+                    }}
+                    className="px-3 py-1 rounded-full text-xs font-medium bg-white dark:bg-black/60 border border-[#cacacb] dark:border-[#3f3f46] hover:border-[#111111] dark:hover:border-white text-foreground transition-colors cursor-pointer shadow-2xs"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Inspector Result Display */}
+              {inspectorResults !== null && (
+                <div className="mt-6 pt-5 border-t border-sky-200 dark:border-sky-900/60 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                        Inspection Results for:
+                      </span>
+                      <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300">
+                        {inspectorDate} @ {inspectorTime} PHT
+                      </span>
+                    </div>
+                    <span className="text-xs font-semibold text-[#707072]">
+                      {inspectorResults.length} staff member{inspectorResults.length === 1 ? '' : 's'} on duty
+                    </span>
+                  </div>
+
+                  {inspectorResults.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-white/80 dark:bg-black/40 border border-amber-200 dark:border-amber-900/50 text-center">
+                      <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                        No cashiers were on active duty at {inspectorDate} {inspectorTime}.
+                      </p>
+                      <p className="text-[11px] text-[#707072] mt-0.5">
+                        No shift session covered this timestamp in the database.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {inspectorResults.map((r) => (
+                        <div
+                          key={r.id}
+                          className="p-4 rounded-xl bg-white dark:bg-black/60 border border-emerald-300 dark:border-emerald-800/80 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-foreground">{r.cashier_name}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-[#007d48] dark:text-emerald-400">
+                              {r.status === 'on_duty' ? 'ACTIVE SHIFT' : 'SHIFT COMPLETED'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-[#707072] space-y-1">
+                            <div>Email: <span className="text-foreground font-mono">{r.cashier_email}</span></div>
+                            <div>Shift Window: <span className="text-foreground font-medium">{formatDateTime(r.started_at)} &rarr; {r.ended_at ? formatDateTime(r.ended_at) : 'Active / Ongoing'}</span></div>
+                            <div>Opening Float: <span className="text-foreground font-semibold">₱{Number(r.opening_float || 0).toFixed(2)}</span></div>
+                            {r.closing_cash !== null && r.closing_cash !== undefined && (
+                              <div>Closing Cash: <span className="text-foreground font-semibold">₱{Number(r.closing_cash).toFixed(2)}</span></div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* MASTER SHIFT AUDIT LOG TABLE */}
+            <div className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] overflow-hidden">
+              <div className="p-6 border-b border-[#cacacb] dark:border-[#222226] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-foreground">
+                    Historical Cashier Shift Log &amp; Cash Balance
+                  </h3>
+                  <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                    Comprehensive record of cashier terminals, opening floats, closing cash declarations, and notes.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
+                    <Input
+                      placeholder="Search cashier name, email..."
+                      value={dutySearch}
+                      onChange={(e) => setDutySearch(e.target.value)}
+                      className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus:border-[#111111] dark:focus:border-white"
+                    />
+                  </div>
+
+                  <select
+                    value={dutyStatusFilter}
+                    onChange={(e) => setDutyStatusFilter(e.target.value as 'all' | 'on_duty' | 'off_duty')}
+                    className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
+                  >
+                    <option value="all">All Shifts</option>
+                    <option value="on_duty">On Duty Only</option>
+                    <option value="off_duty">Clocked Out / Completed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-[#f5f5f5] dark:bg-[#18181c] border-b border-[#cacacb] dark:border-[#222226]">
+                    <TableRow className="border-[#cacacb] dark:border-[#222226]">
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Cashier</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Status</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Shift Start</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Shift End</TableHead>
+                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Opening Float</TableHead>
+                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Closing Cash</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Notes / Handover</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDutySessions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-12 text-[#707072] text-xs font-medium">
+                          No shift logs found matching your filters.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredDutySessions.map((session) => {
+                        const isOnDuty = session.status === 'on_duty';
+                        return (
+                          <TableRow
+                            key={session.id}
+                            className="border-b border-[#e5e5e5] dark:border-[#222226] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] transition-colors"
+                          >
+                            <TableCell className="text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 font-bold flex items-center justify-center text-xs shrink-0">
+                                  {(session.cashier_name || 'C')[0].toUpperCase()}
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-foreground block">{session.cashier_name}</span>
+                                  <span className="text-[10px] text-[#707072] block">{session.cashier_email}</span>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {isOnDuty ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                                  ON DUTY
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-[#f0f0f0] dark:bg-[#1f1f23] text-[#707072] dark:text-[#a0a0a2]">
+                                  OFF DUTY
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs text-[#707072]">
+                              {formatDateTime(session.started_at)}
+                            </TableCell>
+                            <TableCell className="text-xs text-[#707072]">
+                              {session.ended_at ? formatDateTime(session.ended_at) : (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold italic">Ongoing Shift</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right text-xs font-medium text-foreground">
+                              ₱{Number(session.opening_float || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right text-xs font-medium text-foreground">
+                              {session.closing_cash !== null && session.closing_cash !== undefined
+                                ? `₱${Number(session.closing_cash).toFixed(2)}`
+                                : '—'}
+                            </TableCell>
+                            <TableCell className="text-xs text-[#707072] max-w-[200px] truncate" title={session.notes || ''}>
+                              {session.notes || '—'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </div>
         )}
       </div>

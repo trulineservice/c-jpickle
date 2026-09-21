@@ -15,7 +15,7 @@ CREATE EXTENSION IF NOT EXISTS "btree_gist";
 -- 2. ENUMS & DOMAINS
 -- ----------------------------------------------------------------------------
 DO $$ BEGIN
-    CREATE TYPE public.user_role AS ENUM ('owner', 'admin', 'cashier', 'client');
+    CREATE TYPE public.user_role AS ENUM ('owner', 'admin', 'cashier', 'client', 'coordinator');
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -403,7 +403,7 @@ RETURNS boolean AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = check_uid AND role IN ('owner', 'admin', 'cashier')
+    WHERE id = check_uid AND role IN ('owner', 'admin', 'cashier', 'coordinator')
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path = public, pg_temp;

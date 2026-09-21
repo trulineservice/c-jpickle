@@ -195,39 +195,76 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
     }
 
     // 1. Fetch booking details with court and user profile
-    const { data: booking, error: fetchErr } = await supabaseAdmin
-      .from('bookings')
-      .select(`
-        id,
-        court_id,
-        start_time,
-        end_time,
-        duration_hours,
-        total_price,
-        down_payment_amount,
-        status,
-        payment_method,
-        guest_name,
-        guest_phone,
-        guest_email,
-        notes,
-        google_calendar_event_id,
-        courts (
-          id,
-          name,
-          type
-        ),
-        profiles:profiles!bookings_user_id_fkey (
-          full_name,
-          phone,
-          email
-        )
-      `)
-      .eq('id', bookingId)
-      .single();
+    // Primary: Call SECURITY DEFINER RPC to bypass RLS safely
+    let booking: any = null;
+    const { data: rpcBooking, error: rpcErr } = await supabaseAdmin.rpc('get_booking_sync_details', {
+      p_booking_id: bookingId,
+    });
 
-    if (fetchErr || !booking) {
-      return { success: false, error: `Booking not found: ${fetchErr?.message}` };
+    if (!rpcErr && rpcBooking && rpcBooking.id) {
+      booking = {
+        id: rpcBooking.id,
+        court_id: rpcBooking.court_id,
+        start_time: rpcBooking.start_time,
+        end_time: rpcBooking.end_time,
+        duration_hours: rpcBooking.duration_hours,
+        total_price: rpcBooking.total_price,
+        down_payment_amount: rpcBooking.down_payment_amount,
+        status: rpcBooking.status,
+        payment_method: rpcBooking.payment_method,
+        guest_name: rpcBooking.guest_name,
+        guest_phone: rpcBooking.guest_phone,
+        guest_email: rpcBooking.guest_email,
+        notes: rpcBooking.notes,
+        google_calendar_event_id: rpcBooking.google_calendar_event_id,
+        courts: {
+          id: rpcBooking.court_id,
+          name: rpcBooking.court_name,
+          type: rpcBooking.court_type,
+        },
+        profiles: {
+          full_name: rpcBooking.profile_full_name,
+          phone: rpcBooking.profile_phone,
+          email: rpcBooking.profile_email,
+        },
+      };
+    } else {
+      // Fallback: direct table select
+      const { data: fallbackBooking, error: fetchErr } = await supabaseAdmin
+        .from('bookings')
+        .select(`
+          id,
+          court_id,
+          start_time,
+          end_time,
+          duration_hours,
+          total_price,
+          down_payment_amount,
+          status,
+          payment_method,
+          guest_name,
+          guest_phone,
+          guest_email,
+          notes,
+          google_calendar_event_id,
+          courts (
+            id,
+            name,
+            type
+          ),
+          profiles:profiles!bookings_user_id_fkey (
+            full_name,
+            phone,
+            email
+          )
+        `)
+        .eq('id', bookingId)
+        .single();
+
+      if (fetchErr || !fallbackBooking) {
+        return { success: false, error: `Booking not found: ${rpcErr?.message || fetchErr?.message}` };
+      }
+      booking = fallbackBooking;
     }
 
     const courtData = Array.isArray(booking.courts) ? booking.courts[0] : booking.courts;
@@ -338,13 +375,20 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
     const savedEventId = apiData.id;
 
     // 3. Record Google Event ID and sync timestamp in database
-    await supabaseAdmin
-      .from('bookings')
-      .update({
-        google_calendar_event_id: savedEventId,
-        google_calendar_synced_at: new Date().toISOString(),
-      })
-      .eq('id', booking.id);
+    const { error: rpcUpdateErr } = await supabaseAdmin.rpc('update_booking_google_event', {
+      p_booking_id: booking.id,
+      p_event_id: savedEventId,
+    });
+
+    if (rpcUpdateErr) {
+      await supabaseAdmin
+        .from('bookings')
+        .update({
+          google_calendar_event_id: savedEventId,
+          google_calendar_synced_at: new Date().toISOString(),
+        })
+        .eq('id', booking.id);
+    }
 
     console.log(
       `[Google Calendar Auto-Sync SUCCESS] Synced booking #${booking.id} to Google Calendar (${savedEventId})`

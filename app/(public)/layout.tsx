@@ -59,7 +59,7 @@ export default async function PublicLayout({ children }: { children: React.React
           <span className="text-white/30">•</span>
           {user ? (
             <Link
-              href={userRole === "admin" || userRole === "owner" ? "/admin" : userRole === "cashier" ? "/cashier" : "/dashboard"}
+              href={userRole === "admin" || userRole === "owner" ? "/admin" : userRole === "coordinator" ? "/cashier/schedule" : userRole === "cashier" ? "/cashier" : "/dashboard"}
               className="hover:text-[#FFD21C] text-white font-semibold transition-colors"
             >
               My Account
@@ -104,6 +104,12 @@ export default async function PublicLayout({ children }: { children: React.React
                 <Link href="/cashier">
                   <Button size="sm" variant="navy-outline" className="text-xs px-3.5">
                     POS
+                  </Button>
+                </Link>
+              ) : userRole === "coordinator" ? (
+                <Link href="/cashier/schedule">
+                  <Button size="sm" variant="navy-outline" className="text-xs px-3.5">
+                    Court Schedule
                   </Button>
                 </Link>
               ) : (

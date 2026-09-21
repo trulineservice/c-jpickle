@@ -45,7 +45,7 @@ export default async function CashierSchedulePage({ searchParams }: PageProps) {
     .eq('id', user.id)
     .single();
 
-  if (!profile || !['owner', 'admin', 'cashier'].includes(profile.role)) {
+  if (!profile || !['owner', 'admin', 'cashier', 'coordinator'].includes(profile.role)) {
     redirect('/dashboard');
   }
 

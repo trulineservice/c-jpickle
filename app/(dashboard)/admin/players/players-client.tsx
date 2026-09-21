@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Users,
   Search,
@@ -12,7 +14,6 @@ import {
   Clock,
   DollarSign,
   Trophy,
-  ArrowUpDown,
   History,
   X,
   CreditCard,
@@ -20,8 +21,27 @@ import {
   QrCode,
   ShieldCheck,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Pencil,
+  Trash2,
+  RotateCcw,
+  Archive,
+  UserCheck,
+  UserX,
+  Phone,
+  Mail,
+  Award,
+  FileText,
+  AlertTriangle,
 } from 'lucide-react';
+import {
+  adminCreatePlayerAction,
+  adminUpdatePlayerAction,
+  adminSoftDeletePlayerAction,
+  adminRestorePlayerAction,
+  type AdminPlayerInput,
+} from '@/app/actions';
 
 export interface PlayerMatchRecord {
   id: string;
@@ -44,6 +64,12 @@ export interface PlayerSummary {
   role: string;
   isRegistered: boolean;
   memberSince: string;
+  isDeleted: boolean;
+  deletedAt: string | null;
+  deletedReason: string | null;
+  skillLevel: string;
+  emergencyContact: string | null;
+  notes: string | null;
   totalPlayed: number;
   totalHours: number;
   totalSpend: number;
@@ -52,38 +78,83 @@ export interface PlayerSummary {
   bookings: PlayerMatchRecord[];
 }
 
-export default function PlayersClient({ players }: { players: PlayerSummary[] }) {
+const SKILL_LEVEL_OPTIONS = [
+  { value: '2.0', label: '2.0 - Beginner (Learning Rules & Serving)' },
+  { value: '2.5', label: '2.5 - Advanced Beginner (Sustains Short Rallies)' },
+  { value: '3.0', label: '3.0 - Novice / Intermediate (Good Dinking & Serves)' },
+  { value: '3.5', label: '3.5 - Solid Intermediate (Controlled Drops & Third Shots)' },
+  { value: '4.0', label: '4.0 - Advanced (High Accuracy & Kitchen Control)' },
+  { value: '4.5', label: '4.5 - Tournament / Semi-Pro (High Speed Firefights)' },
+  { value: '5.0+', label: '5.0+ - Pro / Master Tier (Elite Competitive)' },
+];
+
+export default function PlayersClient({ players: initialPlayers }: { players: PlayerSummary[] }) {
+  const router = useRouter();
+  const [players, setPlayers] = useState<PlayerSummary[]>(initialPlayers);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [roleFilter, setRoleFilter] = useState<'all' | 'registered' | 'guest'>('all');
   const [sortBy, setSortBy] = useState<'matches_desc' | 'hours_desc' | 'spend_desc' | 'recent' | 'name_asc'>('matches_desc');
-  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSummary | null>(null);
 
-  // Overall Facility Player Metrics
-  const totalPlayersCount = players.length;
-  const totalMatchesPlayed = players.reduce((sum, p) => sum + p.totalPlayed, 0);
-  const totalHoursPlayed = players.reduce((sum, p) => sum + p.totalHours, 0);
-  const topPlayer = useMemo(() => {
-    return players.reduce<PlayerSummary | null>((top, curr) => {
-      if (!top || curr.totalPlayed > top.totalPlayed) return curr;
-      return top;
-    }, null);
-  }, [players]);
+  // Modal states
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSummary | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState<PlayerSummary | null>(null);
+  const [deletingPlayer, setDeletingPlayer] = useState<PlayerSummary | null>(null);
+  const [deleteReasonPreset, setDeleteReasonPreset] = useState('Duplicate Profile');
+  const [deleteReasonCustom, setDeleteReasonCustom] = useState('');
+
+  // Form states
+  const [formData, setFormData] = useState<AdminPlayerInput>({
+    fullName: '',
+    email: '',
+    phone: '',
+    role: 'client',
+    skillLevel: '3.0',
+    emergencyContact: '',
+    notes: '',
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedbackMsg({ type, message });
+    setTimeout(() => setFeedbackMsg(null), 5000);
+  };
+
+  // Facility Player Metrics
+  const activePlayersCount = useMemo(() => players.filter((p) => !p.isDeleted).length, [players]);
+  const archivedPlayersCount = useMemo(() => players.filter((p) => p.isDeleted).length, [players]);
+  const registeredCount = useMemo(() => players.filter((p) => p.isRegistered && !p.isDeleted).length, [players]);
+  const totalMatchesPlayed = useMemo(() => players.filter((p) => !p.isDeleted).reduce((sum, p) => sum + p.totalPlayed, 0), [players]);
+  const totalHoursPlayed = useMemo(() => players.filter((p) => !p.isDeleted).reduce((sum, p) => sum + p.totalHours, 0), [players]);
 
   // Filter and Sort Players
   const filteredPlayers = useMemo(() => {
     return players
       .filter((p) => {
-        const matchesSearch =
-          p.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.phone.includes(searchQuery);
+        // Status filter (Active vs Soft-Deleted)
+        if (statusFilter === 'active' && p.isDeleted) return false;
+        if (statusFilter === 'archived' && !p.isDeleted) return false;
 
-        const matchesRole =
-          roleFilter === 'all' ||
-          (roleFilter === 'registered' && p.isRegistered) ||
-          (roleFilter === 'guest' && !p.isRegistered);
+        // Role filter
+        if (roleFilter === 'registered' && !p.isRegistered) return false;
+        if (roleFilter === 'guest' && p.isRegistered) return false;
 
-        return matchesSearch && matchesRole;
+        // Search query
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          const matches =
+            p.fullName.toLowerCase().includes(q) ||
+            p.email.toLowerCase().includes(q) ||
+            p.phone.includes(q) ||
+            (p.skillLevel && p.skillLevel.toLowerCase().includes(q)) ||
+            (p.notes && p.notes.toLowerCase().includes(q));
+          if (!matches) return false;
+        }
+
+        return true;
       })
       .sort((a, b) => {
         if (sortBy === 'matches_desc') return b.totalPlayed - a.totalPlayed;
@@ -97,7 +168,183 @@ export default function PlayersClient({ players }: { players: PlayerSummary[] })
         if (sortBy === 'name_asc') return a.fullName.localeCompare(b.fullName);
         return 0;
       });
-  }, [players, searchQuery, roleFilter, sortBy]);
+  }, [players, searchQuery, statusFilter, roleFilter, sortBy]);
+
+  // Handle Create Player
+  const handleOpenCreate = () => {
+    setFormData({
+      fullName: '',
+      email: '',
+      phone: '',
+      role: 'client',
+      skillLevel: '3.0',
+      emergencyContact: '',
+      notes: '',
+    });
+    setShowCreateModal(true);
+  };
+
+  const submitCreatePlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.fullName.trim()) {
+      showFeedback('error', 'Player full name is required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const res = await adminCreatePlayerAction(formData);
+    setIsSubmitting(false);
+
+    if (!res.success) {
+      showFeedback('error', res.error || 'Failed to create player profile.');
+      return;
+    }
+
+    showFeedback('success', `Player "${formData.fullName}" successfully added to the roster!`);
+    setShowCreateModal(false);
+
+    // Optimistic append
+    const newPlayer: PlayerSummary = {
+      id: res.playerId || crypto.randomUUID(),
+      fullName: formData.fullName.trim(),
+      email: formData.email?.trim() || '—',
+      phone: formData.phone?.trim() || '—',
+      role: formData.role || 'client',
+      isRegistered: true,
+      memberSince: new Date().toISOString(),
+      isDeleted: false,
+      deletedAt: null,
+      deletedReason: null,
+      skillLevel: formData.skillLevel || '3.0',
+      emergencyContact: formData.emergencyContact || null,
+      notes: formData.notes || null,
+      totalPlayed: 0,
+      totalHours: 0,
+      totalSpend: 0,
+      favoriteCourt: 'None',
+      lastPlayed: null,
+      bookings: [],
+    };
+    setPlayers((prev) => [newPlayer, ...prev]);
+    router.refresh();
+  };
+
+  // Handle Edit Player
+  const handleOpenEdit = (player: PlayerSummary) => {
+    setEditingPlayer(player);
+    setFormData({
+      fullName: player.fullName,
+      email: player.email === '—' ? '' : player.email,
+      phone: player.phone === '—' ? '' : player.phone,
+      role: (player.role === 'client' || player.role === 'customer' ? player.role : 'client') as 'client' | 'customer',
+      skillLevel: player.skillLevel || '3.0',
+      emergencyContact: player.emergencyContact || '',
+      notes: player.notes || '',
+    });
+  };
+
+  const submitUpdatePlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPlayer) return;
+
+    setIsSubmitting(true);
+    const res = await adminUpdatePlayerAction(editingPlayer.id, formData);
+    setIsSubmitting(false);
+
+    if (!res.success) {
+      showFeedback('error', res.error || 'Failed to update player.');
+      return;
+    }
+
+    showFeedback('success', `Player profile for "${formData.fullName}" updated.`);
+    setEditingPlayer(null);
+
+    // Update state
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === editingPlayer.id
+          ? {
+              ...p,
+              fullName: formData.fullName.trim(),
+              email: formData.email?.trim() || '—',
+              phone: formData.phone?.trim() || '—',
+              role: formData.role || p.role,
+              skillLevel: formData.skillLevel || '3.0',
+              emergencyContact: formData.emergencyContact || null,
+              notes: formData.notes || null,
+            }
+          : p
+      )
+    );
+    router.refresh();
+  };
+
+  // Handle Soft Delete
+  const handleOpenDelete = (player: PlayerSummary) => {
+    setDeletingPlayer(player);
+    setDeleteReasonPreset('Duplicate Profile');
+    setDeleteReasonCustom('');
+  };
+
+  const submitSoftDelete = async () => {
+    if (!deletingPlayer) return;
+
+    const finalReason = deleteReasonPreset === 'Other'
+      ? (deleteReasonCustom.trim() || 'Archived by Administrator')
+      : deleteReasonPreset;
+
+    setIsSubmitting(true);
+    const res = await adminSoftDeletePlayerAction(deletingPlayer.id, finalReason);
+    setIsSubmitting(false);
+
+    if (!res.success) {
+      showFeedback('error', res.error || 'Failed to soft delete player.');
+      return;
+    }
+
+    showFeedback('success', `Player "${deletingPlayer.fullName}" was soft-deleted and archived.`);
+    setDeletingPlayer(null);
+
+    // Optimistic update
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === deletingPlayer.id
+          ? { ...p, isDeleted: true, deletedAt: new Date().toISOString(), deletedReason: finalReason }
+          : p
+      )
+    );
+    if (selectedPlayer?.id === deletingPlayer.id) {
+      setSelectedPlayer((prev) => prev ? { ...prev, isDeleted: true, deletedAt: new Date().toISOString(), deletedReason: finalReason } : null);
+    }
+    router.refresh();
+  };
+
+  // Handle Restore Player
+  const submitRestorePlayer = async (player: PlayerSummary) => {
+    setIsSubmitting(true);
+    const res = await adminRestorePlayerAction(player.id);
+    setIsSubmitting(false);
+
+    if (!res.success) {
+      showFeedback('error', res.error || 'Failed to restore player.');
+      return;
+    }
+
+    showFeedback('success', `Player "${player.fullName}" has been restored to active status.`);
+
+    // Optimistic update
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === player.id
+          ? { ...p, isDeleted: false, deletedAt: null, deletedReason: null }
+          : p
+      )
+    );
+    if (selectedPlayer?.id === player.id) {
+      setSelectedPlayer((prev) => prev ? { ...prev, isDeleted: false, deletedAt: null, deletedReason: null } : null);
+    }
+    router.refresh();
+  };
 
   const formatDateTime = (dateStr: string | null | undefined) => {
     if (!dateStr) return '—';
@@ -134,396 +381,923 @@ export default function PlayersClient({ players }: { players: PlayerSummary[] })
   };
 
   return (
-    <div className="p-6 sm:p-10 max-w-[1440px] mx-auto space-y-8 text-foreground font-sans bg-background">
+    <div className="space-y-6 text-foreground font-sans">
       
-      {/* Header */}
-      <div className="border-b border-[#cacacb] dark:border-[#222226] pb-6 flex flex-col sm:flex-row sm:items-baseline justify-between gap-4">
+      {/* Toast Feedback Alert */}
+      {feedbackMsg && (
+        <div className={`p-4 border text-xs font-bold flex items-center justify-between animate-in fade-in duration-150 ${
+          feedbackMsg.type === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 text-emerald-800 dark:text-emerald-300'
+            : 'bg-red-50 dark:bg-red-950/60 border-red-300 text-red-800 dark:text-red-300'
+        }`}>
+          <div className="flex items-center gap-2">
+            {feedbackMsg.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4 text-red-600" />}
+            <span>{feedbackMsg.message}</span>
+          </div>
+          <button onClick={() => setFeedbackMsg(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+        </div>
+      )}
+
+      {/* Header Bar */}
+      <div className="border-b border-slate-300 dark:border-white/15 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#707072] dark:text-[#8a8a93]">
-              Administration
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#0B2A67] dark:text-[#FFD21C] bg-[#EDF4FC] dark:bg-[#0c1a3b] px-2.5 py-0.5 border border-[#0B2A67]/20 dark:border-[#FFD21C]/30">
+              Admin &bull; Member Directory
             </span>
-            <span className="text-xs text-[#cacacb] dark:text-[#27272a]">•</span>
-            <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a]">
-              Player Intelligence &amp; Engagement
+            <span className="text-xs text-slate-400">•</span>
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              Player Intelligence &amp; Soft-Delete Management
             </span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-display uppercase tracking-tight text-foreground">
-            PLAYER DIRECTORY &amp; HISTORY
+          <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-[#0B2A67] dark:text-white">
+            Players Management
           </h1>
-          <p className="text-xs text-[#707072] dark:text-[#8a8a93] mt-1">
-            Comprehensive directory of all facility players, play frequencies, court hours, and chronological match records.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Full player profile CRUD with audit-safe soft deletes. Deleting archives the player while permanently preserving match bookings and sales invoices.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <Button
+            onClick={handleOpenCreate}
+            className="rounded-none text-xs font-black bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] h-9 px-4 flex items-center gap-1.5 shadow-xs transition-all active:scale-[0.98] cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Register New Player</span>
+          </Button>
         </div>
       </div>
 
-      {/* Top 4 Metrics Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        
-        {/* Total Players */}
-        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-2">
+      {/* Facility KPI Metrics Grid (Crisp Non-Rounded Box Grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
-              Total Tracked Players
-            </span>
-            <Users className="h-4 w-4 text-foreground" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Active Players</span>
+            <div className="w-7 h-7 bg-emerald-50 dark:bg-emerald-950/60 text-[#007d48] dark:text-emerald-400 flex items-center justify-center border border-emerald-200">
+              <Users className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-            {totalPlayersCount}
+          <div className="text-2xl font-black font-mono text-[#007d48] dark:text-emerald-400 my-1">
+            {activePlayersCount}
           </div>
-          <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
-            {players.filter((p) => p.isRegistered).length} registered member accounts
+          <p className="text-[11px] text-slate-500">
+            {registeredCount} Registered &bull; {activePlayersCount - registeredCount} Walk-in Guests
           </p>
         </div>
 
-        {/* Total Matches Played */}
-        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-2">
+        <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
-              Facility Matches Played
-            </span>
-            <Calendar className="h-4 w-4 text-foreground" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Archived (Soft Deleted)</span>
+            <div className="w-7 h-7 bg-rose-50 dark:bg-rose-950/60 text-[#bf050b] dark:text-rose-400 flex items-center justify-center border border-rose-200">
+              <Archive className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+          <div className="text-2xl font-black font-mono text-[#bf050b] dark:text-rose-400 my-1">
+            {archivedPlayersCount}
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Audit-preserved &bull; Restore anytime
+          </p>
+        </div>
+
+        <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Total Matches Played</span>
+            <div className="w-7 h-7 bg-blue-50 dark:bg-blue-950/60 text-[#0B2A67] dark:text-blue-300 flex items-center justify-center border border-blue-200">
+              <Trophy className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black font-mono text-[#0B2A67] dark:text-white my-1">
             {totalMatchesPlayed}
           </div>
-          <p className="text-xs text-[#007d48] dark:text-[#10b981] font-semibold">
-            Across all indoor arenas
+          <p className="text-[11px] text-slate-500">
+            {totalHoursPlayed} Cumulative Court Hours
           </p>
         </div>
 
-        {/* Total Court Hours */}
-        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-2">
+        <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
-              Total Court Hours
-            </span>
-            <Clock className="h-4 w-4 text-foreground" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Total Database Profiles</span>
+            <div className="w-7 h-7 bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-white flex items-center justify-center border border-slate-300">
+              <FileText className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-            {totalHoursPlayed} hrs
+          <div className="text-2xl font-black font-mono text-foreground my-1">
+            {players.length}
           </div>
-          <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
-            Cumulative play time recorded
+          <p className="text-[11px] text-slate-500">
+            Complete Player Historical Roster
           </p>
         </div>
-
-        {/* Top Regular Player */}
-        <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-white dark:bg-[#121215] space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
-              Top Regular Player
-            </span>
-            <Trophy className="h-4 w-4 text-[#007d48] dark:text-[#10b981]" />
-          </div>
-          <div className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
-            {topPlayer ? topPlayer.fullName : '—'}
-          </div>
-          <p className="text-xs text-[#007d48] dark:text-[#10b981] font-semibold">
-            {topPlayer ? `${topPlayer.totalPlayed} matches (${topPlayer.totalHours} hrs)` : 'No matches yet'}
-          </p>
-        </div>
-
       </div>
 
-      {/* Filter and Search Controls Strip */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-[#cacacb] dark:border-[#222226] pb-4">
+      {/* Filter and Search Controls (Tabular Grid Controls) */}
+      <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] p-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
         
-        {/* Search Input */}
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
+        {/* Status Tab Switcher (Active vs Archived) */}
+        <div className="flex items-center border border-slate-300 dark:border-white/15 bg-slate-100 dark:bg-black/40">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('active')}
+            className={`px-3.5 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
+              statusFilter === 'active'
+                ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]'
+                : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67]'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>Active Players ({activePlayersCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('archived')}
+            className={`px-3.5 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
+              statusFilter === 'archived'
+                ? 'bg-[#bf050b] text-white dark:bg-red-700 dark:text-white'
+                : 'text-slate-600 dark:text-slate-300 hover:text-[#bf050b]'
+            }`}
+          >
+            <UserX className="w-3.5 h-3.5" />
+            <span>Archived ({archivedPlayersCount})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`px-3.5 py-1.5 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer rounded-none ${
+              statusFilter === 'all'
+                ? 'bg-[#0B2A67] text-white dark:bg-[#FFD21C] dark:text-[#0B2A67]'
+                : 'text-slate-600 dark:text-slate-300 hover:text-[#0B2A67]'
+            }`}
+          >
+            <span>All ({players.length})</span>
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <Input
-            placeholder="Search by player name, email, or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-10 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus-visible:bg-white dark:focus-visible:bg-black focus-visible:border-[#111111] dark:focus-visible:border-white"
+            placeholder="Search name, email, phone, skill..."
+            className="pl-9 h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
           />
-        </div>
-
-        {/* Filters and Sort */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Role Filter Chips */}
-          <div className="flex items-center gap-1 border border-[#cacacb] dark:border-[#222226] rounded-full p-0.5 bg-[#f5f5f5] dark:bg-[#18181c]">
-            {(['all', 'registered', 'guest'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setRoleFilter(mode)}
-                className={`px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wider transition-colors cursor-pointer ${
-                  roleFilter === mode
-                    ? 'bg-[#111111] dark:bg-white text-white dark:text-[#111111] shadow-xs'
-                    : 'text-[#707072] dark:text-[#8a8a93] hover:text-foreground'
-                }`}
-              >
-                {mode === 'all' ? 'All Players' : mode === 'registered' ? 'Registered' : 'Guests'}
-              </button>
-            ))}
-          </div>
-
-          {/* Sort Dropdown */}
-          <div className="flex items-center gap-1.5 text-xs text-[#707072] dark:text-[#8a8a93]">
-            <ArrowUpDown className="w-3.5 h-3.5" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="h-9 px-3 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a] text-xs font-semibold text-foreground outline-none cursor-pointer"
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-foreground text-xs"
             >
-              <option value="matches_desc">Most Matches Played</option>
-              <option value="hours_desc">Most Court Hours</option>
-              <option value="spend_desc">Highest Spend (₱)</option>
-              <option value="recent">Recently Played</option>
-              <option value="name_asc">Name (A-Z)</option>
-            </select>
-          </div>
+              ✕
+            </button>
+          )}
         </div>
 
+        {/* Sort Controls */}
+        <div className="flex items-center gap-2">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as any)}
+            className="h-9 px-3 text-xs font-bold rounded-none bg-[#EDF4FC] dark:bg-[#0c1a3b] border border-[#0B2A67]/20 dark:border-white/15 text-[#0B2A67] dark:text-white outline-none cursor-pointer"
+          >
+            <option value="all">All Types</option>
+            <option value="registered">Registered Members</option>
+            <option value="guest">Walk-in Guests</option>
+          </select>
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="h-9 px-3 text-xs font-bold rounded-none bg-[#EDF4FC] dark:bg-[#0c1a3b] border border-[#0B2A67]/20 dark:border-white/15 text-[#0B2A67] dark:text-white outline-none cursor-pointer"
+          >
+            <option value="matches_desc">Sort: Most Played</option>
+            <option value="hours_desc">Sort: Court Hours</option>
+            <option value="spend_desc">Sort: Highest Spend</option>
+            <option value="recent">Sort: Recently Active</option>
+            <option value="name_asc">Sort: Name (A-Z)</option>
+          </select>
+        </div>
       </div>
 
-      {/* Players Directory Table */}
-      <Card className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] rounded-none shadow-none overflow-hidden">
-        <CardHeader className="border-b border-[#cacacb] dark:border-[#222226] bg-[#f5f5f5] dark:bg-[#18181c] p-6">
-          <CardTitle className="text-lg font-bold uppercase tracking-tight text-foreground">
-            Player Roster ({filteredPlayers.length})
-          </CardTitle>
-          <CardDescription className="text-xs text-[#707072] dark:text-[#8a8a93] mt-0.5">
-            Click on any player row to view their full chronological match history and court session details.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-white dark:bg-[#121215] border-b border-[#cacacb] dark:border-[#222226]">
-              <TableRow className="border-[#cacacb] dark:border-[#222226]">
-                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Player</TableHead>
-                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Contact</TableHead>
-                <TableHead className="text-center text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Total Played</TableHead>
-                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Lifetime Spend</TableHead>
-                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Fav Court</TableHead>
-                <TableHead className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Last Match</TableHead>
-                <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12">Action</TableHead>
+      {/* Main Players Table Grid (Non-Rounded) */}
+      <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] overflow-x-auto shadow-xs">
+        <Table>
+          <TableHeader className="bg-[#0B2A67] text-white">
+            <TableRow className="border-none hover:bg-transparent">
+              <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Player Name &amp; Tier</TableHead>
+              <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Skill Level (DUPR)</TableHead>
+              <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Contact Details</TableHead>
+              <TableHead className="text-center text-xs font-black uppercase tracking-wider text-white py-3">Matches / Hrs</TableHead>
+              <TableHead className="text-right text-xs font-black uppercase tracking-wider text-white py-3">Total Spend (PHP)</TableHead>
+              <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Fav Court</TableHead>
+              <TableHead className="text-xs font-black uppercase tracking-wider text-white py-3">Status</TableHead>
+              <TableHead className="text-right text-xs font-black uppercase tracking-wider text-white py-3 w-44">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredPlayers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-16 text-slate-400 text-xs font-medium">
+                  No players found matching your filter criteria.
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPlayers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-16 text-[#707072] dark:text-[#8a8a93] text-xs font-medium">
-                    No players found matching your search criteria.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredPlayers.map((player) => (
-                  <TableRow
-                    key={player.id}
-                    className="border-b border-[#cacacb] dark:border-[#222226] hover:bg-[#f5f5f5]/60 dark:hover:bg-[#18181c]/60 transition-colors cursor-pointer"
-                    onClick={() => setSelectedPlayer(player)}
-                  >
-                    {/* Player Name & Badge */}
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#111111] dark:bg-white text-white dark:text-[#111111] flex items-center justify-center font-bold text-xs shrink-0">
-                          {(player.fullName || 'P').charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div className="font-bold text-xs text-foreground">
-                            {player.fullName}
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {player.isRegistered ? (
-                              <span className="inline-block text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-[#e8f5e9] dark:bg-emerald-950/50 text-[#007d48] dark:text-emerald-400 border border-[#a5d6a7] dark:border-emerald-800">
-                                {player.role === 'owner' ? 'Owner' : player.role === 'admin' ? 'Admin' : 'Member'}
-                              </span>
-                            ) : (
-                              <span className="inline-block text-[9px] font-medium uppercase px-2 py-0.5 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] text-[#707072] dark:text-[#8a8a93] border border-[#cacacb] dark:border-[#27272a]">
-                                Guest
-                              </span>
-                            )}
-                          </div>
-                        </div>
+            ) : (
+              filteredPlayers.map((player) => (
+                <TableRow
+                  key={player.id}
+                  className={`border-b border-slate-100 dark:border-white/10 hover:bg-[#EDF4FC]/40 dark:hover:bg-white/5 transition-colors cursor-pointer ${
+                    player.isDeleted ? 'bg-red-50/20 dark:bg-red-950/10 opacity-75' : ''
+                  }`}
+                  onClick={() => setSelectedPlayer(player)}
+                >
+                  {/* Name & Avatar */}
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-none text-white flex items-center justify-center font-bold text-xs shrink-0 ${
+                        player.isDeleted
+                          ? 'bg-red-700'
+                          : player.isRegistered
+                          ? 'bg-[#0B2A67] dark:bg-[#FFD21C] dark:text-[#0B2A67]'
+                          : 'bg-slate-500'
+                      }`}>
+                        {(player.fullName || 'P').charAt(0).toUpperCase()}
                       </div>
-                    </TableCell>
+                      <div>
+                        <div className="font-black text-xs text-foreground flex items-center gap-1.5">
+                          <span>{player.fullName}</span>
+                          {player.isDeleted && (
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-red-100 text-red-700 border border-red-300">
+                              Archived
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-slate-500 block">
+                          Member since {formatDateOnly(player.memberSince)}
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
 
-                    {/* Contact info */}
-                    <TableCell className="text-xs text-[#707072] dark:text-[#8a8a93] py-4">
-                      <div className="text-foreground">{player.email || '—'}</div>
-                      <div className="text-[11px] text-[#707072] dark:text-[#8a8a93]">{player.phone || '—'}</div>
-                    </TableCell>
+                  {/* Skill Level */}
+                  <TableCell className="py-3">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-black uppercase border border-amber-300 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300">
+                      <Award className="w-3 h-3 text-amber-600" />
+                      <span>{player.skillLevel || '3.0'}</span>
+                    </span>
+                  </TableCell>
 
-                    {/* Total Played */}
-                    <TableCell className="text-center py-4">
-                      <span className="font-bold text-sm text-foreground">
-                        {player.totalPlayed}
+                  {/* Contact */}
+                  <TableCell className="py-3 text-xs">
+                    <div className="font-medium text-foreground">{player.email || '—'}</div>
+                    <div className="text-[11px] font-mono text-slate-500">{player.phone || '—'}</div>
+                  </TableCell>
+
+                  {/* Matches & Hours */}
+                  <TableCell className="py-3 text-center">
+                    <span className="font-black text-xs font-mono text-foreground block">
+                      {player.totalPlayed} matches
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {player.totalHours} hrs
+                    </span>
+                  </TableCell>
+
+                  {/* Total Spend */}
+                  <TableCell className="py-3 text-right font-black font-mono text-xs sm:text-sm text-[#007d48] dark:text-emerald-400">
+                    ₱{player.totalSpend.toFixed(2)}
+                  </TableCell>
+
+                  {/* Favorite Court */}
+                  <TableCell className="py-3 text-xs text-slate-600 dark:text-slate-300 truncate max-w-[130px]">
+                    {player.favoriteCourt}
+                  </TableCell>
+
+                  {/* Status Badge */}
+                  <TableCell className="py-3">
+                    {player.isDeleted ? (
+                      <div>
+                        <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-red-100 text-red-800 border border-red-300 block w-max">
+                          Soft Deleted
+                        </span>
+                        {player.deletedReason && (
+                          <span className="text-[9px] text-slate-400 truncate max-w-[100px] block mt-0.5" title={player.deletedReason}>
+                            {player.deletedReason}
+                          </span>
+                        )}
+                      </div>
+                    ) : player.isRegistered ? (
+                      <span className="px-2 py-0.5 text-[10px] font-black uppercase bg-emerald-100 text-[#007d48] border border-emerald-300">
+                        Active Member
                       </span>
-                      <span className="text-[11px] text-[#707072] dark:text-[#8a8a93] block">
-                        {player.totalHours} court hrs
+                    ) : (
+                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-300">
+                        Walk-in Guest
                       </span>
-                    </TableCell>
+                    )}
+                  </TableCell>
 
-                    {/* Lifetime Spend */}
-                    <TableCell className="text-right font-bold text-sm text-foreground py-4">
-                      ₱{player.totalSpend.toFixed(2)}
-                    </TableCell>
+                  {/* Action Buttons */}
+                  <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1.5">
+                      {!player.isDeleted ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenEdit(player)}
+                            className="h-7 px-2 text-[11px] rounded-none border-slate-300 dark:border-white/15 hover:bg-[#EDF4FC] cursor-pointer"
+                            title="Edit Player Details"
+                          >
+                            <Pencil className="w-3 h-3 text-[#0B2A67] dark:text-[#FFD21C]" />
+                            <span className="hidden xl:inline ml-1">Edit</span>
+                          </Button>
 
-                    {/* Favorite Court */}
-                    <TableCell className="text-xs text-[#707072] dark:text-[#8a8a93] py-4 truncate max-w-[140px]">
-                      {player.favoriteCourt}
-                    </TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenDelete(player)}
+                            disabled={player.role === 'owner' || player.role === 'admin'}
+                            className="h-7 px-2 text-[11px] rounded-none border-red-200 text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={player.role === 'owner' || player.role === 'admin' ? "Admins cannot be deleted" : "Soft Delete / Archive Player"}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span className="hidden xl:inline ml-1">Archive</span>
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => submitRestorePlayer(player)}
+                          disabled={isSubmitting}
+                          className="h-7 px-2 text-[11px] rounded-none bg-[#007d48] hover:bg-[#00663a] text-white font-bold cursor-pointer"
+                          title="Restore Player to Active Roster"
+                        >
+                          <RotateCcw className="w-3 h-3 mr-1" />
+                          <span>Restore</span>
+                        </Button>
+                      )}
 
-                    {/* Last Match */}
-                    <TableCell className="text-xs text-[#707072] dark:text-[#8a8a93] py-4 font-mono">
-                      {player.lastPlayed ? formatDateOnly(player.lastPlayed) : '—'}
-                    </TableCell>
-
-                    {/* Action */}
-                    <TableCell className="text-right py-4" onClick={(e) => e.stopPropagation()}>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => setSelectedPlayer(player)}
-                        className="h-8 px-3 text-xs border-[#cacacb] dark:border-[#27272a] text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] gap-1.5 font-semibold cursor-pointer"
+                        className="h-7 px-2 text-[11px] rounded-none text-slate-600 hover:bg-slate-100 cursor-pointer"
+                        title="View Complete Match History"
                       >
-                        <History className="w-3.5 h-3.5" />
-                        History ({player.bookings.length})
+                        <History className="w-3 h-3" />
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
-      {/* Player Match History Modal / Slide-Over Drawer */}
-      {selectedPlayer && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#121215] border border-[#cacacb] dark:border-[#27272a] w-full max-w-4xl max-h-[90vh] flex flex-col text-foreground shadow-2xl animate-in zoom-in-95 duration-150">
-            
-            {/* Modal Header */}
-            <div className="p-6 border-b border-[#cacacb] dark:border-[#222226] flex items-start justify-between bg-[#fbfbfb] dark:bg-[#18181c]">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#111111] dark:bg-white text-white dark:text-[#111111] flex items-center justify-center text-lg font-bold shrink-0">
-                  {(selectedPlayer.fullName || 'P').charAt(0).toUpperCase()}
+      {/* ========================================================================= */}
+      {/* 1. REGISTER NEW PLAYER MODAL (CREATE)                                     */}
+      {/* ========================================================================= */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 p-6 shadow-2xl max-w-lg w-full text-foreground space-y-4 rounded-none">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-none bg-[#0B2A67] text-white flex items-center justify-center font-bold">
+                  <Plus className="w-4 h-4 stroke-[3]" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold tracking-tight text-foreground">
-                      {selectedPlayer.fullName}
-                    </h2>
-                    <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-[#111111] dark:bg-white text-white dark:text-[#111111]">
-                      {selectedPlayer.isRegistered ? selectedPlayer.role.toUpperCase() : 'GUEST PLAYER'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#707072] dark:text-[#8a8a93] mt-0.5">
-                    {selectedPlayer.email} • {selectedPlayer.phone || 'No phone recorded'} • Member since {formatDateOnly(selectedPlayer.memberSince)}
-                  </p>
+                  <h3 className="font-black text-sm uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Register New Player Profile
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Create a member or player record in C&amp;J directory</p>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedPlayer(null)}
-                className="p-2 rounded-full hover:bg-[#e5e5e5] dark:hover:bg-[#27272a] text-[#707072] dark:text-[#8a8a93] hover:text-foreground transition-colors cursor-pointer"
-              >
+              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Player Stats Quick Badges */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-6 border-b border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215]">
-              <div className="p-3 bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a]">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] block">
-                  Times Played
-                </span>
-                <span className="text-xl font-bold text-foreground">
-                  {selectedPlayer.totalPlayed} matches
-                </span>
+            <form onSubmit={submitCreatePlayer} className="space-y-3.5 pt-1">
+              <div className="space-y-1">
+                <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                  Full Name *
+                </Label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Rafael Nadal"
+                  required
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  className="h-9 text-xs font-semibold rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
+                />
               </div>
-              <div className="p-3 bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a]">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] block">
-                  Total Court Hours
-                </span>
-                <span className="text-xl font-bold text-foreground">
-                  {selectedPlayer.totalHours} hrs
-                </span>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Email Address
+                  </Label>
+                  <Input
+                    type="email"
+                    placeholder="player@example.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Phone Number
+                  </Label>
+                  <Input
+                    type="tel"
+                    placeholder="09XX-XXX-XXXX"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15 font-mono"
+                  />
+                </div>
               </div>
-              <div className="p-3 bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a]">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] block">
-                  Lifetime Spend
-                </span>
-                <span className="text-xl font-bold text-foreground">
-                  ₱{selectedPlayer.totalSpend.toFixed(2)}
-                </span>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Skill Level / DUPR
+                  </Label>
+                  <select
+                    value={formData.skillLevel}
+                    onChange={(e) => setFormData({ ...formData, skillLevel: e.target.value })}
+                    className="w-full h-9 px-3 text-xs font-bold rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15 text-[#0B2A67] dark:text-white"
+                  >
+                    {SKILL_LEVEL_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value} className="dark:bg-[#071E4B]">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Directory Role
+                  </Label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    className="w-full h-9 px-3 text-xs font-bold rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15 text-[#0B2A67] dark:text-white"
+                  >
+                    <option value="client" className="dark:bg-[#071E4B]">Client / Member</option>
+                    <option value="customer" className="dark:bg-[#071E4B]">Regular Customer</option>
+                  </select>
+                </div>
               </div>
-              <div className="p-3 bg-[#f5f5f5] dark:bg-[#18181c] border border-[#cacacb] dark:border-[#27272a]">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] block">
-                  Preferred Arena
-                </span>
-                <span className="text-sm font-bold text-[#007d48] dark:text-[#10b981] truncate block">
-                  {selectedPlayer.favoriteCourt}
-                </span>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                  Emergency Contact / Phone (Optional)
+                </Label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Maria Santos (0917-555-1234)"
+                  value={formData.emergencyContact}
+                  onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                  className="h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                  Player Remarks / Medical Notes (Optional)
+                </Label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Right handed, prefers indoor court 1"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 h-9 text-xs font-bold rounded-none border-slate-300 cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 h-9 text-xs bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] rounded-none font-black cursor-pointer"
+                >
+                  {isSubmitting ? 'Creating Profile...' : 'Confirm Registration'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. EDIT PLAYER MODAL (UPDATE)                                             */}
+      {/* ========================================================================= */}
+      {editingPlayer && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 p-6 shadow-2xl max-w-lg w-full text-foreground space-y-4 rounded-none">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-none bg-[#0B2A67] text-white flex items-center justify-center">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Edit Player Profile
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Update player contact details, skill level, and remarks</p>
+                </div>
+              </div>
+              <button onClick={() => setEditingPlayer(null)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={submitUpdatePlayer} className="space-y-3.5 pt-1">
+              <div className="space-y-1">
+                <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                  Full Name *
+                </Label>
+                <Input
+                  type="text"
+                  required
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  className="h-9 text-xs font-semibold rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Email Address
+                  </Label>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Phone Number
+                  </Label>
+                  <Input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Skill Level / DUPR
+                  </Label>
+                  <select
+                    value={formData.skillLevel}
+                    onChange={(e) => setFormData({ ...formData, skillLevel: e.target.value })}
+                    className="w-full h-9 px-3 text-xs font-bold rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15 text-[#0B2A67] dark:text-white"
+                  >
+                    {SKILL_LEVEL_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value} className="dark:bg-[#071E4B]">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                    Role
+                  </Label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                    className="w-full h-9 px-3 text-xs font-bold rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15 text-[#0B2A67] dark:text-white"
+                  >
+                    <option value="client" className="dark:bg-[#071E4B]">Client / Member</option>
+                    <option value="customer" className="dark:bg-[#071E4B]">Regular Customer</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                  Emergency Contact (Optional)
+                </Label>
+                <Input
+                  type="text"
+                  value={formData.emergencyContact}
+                  onChange={(e) => setFormData({ ...formData, emergencyContact: e.target.value })}
+                  className="h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                  Notes / Player Remarks
+                </Label>
+                <Input
+                  type="text"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingPlayer(null)}
+                  className="flex-1 h-9 text-xs font-bold rounded-none border-slate-300 cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 h-9 text-xs bg-[#0B2A67] hover:bg-[#123A82] text-white rounded-none font-black cursor-pointer"
+                >
+                  {isSubmitting ? 'Saving Changes...' : 'Save Profile'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. SOFT DELETE CONFIRMATION MODAL                                         */}
+      {/* ========================================================================= */}
+      {deletingPlayer && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#071E4B] border border-red-300 dark:border-red-900 p-6 shadow-2xl max-w-md w-full text-foreground space-y-4 rounded-none">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-200 dark:border-white/10">
+              <div className="w-9 h-9 rounded-none bg-red-100 dark:bg-red-950 text-red-700 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-sm uppercase tracking-wider text-[#bf050b] dark:text-red-400">
+                  Soft Delete Player
+                </h3>
+                <p className="text-[11px] text-slate-500">Archive profile while preserving financial history</p>
               </div>
             </div>
 
-            {/* Match History Table */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] mb-3">
-                Complete Chronological Booking &amp; Match History ({selectedPlayer.bookings.length})
-              </h3>
+            <div className="text-xs text-slate-600 dark:text-slate-300 space-y-2 leading-relaxed">
+              <p>
+                Are you sure you want to archive <strong>&ldquo;{deletingPlayer.fullName}&rdquo;</strong>?
+              </p>
+              <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-[#007d48] dark:text-emerald-300">
+                🛡️ <strong>Audit Protection:</strong> This player will be hidden from new bookings, but their <strong>{deletingPlayer.totalPlayed} past match bookings</strong> and payment receipts will remain completely preserved. You can restore this player anytime.
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                Reason for Archiving:
+              </Label>
+              <select
+                value={deleteReasonPreset}
+                onChange={(e) => setDeleteReasonPreset(e.target.value)}
+                className="w-full h-9 px-3 text-xs font-bold rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 dark:border-white/15"
+              >
+                <option value="Duplicate Profile">Duplicate Profile</option>
+                <option value="Player Requested Deletion">Player Requested Deactivation</option>
+                <option value="Inactive / Churned Player">Inactive / Churned Player</option>
+                <option value="Policy Violation">Suspended - Court Policy Violation</option>
+                <option value="Other">Other Reason...</option>
+              </select>
+
+              {deleteReasonPreset === 'Other' && (
+                <Input
+                  type="text"
+                  placeholder="Specify custom archive reason..."
+                  value={deleteReasonCustom}
+                  onChange={(e) => setDeleteReasonCustom(e.target.value)}
+                  className="h-9 text-xs rounded-none bg-slate-50 dark:bg-black/30 border border-slate-300 mt-1"
+                />
+              )}
+            </div>
+
+            <div className="pt-2 flex gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeletingPlayer(null)}
+                className="flex-1 h-9 text-xs font-bold rounded-none border-slate-300 cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={submitSoftDelete}
+                disabled={isSubmitting}
+                className="flex-1 h-9 text-xs bg-[#bf050b] hover:bg-[#990409] text-white rounded-none font-black cursor-pointer"
+              >
+                {isSubmitting ? 'Archiving...' : 'Confirm Soft Delete'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. PLAYER DETAILS & MATCH HISTORY MODAL                                   */}
+      {/* ========================================================================= */}
+      {selectedPlayer && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 w-full max-w-4xl max-h-[90vh] flex flex-col text-foreground shadow-2xl rounded-none">
+            
+            {/* Modal Header */}
+            <div className="p-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between bg-slate-50 dark:bg-black/20">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-none text-white flex items-center justify-center font-bold text-sm shrink-0 ${
+                  selectedPlayer.isDeleted ? 'bg-red-700' : 'bg-[#0B2A67] dark:bg-[#FFD21C] dark:text-[#0B2A67]'
+                }`}>
+                  {(selectedPlayer.fullName || 'P').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-black text-base uppercase tracking-tight text-[#0B2A67] dark:text-white flex items-center gap-2">
+                    <span>{selectedPlayer.fullName}</span>
+                    {selectedPlayer.isDeleted ? (
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-red-100 text-red-800 border border-red-300">
+                        Archived Profile
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-100 text-[#007d48] border border-emerald-300">
+                        Active Roster
+                      </span>
+                    )}
+                  </h3>
+                  <div className="text-xs text-slate-500 flex items-center gap-3 mt-0.5">
+                    <span className="flex items-center gap-1 font-mono">
+                      <Phone className="w-3 h-3 text-slate-400" />
+                      {selectedPlayer.phone || 'No phone'}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-slate-400" />
+                      {selectedPlayer.email || 'No email'}
+                    </span>
+                    <span className="flex items-center gap-1 font-bold text-amber-700 dark:text-amber-300">
+                      <Award className="w-3 h-3 text-amber-500" />
+                      DUPR: {selectedPlayer.skillLevel || '3.0'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {!selectedPlayer.isDeleted ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenEdit(selectedPlayer)}
+                      className="h-8 text-xs font-bold rounded-none border-slate-300 cursor-pointer"
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-1" />
+                      Edit Profile
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleOpenDelete(selectedPlayer)}
+                      disabled={selectedPlayer.role === 'owner' || selectedPlayer.role === 'admin'}
+                      className="h-8 text-xs font-bold rounded-none border-red-300 text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-30"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      Archive
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => submitRestorePlayer(selectedPlayer)}
+                    className="h-8 text-xs font-bold rounded-none bg-[#007d48] text-white hover:bg-[#00663a] cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                    Restore Player
+                  </Button>
+                )}
+
+                <button
+                  onClick={() => setSelectedPlayer(null)}
+                  className="p-1 rounded-none text-slate-400 hover:text-slate-700 ml-2 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-slate-300 dark:bg-white/10 border-b border-slate-300 dark:border-white/10 text-center">
+              <div className="bg-white dark:bg-[#071E4B] p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Matches Played</span>
+                <span className="text-xl font-black font-mono text-[#0B2A67] dark:text-white">{selectedPlayer.totalPlayed}</span>
+              </div>
+              <div className="bg-white dark:bg-[#071E4B] p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Court Hours</span>
+                <span className="text-xl font-black font-mono text-[#0B2A67] dark:text-white">{selectedPlayer.totalHours} hrs</span>
+              </div>
+              <div className="bg-white dark:bg-[#071E4B] p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Lifetime Spend</span>
+                <span className="text-xl font-black font-mono text-[#007d48] dark:text-emerald-400">₱{selectedPlayer.totalSpend.toFixed(2)}</span>
+              </div>
+              <div className="bg-white dark:bg-[#071E4B] p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Favorite Court</span>
+                <span className="text-xs font-black truncate block mt-1 text-[#0B2A67] dark:text-white">{selectedPlayer.favoriteCourt}</span>
+              </div>
+            </div>
+
+            {/* Notes / Emergency info if available */}
+            {(selectedPlayer.emergencyContact || selectedPlayer.notes || selectedPlayer.deletedReason) && (
+              <div className="px-4 py-2.5 bg-slate-50 dark:bg-black/30 border-b border-slate-200 dark:border-white/10 text-xs flex flex-wrap items-center gap-4">
+                {selectedPlayer.emergencyContact && (
+                  <div>
+                    <span className="font-bold text-slate-500 uppercase text-[10px]">Emergency Contact: </span>
+                    <span className="font-semibold">{selectedPlayer.emergencyContact}</span>
+                  </div>
+                )}
+                {selectedPlayer.notes && (
+                  <div>
+                    <span className="font-bold text-slate-500 uppercase text-[10px]">Remarks: </span>
+                    <span className="italic">{selectedPlayer.notes}</span>
+                  </div>
+                )}
+                {selectedPlayer.deletedReason && (
+                  <div>
+                    <span className="font-bold text-red-600 uppercase text-[10px]">Archived Reason: </span>
+                    <span className="font-semibold text-red-700">{selectedPlayer.deletedReason}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bookings History Table */}
+            <div className="p-4 overflow-y-auto max-h-[50vh]">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-black text-xs uppercase tracking-wider text-[#0B2A67] dark:text-white">
+                  Match &amp; Booking Audit Trail ({selectedPlayer.bookings.length})
+                </h4>
+              </div>
 
               {selectedPlayer.bookings.length === 0 ? (
-                <div className="text-center py-12 text-[#707072] dark:text-[#8a8a93] text-xs">
-                  No match or booking records on file for this player.
+                <div className="text-center py-10 border border-dashed border-slate-300 text-xs text-slate-500">
+                  No match bookings found for this player.
                 </div>
               ) : (
-                <div className="border border-[#cacacb] dark:border-[#222226] overflow-hidden">
+                <div className="border border-slate-300 dark:border-white/15 overflow-x-auto">
                   <Table>
-                    <TableHeader className="bg-[#f5f5f5] dark:bg-[#18181c] border-b border-[#cacacb] dark:border-[#222226]">
-                      <TableRow className="border-[#cacacb] dark:border-[#222226]">
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-10">Ref</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-10">Court</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-10">Schedule</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-10">Duration</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-10">Status</TableHead>
-                        <TableHead className="text-[11px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-10">Payment</TableHead>
-                        <TableHead className="text-right text-[11px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-10">Amount</TableHead>
+                    <TableHeader className="bg-slate-100 dark:bg-black/40">
+                      <TableRow className="border-none">
+                        <TableHead className="text-xs font-bold text-slate-700 dark:text-white py-2">Match Date</TableHead>
+                        <TableHead className="text-xs font-bold text-slate-700 dark:text-white py-2">Court</TableHead>
+                        <TableHead className="text-xs font-bold text-slate-700 dark:text-white py-2">Duration</TableHead>
+                        <TableHead className="text-xs font-bold text-slate-700 dark:text-white py-2">Status</TableHead>
+                        <TableHead className="text-xs font-bold text-slate-700 dark:text-white py-2">Payment</TableHead>
+                        <TableHead className="text-right text-xs font-bold text-slate-700 dark:text-white py-2">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {selectedPlayer.bookings.map((b) => (
-                        <TableRow key={b.id} className="border-b border-[#e5e5e5] dark:border-[#222226] text-xs">
-                          <TableCell className="font-mono text-[11px] py-3 font-bold text-foreground">
-                            #{b.id.slice(0, 8).toUpperCase()}
-                          </TableCell>
-                          <TableCell className="py-3 font-semibold text-foreground">
-                            {b.courtName}
-                            {b.notes && (
-                              <span className="block text-[10px] font-normal text-[#007d48] dark:text-[#10b981]">
-                                {b.notes}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-3 text-[#707072] dark:text-[#8a8a93] font-mono text-[11px]">
-                            {formatDateTime(b.startTime)}
-                          </TableCell>
-                          <TableCell className="py-3 text-[#707072] dark:text-[#8a8a93]">
-                            {b.durationHours} hr{b.durationHours > 1 ? 's' : ''}
-                          </TableCell>
-                          <TableCell className="py-3">
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              b.status === 'paid' || b.status === 'checked_in' || b.status === 'walk_in'
-                                ? 'bg-[#e8f5e9] dark:bg-emerald-950/50 text-[#007d48] dark:text-emerald-400 border border-[#a5d6a7] dark:border-emerald-800'
-                                : b.status === 'pending_payment'
-                                ? 'bg-[#fff8e1] dark:bg-amber-950/50 text-[#f57f17] dark:text-amber-400 border border-[#ffe082] dark:border-amber-800'
-                                : 'bg-[#ffebee] dark:bg-red-950/50 text-[#c62828] dark:text-red-400 border border-[#ef9a9a] dark:border-red-800'
+                      {selectedPlayer.bookings.map((booking) => (
+                        <TableRow key={booking.id} className="border-b border-slate-100 dark:border-white/10 text-xs">
+                          <TableCell className="font-mono py-2 font-bold">{formatDateTime(booking.startTime)}</TableCell>
+                          <TableCell className="font-semibold py-2">{booking.courtName}</TableCell>
+                          <TableCell className="py-2">{booking.durationHours} hr{booking.durationHours > 1 ? 's' : ''}</TableCell>
+                          <TableCell className="py-2">
+                            <span className={`px-2 py-0.5 text-[9px] font-black uppercase border ${
+                              booking.status === 'checked_in'
+                                ? 'bg-emerald-100 text-[#007d48] border-emerald-300'
+                                : booking.status === 'cancelled'
+                                ? 'bg-red-100 text-red-700 border-red-300'
+                                : 'bg-blue-100 text-[#0B2A67] border-blue-300'
                             }`}>
-                              {b.status.replace(/_/g, ' ')}
+                              {booking.status}
                             </span>
                           </TableCell>
-                          <TableCell className="py-3 capitalize text-[#707072] dark:text-[#8a8a93]">
-                            {b.paymentMethod}
-                          </TableCell>
-                          <TableCell className="py-3 text-right font-bold text-foreground">
-                            ₱{b.totalPrice.toFixed(2)}
-                          </TableCell>
+                          <TableCell className="py-2 capitalize">{booking.paymentMethod}</TableCell>
+                          <TableCell className="text-right font-mono font-bold py-2">₱{booking.totalPrice.toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -533,13 +1307,14 @@ export default function PlayersClient({ players }: { players: PlayerSummary[] })
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-[#cacacb] dark:border-[#222226] bg-[#fbfbfb] dark:bg-[#18181c] flex justify-end">
+            <div className="p-3 border-t border-slate-200 dark:border-white/10 flex justify-end bg-slate-50 dark:bg-black/20">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setSelectedPlayer(null)}
-                className="text-xs px-5 border-[#cacacb] dark:border-[#27272a] text-foreground hover:bg-[#f5f5f5] dark:hover:bg-[#222226] cursor-pointer"
+                className="h-8 px-4 text-xs font-bold rounded-none border-slate-300 cursor-pointer"
               >
-                Close History
+                Close Window
               </Button>
             </div>
 

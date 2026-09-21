@@ -67,7 +67,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-2 h-2 rounded-full bg-[#007d48] dark:bg-[#52d694] animate-pulse" />
                   <span className="text-[10px] font-black uppercase tracking-wider text-[#FFD21C] dark:text-[#FFD21C]">
-                    {userRole} Terminal
+                    {userRole === 'coordinator' ? 'Coordinator' : userRole} Terminal
                   </span>
                 </div>
               </div>
@@ -75,7 +75,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </div>
 
           {/* Navigation Links with Active Indicator */}
-          <DashboardNavLinks isOwnerOrAdmin={isOwnerOrAdmin} />
+          <DashboardNavLinks isOwnerOrAdmin={isOwnerOrAdmin} userRole={userRole} />
         </div>
 
         {/* Sidebar Footer: Theme Toggle */}
@@ -98,7 +98,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <span className="text-[#64748B] dark:text-white/30">•</span>
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#EDF4FC] dark:bg-white/10 text-xs font-black text-[#0B2A67] dark:text-white border border-[#0B2A67]/20 dark:border-white/20">
               <span className="w-2 h-2 rounded-full bg-[#007d48] dark:bg-[#52d694] animate-pulse" />
-              <span className="capitalize">{userRole} Console Active</span>
+              <span className="capitalize">
+                {userRole === 'coordinator' ? 'Scheduling Coordinator' : userRole} Console Active
+              </span>
             </div>
           </div>
 

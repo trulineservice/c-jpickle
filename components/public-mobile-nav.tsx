@@ -125,6 +125,14 @@ export function PublicMobileNav({ userRole, isLoggedIn }: PublicMobileNavProps) 
                     >
                       Cashier POS
                     </Link>
+                  ) : userRole === 'coordinator' ? (
+                    <Link
+                      href="/cashier/schedule"
+                      onClick={() => setIsOpen(false)}
+                      className="block text-base font-semibold text-white hover:text-[#FFD21C] mb-2"
+                    >
+                      Court Schedule
+                    </Link>
                   ) : (
                     <Link
                       href="/dashboard"
