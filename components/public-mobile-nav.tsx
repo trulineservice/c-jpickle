@@ -53,6 +53,7 @@ export function PublicMobileNav({ userRole, isLoggedIn }: PublicMobileNavProps) 
             <nav className="space-y-3">
               {[
                 { label: "Home", href: "/" },
+                { label: "Coffee Menu", href: "/menu" },
                 { label: "About", href: "/about" },
                 { label: "Pricing & Rates", href: "/pricing" },
                 { label: "Services", href: "/#services" },
@@ -175,7 +176,7 @@ export function PublicMobileNav({ userRole, isLoggedIn }: PublicMobileNavProps) 
 
           <div className="pt-6 border-t border-white/10 text-xs text-white/70 space-y-2">
             <p className="font-semibold text-white">C&amp;J&apos;s Events Place Rentals</p>
-            <p>25 Bologna Muzon, Taytay, Rizal • Daily 6:00 AM – 10:00 PM</p>
+            <p>25 Bologna Muzon, Taytay, Rizal • Daily 6:00 AM – 12:00 AM</p>
             <div className="pt-2 border-t border-white/10 text-[11px] space-y-1">
               <p className="font-medium text-[#FFD21C]">Hotlines:</p>
               <p>Court Rental: <a href="tel:09173188720" className="text-white hover:underline font-mono">0917-318-8720</a></p>

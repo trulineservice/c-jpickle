@@ -13,6 +13,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/", key: "home" },
+  { label: "Coffee Menu", href: "/menu", key: "menu" },
   { label: "About", href: "/about", key: "about" },
   { label: "Services", href: "/#services", key: "services" },
   { label: "Gallery", href: "/#gallery", key: "gallery" },
@@ -28,6 +29,11 @@ export function PublicNavLinks() {
     // 1. Dedicated Subpages
     if (pathname === "/about") {
       setActiveSection("about");
+      return;
+    }
+
+    if (pathname === "/menu") {
+      setActiveSection("menu");
       return;
     }
 

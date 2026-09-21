@@ -51,7 +51,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div>
           {/* Brand Logo Header */}
           <div className="p-6 border-b border-[#E2E8F0] dark:border-white/10 space-y-4">
-            <Link href="/" className="flex items-center">
+            <Link href="/" className="flex items-center justify-center">
               <BrandLogo size="sm" withSubtitle />
             </Link>
 

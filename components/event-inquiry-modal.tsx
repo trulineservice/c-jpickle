@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   X,
@@ -97,9 +98,15 @@ export function EventInquiryModal({
   const [notes, setNotes] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
+  const pathname = usePathname();
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -446,7 +453,6 @@ export function EventInquiryModal({
                     <span className="text-xs font-bold text-white uppercase">Grand Total</span>
                     <div className="text-right">
                       <div className="text-2xl font-black text-[#FFD21C] flex items-center justify-end">
-                        <span>₱</span>
                         <AnimatedNumber value={estimate.grandTotal} />
                       </div>
                       <span className="text-[10px] text-white/70 block">

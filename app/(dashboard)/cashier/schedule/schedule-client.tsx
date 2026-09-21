@@ -78,9 +78,9 @@ export interface ScheduleCourt {
   hourly_rate?: number;
 }
 
-// C&J Court Operational Hours: 6:00 AM (6) to 10:00 PM (22) -> 16 intervals
+// C&J Court Operational Hours: 6:00 AM (6) to 12:00 AM (24) -> 18 intervals
 const START_HOUR = 6;
-const END_HOUR = 22;
+const END_HOUR = 24;
 const OPERATING_SLOTS = Array.from(
   { length: END_HOUR - START_HOUR },
   (_, i) => i + START_HOUR
@@ -504,8 +504,10 @@ export default function ScheduleClient({
   };
 
   const formatHour = (hour: number) => {
-    if (hour === 12) return '12 PM';
-    return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+    const h = hour % 24;
+    if (h === 0) return '12 AM';
+    if (h === 12) return '12 PM';
+    return h > 12 ? `${h - 12} PM` : `${h} AM`;
   };
 
   const formatTimeSlot = (startTime: string, endTime: string) => {
@@ -520,7 +522,10 @@ export default function ScheduleClient({
 
     // Convert UTC timestamp to local Philippine hours (UTC+8)
     const startHour = new Date(startDate.getTime() + 8 * 3600 * 1000).getUTCHours();
-    const endHour = new Date(endDate.getTime() + 8 * 3600 * 1000).getUTCHours();
+    let endHour = new Date(endDate.getTime() + 8 * 3600 * 1000).getUTCHours();
+    if (endHour === 0 && endDate.getTime() > startDate.getTime()) {
+      endHour = 24;
+    }
 
     const startCol = Math.max(startHour - START_HOUR + 1, 1);
     const endCol = Math.max(endHour - START_HOUR + 1, startCol + 1);
@@ -537,7 +542,7 @@ export default function ScheduleClient({
     [bookings]
   );
 
-  const totalCapacityHours = courts.length * (END_HOUR - START_HOUR); // 2 courts * 16 hrs = 32
+  const totalCapacityHours = courts.length * (END_HOUR - START_HOUR); // 2 courts * 18 hrs = 36
   const occupancyPercent = totalCapacityHours > 0
     ? Math.round((totalHoursBooked / totalCapacityHours) * 100)
     : 0;

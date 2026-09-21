@@ -76,7 +76,7 @@ export default async function AboutPage() {
         "Court 2: Multi-Sport Court (Pickleball & Basketball Half-Court)",
         "Cushioned shock-absorbing sports flooring",
         "Paddle rentals (₱150) & practice ball machine (₱150)",
-        "Open daily from 6:00 AM to 10:00 PM",
+        "Open daily from 6:00 AM to 12:00 AM",
         "Strict 24-hour refundable cancellation guarantee",
       ],
       hotline: "0917-318-8720",
@@ -189,7 +189,7 @@ export default async function AboutPage() {
               </div>
               <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full border border-white/15">
                 <Clock className="w-3.5 h-3.5 text-[#FFD21C]" />
-                <span>Open Daily 6:00 AM – 10:00 PM</span>
+                <span>Open Daily 6:00 AM – 12:00 AM</span>
               </div>
               <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full border border-white/15">
                 <Car className="w-3.5 h-3.5 text-[#FFD21C]" />
@@ -433,7 +433,7 @@ export default async function AboutPage() {
                 </div>
                 <div className="p-3.5 rounded-2xl bg-white/10 border border-white/10 space-y-1">
                   <span className="font-bold text-[#FFD21C] block">Operating Hours</span>
-                  <span className="text-white/80">Daily 6:00 AM – 10:00 PM</span>
+                  <span className="text-white/80">Daily 6:00 AM – 12:00 AM</span>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-white/10 border border-white/10 space-y-1">
                   <span className="font-bold text-[#FFD21C] block">Building Access</span>

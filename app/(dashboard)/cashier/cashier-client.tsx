@@ -655,7 +655,7 @@ export default function CashierClient({
 
           {/* TABLE VIEW (Default: Full Menu at a glance) */}
           {viewMode === "table" ? (
-            <div className="border border-[#e5e5e5] dark:border-[#222226] bg-white dark:bg-[#121215] rounded-2xl shadow-xs overflow-hidden">
+            <div className="border border-[#e5e5e5] dark:border-[#222226] bg-white dark:bg-[#121215] rounded-none shadow-xs overflow-hidden">
               <div className="overflow-x-auto max-h-[580px] overflow-y-auto">
                 <Table className="w-full">
                   <TableHeader className="bg-[#0B2A67] dark:bg-[#071E4B] sticky top-0 z-10 border-b-2 border-[#FFD21C]">

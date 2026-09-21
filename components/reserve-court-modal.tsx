@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { 
   UserCheck, 
   UserPlus, 
@@ -33,16 +33,29 @@ export function ReserveCourtModal({
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Automatically close modal on route change
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  // If user becomes logged in, close modal
+  useEffect(() => {
+    if (isLoggedIn) {
+      setIsOpen(false);
+    }
+  }, [isLoggedIn]);
+
   const handleTriggerClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     playHapticSound("tap");
-    if (isLoggedIn) {
+    if (isLoggedIn || pathname === "/login" || pathname === "/signup") {
       router.push("/book");
     } else {
       setIsOpen(true);
@@ -61,11 +74,11 @@ export function ReserveCourtModal({
       }
       window.addEventListener("keydown", handleKeyDown);
     } else {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = "";
       document.body.style.paddingRight = "";
     }
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = "";
       document.body.style.paddingRight = "";
       window.removeEventListener("keydown", handleKeyDown);
     };
@@ -112,10 +125,14 @@ export function ReserveCourtModal({
 
         {/* Options */}
         <div className="space-y-3 pt-4">
-          <Link href="/login?next=/book" className="block w-full">
+          <Link 
+            href="/login?next=/book" 
+            className="block w-full"
+            onClick={() => setIsOpen(false)}
+          >
             <Button 
               variant="yellow" 
-              className="w-full h-12 text-sm font-bold shadow-md rounded-xl justify-between px-5 group"
+              className="w-full h-12 text-sm font-bold shadow-md rounded-xl justify-between px-5 group cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-[#0B2A67]/10 flex items-center justify-center text-[#0B2A67]">
@@ -127,10 +144,14 @@ export function ReserveCourtModal({
             </Button>
           </Link>
 
-          <Link href="/signup?next=/book" className="block w-full">
+          <Link 
+            href="/signup?next=/book" 
+            className="block w-full"
+            onClick={() => setIsOpen(false)}
+          >
             <Button 
               variant="outline" 
-              className="w-full h-12 text-sm font-bold rounded-xl justify-between px-5 border-[#E2E8F0] hover:bg-[#EDF4FC] hover:text-[#0B2A67] group text-[#102A56]"
+              className="w-full h-12 text-sm font-bold rounded-xl justify-between px-5 border-[#E2E8F0] hover:bg-[#EDF4FC] hover:text-[#0B2A67] group text-[#102A56] cursor-pointer"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-[#EDF4FC] flex items-center justify-center text-[#0B2A67]">
@@ -151,10 +172,14 @@ export function ReserveCourtModal({
             </span>
           </div>
 
-          <Link href="/book" className="block w-full">
+          <Link 
+            href="/book" 
+            className="block w-full"
+            onClick={() => setIsOpen(false)}
+          >
             <Button 
               variant="ghost" 
-              className="w-full h-10 text-xs font-bold text-[#64748B] hover:text-[#0B2A67] hover:bg-[#F5F7FA] rounded-xl"
+              className="w-full h-10 text-xs font-bold text-[#64748B] hover:text-[#0B2A67] hover:bg-[#F5F7FA] rounded-xl cursor-pointer"
             >
               Continue as Guest &rarr;
             </Button>

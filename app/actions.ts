@@ -1001,13 +1001,9 @@ export async function voidPosTransactionWithPin(payload: {
 }
 
 /**
- * Update POS Master PIN code (Owner / Admin only).
+ * Fetch POS Master PIN for verified Admin / Owner.
  */
-export async function updatePosMasterPin(payload: {
-  currentPin: string;
-  newPin: string;
-}): Promise<{ success: boolean; error?: string; message?: string }> {
-  const { currentPin, newPin } = payload;
+export async function getPosMasterPinForAdmin(): Promise<{ success: boolean; pin?: string; error?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -1022,11 +1018,40 @@ export async function updatePosMasterPin(payload: {
     .single();
 
   if (!profile || !['owner', 'admin'].includes(profile.role)) {
+    return { success: false, error: 'Unauthorized: Only Owner or Admin can view Master PIN.' };
+  }
+
+  const pin = await getPosMasterPin();
+  return { success: true, pin };
+}
+
+/**
+ * Update POS Master PIN code (Owner / Admin only).
+ */
+export async function updatePosMasterPin(payload: {
+  currentPin?: string;
+  newPin: string;
+}): Promise<{ success: boolean; error?: string; message?: string }> {
+  const { currentPin, newPin } = payload;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { success: false, error: 'Unauthorized: Please log in as an administrator.' };
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || !['owner', 'admin'].includes(profile.role)) {
     return { success: false, error: 'Unauthorized: Only Owner or Admin can modify Master PIN.' };
   }
 
   const existingPin = await getPosMasterPin();
-  if (currentPin.trim() !== existingPin) {
+  if (currentPin && currentPin.trim() !== '' && currentPin.trim() !== existingPin) {
     return { success: false, error: 'Current Master PIN is incorrect.' };
   }
 
@@ -1050,6 +1075,7 @@ export async function updatePosMasterPin(payload: {
   }
 
   revalidatePath('/admin');
+  revalidatePath('/cashier');
   return { success: true, message: 'Master PIN successfully updated.' };
 }
 

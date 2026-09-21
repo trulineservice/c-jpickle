@@ -40,7 +40,7 @@ export default async function PublicLayout({ children }: { children: React.React
           </span>
           <span className="text-white/30 hidden sm:inline">•</span>
           <span className="hidden sm:inline text-white/70">
-            25 Bologna Muzon, Taytay, Rizal • Daily 6:00 AM – 10:00 PM
+            25 Bologna Muzon, Taytay, Rizal • Daily 6:00 AM – 12:00 AM
           </span>
         </div>
 
@@ -171,6 +171,9 @@ export default async function PublicLayout({ children }: { children: React.React
             <nav className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 text-sm font-medium text-white/90">
               <Link href="/" className="hover:text-[#FFD21C] transition-colors">
                 Home
+              </Link>
+              <Link href="/menu" className="hover:text-[#FFD21C] transition-colors">
+                Coffee Menu
               </Link>
               <Link href="/about" className="hover:text-[#FFD21C] transition-colors">
                 About

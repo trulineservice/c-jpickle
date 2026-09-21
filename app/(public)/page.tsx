@@ -283,7 +283,7 @@ export default async function LandingPage() {
           <ServiceCard
             id="court"
             title="Pickleball & Sports Arena"
-            description="Indoor cushioned pickleball and basketball courts available daily from 6:00 AM to 10:00 PM."
+            description="Indoor cushioned pickleball and basketball courts available daily from 6:00 AM to 12:00 AM."
             image="/service-court.jpg"
             icon={<Trophy className="w-6 h-6" />}
             ctaText="Book a Court →"

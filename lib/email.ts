@@ -356,7 +356,7 @@ export function generateBookingEmailHtml(details: BookingEmailDetails, qrDataUrl
 
     <div class="footer">
       <p style="margin: 0;">C&J's Events Place & Sports Arena • 25 Bologna Muzon, Taytay, Rizal, 1920</p>
-      <p style="margin: 4px 0 0 0;">Daily: 6:00 AM – 10:00 PM • Court Inquiries: 0917-318-8720 • Events: 0917-123-0382 • Cafe: 0976-662-3453</p>
+      <p style="margin: 4px 0 0 0;">Daily: 6:00 AM – 12:00 AM • Court Inquiries: 0917-318-8720 • Events: 0917-123-0382 • Cafe: 0976-662-3453</p>
     </div>
   </div>
 </body>

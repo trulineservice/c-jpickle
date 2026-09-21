@@ -21,8 +21,9 @@ interface TimeSlotGridProps {
 }
 
 function formatHourDisplay(hour: number): string {
-  const period = hour >= 12 ? "PM" : "AM";
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  const normalizedHour = hour % 24;
+  const period = normalizedHour >= 12 ? "PM" : "AM";
+  const displayHour = normalizedHour % 12 === 0 ? 12 : normalizedHour % 12;
   return `${displayHour.toString().padStart(2, "0")}:00 ${period}`;
 }
 

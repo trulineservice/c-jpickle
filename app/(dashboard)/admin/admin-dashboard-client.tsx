@@ -48,7 +48,9 @@ import {
   Edit,
   Trash2,
   Loader2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { 
   createCashierAccount, 
@@ -221,6 +223,8 @@ export default function AdminDashboardClient({
   const [currentPinInput, setCurrentPinInput] = useState('');
   const [newPinInput, setNewPinInput] = useState('');
   const [confirmPinInput, setConfirmPinInput] = useState('');
+  const [showPinInputs, setShowPinInputs] = useState(false);
+  const [showActivePinRevealed, setShowActivePinRevealed] = useState(false);
   const [pinChangeError, setPinChangeError] = useState<string | null>(null);
   const [pinChangeSuccess, setPinChangeSuccess] = useState<string | null>(null);
   const [isUpdatingPin, setIsUpdatingPin] = useState(false);
@@ -598,21 +602,21 @@ export default function AdminDashboardClient({
     }
 
     if (newPinInput.length < 4 || newPinInput.length > 8 || !/^\d+$/.test(newPinInput)) {
-      setPinChangeError('New PIN must be between 4 and 8 digits.');
+      setPinChangeError('New PIN must be between 4 and 8 numeric digits.');
       return;
     }
 
     setIsUpdatingPin(true);
     try {
       const res = await updatePosMasterPin({
-        currentPin: currentPinInput,
-        newPin: newPinInput,
+        currentPin: currentPinInput.trim() || undefined,
+        newPin: newPinInput.trim(),
       });
 
       if (!res.success) {
         setPinChangeError(res.error || 'Failed to update Master PIN.');
       } else {
-        setMasterPinState(newPinInput);
+        setMasterPinState(newPinInput.trim());
         setPinChangeSuccess('Master PIN successfully changed!');
         setCurrentPinInput('');
         setNewPinInput('');
@@ -707,7 +711,23 @@ export default function AdminDashboardClient({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Change Master Void PIN Button */}
+          <Button
+            type="button"
+            onClick={() => {
+              setPinChangeError(null);
+              setPinChangeSuccess(null);
+              setPinChangeModalOpen(true);
+            }}
+            variant="outline"
+            size="sm"
+            className="border-amber-300 dark:border-amber-800/80 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 h-10 px-4 text-xs font-semibold cursor-pointer shadow-xs"
+          >
+            <KeyRound className="w-4 h-4 mr-1.5 text-amber-600 dark:text-amber-400" />
+            <span>Master Void PIN</span>
+          </Button>
+
           {/* Google Calendar Live Sync Trigger */}
           <Button
             type="button"
@@ -1757,22 +1777,58 @@ export default function AdminDashboardClient({
 
         {/* TAB 4: POS SALES INVOICES & AUDIT */}
         {activeTab === 'pos_invoices' && (
-          <div className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] overflow-hidden">
-            <div className="p-6 border-b border-[#cacacb] dark:border-[#222226] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-bold tracking-tight text-foreground">
-                  POS Sales Invoice Registry &amp; Void Audit
-                </h3>
-                <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
-                  All completed and voided retail sales with BIR statutory tax classifications and supervisor overrides.
-                </p>
+          <div className="space-y-6">
+            {/* POS Security & Supervisor Void PIN Control Card */}
+            <div className="border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
+                      POS Supervisor Void Authorization
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-[#007d48] dark:text-[#10b981] border border-emerald-300 dark:border-emerald-800">
+                      Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80 max-w-2xl">
+                    Cashiers must enter the Master PIN to void individual items, clear active carts, or reverse completed sales invoices.
+                  </p>
+                </div>
               </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setPinChangeError(null);
+                  setPinChangeSuccess(null);
+                  setPinChangeModalOpen(true);
+                }}
+                className="h-9 px-4 text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 rounded-full cursor-pointer font-bold shrink-0 shadow-xs"
+              >
+                <KeyRound className="w-3.5 h-3.5 mr-1.5 text-amber-400 dark:text-amber-600" />
+                Change Master PIN
+              </Button>
+            </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
-                  <Input
-                    placeholder="Search invoice, customer..."
+            <div className="border border-[#cacacb] dark:border-[#222226] bg-white dark:bg-[#121215] overflow-hidden">
+              <div className="p-6 border-b border-[#cacacb] dark:border-[#222226] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-foreground">
+                    POS Sales Invoice Registry &amp; Void Audit
+                  </h3>
+                  <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
+                    All completed and voided retail sales with BIR statutory tax classifications and supervisor overrides.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
+                    <Input
+                      placeholder="Search invoice, customer..."
                     value={txSearch}
                     onChange={(e) => setTxSearch(e.target.value)}
                     className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus:border-[#111111] dark:focus:border-white"
@@ -1891,6 +1947,7 @@ export default function AdminDashboardClient({
               </Table>
             </div>
           </div>
+          </div>
         )}
       </div>
 
@@ -1936,15 +1993,44 @@ export default function AdminDashboardClient({
             </button>
             <form onSubmit={handleMasterPinUpdate}>
               <div className="space-y-1 pb-2">
-                <div className="w-10 h-10 rounded-full bg-[#f5f5f5] dark:bg-[#1c1c20] text-foreground flex items-center justify-center mb-2">
+                <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-2 border border-amber-200 dark:border-amber-900">
                   <KeyRound className="w-5 h-5" />
                 </div>
                 <h3 className="text-xl font-bold tracking-tight text-foreground">
                   Update POS Master PIN
                 </h3>
                 <p className="text-xs text-[#707072] dark:text-[#8a8a93]">
-                  Change the supervisor Master PIN used by cashiers and managers for item voiding and order cancellation.
+                  Change the supervisor Master PIN used by cashiers and managers for POS item voiding, order cancellation, and invoice voiding.
                 </p>
+              </div>
+
+              {/* Current PIN Inspection Card for Admin */}
+              <div className="mt-3 p-3 rounded-xl bg-[#f5f5f5] dark:bg-[#18181c] border border-[#e5e5e5] dark:border-[#27272a] flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">
+                    Current Master PIN
+                  </span>
+                  <div className="text-sm font-mono font-bold text-foreground">
+                    {showActivePinRevealed ? masterPinState : '••••••••'.slice(0, masterPinState.length || 4)}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setShowActivePinRevealed(!showActivePinRevealed)}
+                  className="h-8 px-2.5 text-xs text-[#707072] hover:text-foreground cursor-pointer"
+                >
+                  {showActivePinRevealed ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5 mr-1" /> Hide
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5 mr-1" /> Reveal
+                    </>
+                  )}
+                </Button>
               </div>
 
               {pinChangeError && (
@@ -1962,28 +2048,41 @@ export default function AdminDashboardClient({
 
               <div className="space-y-3.5 py-4">
                 <div className="space-y-1">
-                  <Label htmlFor="currentPin" className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Current Master PIN
-                  </Label>
-                  <Input
-                    id="currentPin"
-                    type="password"
-                    maxLength={8}
-                    placeholder="Enter current PIN"
-                    value={currentPinInput}
-                    onChange={(e) => setCurrentPinInput(e.target.value)}
-                    required
-                    className="h-10 px-4 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs font-mono"
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="currentPin" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      Current Master PIN <span className="text-[#707072] font-normal lowercase">(optional for admin)</span>
+                    </Label>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id="currentPin"
+                      type={showPinInputs ? 'text' : 'password'}
+                      maxLength={8}
+                      placeholder="Enter current PIN"
+                      value={currentPinInput}
+                      onChange={(e) => setCurrentPinInput(e.target.value)}
+                      className="h-10 px-4 pr-10 rounded-xl bg-[#f5f5f5] dark:bg-black text-xs font-mono"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="newPin" className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    New Master PIN (4–8 digits)
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="newPin" className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      New Master PIN (4–8 digits)
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => setShowPinInputs(!showPinInputs)}
+                      className="text-[11px] text-[#707072] dark:text-[#8a8a93] hover:text-foreground flex items-center gap-1 cursor-pointer"
+                    >
+                      {showPinInputs ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{showPinInputs ? 'Hide' : 'Show'}</span>
+                    </button>
+                  </div>
                   <Input
                     id="newPin"
-                    type="password"
+                    type={showPinInputs ? 'text' : 'password'}
                     maxLength={8}
                     placeholder="Enter new 4–8 digit PIN"
                     value={newPinInput}
@@ -1999,7 +2098,7 @@ export default function AdminDashboardClient({
                   </Label>
                   <Input
                     id="confirmPin"
-                    type="password"
+                    type={showPinInputs ? 'text' : 'password'}
                     maxLength={8}
                     placeholder="Confirm new PIN"
                     value={confirmPinInput}
@@ -2022,7 +2121,7 @@ export default function AdminDashboardClient({
                 <Button
                   type="submit"
                   disabled={isUpdatingPin}
-                  className="flex-1 h-10 text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] rounded-xl font-bold cursor-pointer"
+                  className="flex-1 h-10 text-xs bg-[#111111] dark:bg-white text-white dark:text-[#111111] hover:bg-[#222222] dark:hover:bg-zinc-200 rounded-xl font-bold cursor-pointer"
                 >
                   {isUpdatingPin ? 'Saving...' : 'Update PIN'}
                 </Button>

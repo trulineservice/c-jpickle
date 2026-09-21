@@ -11,13 +11,14 @@ const adminSupabase = createAdminClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// C&J Court Operational Hours: 6:00 AM (6) to 10:00 PM (22)
+// C&J Court Operational Hours: 6:00 AM (6) to 12:00 AM (24)
 const START_OPERATIONAL_HOUR = 6;
-const END_OPERATIONAL_HOUR = 22;
+const END_OPERATIONAL_HOUR = 24;
 
 function formatHourDisplay(hour: number): string {
-  const period = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  const normalizedHour = hour % 24;
+  const period = normalizedHour >= 12 ? 'PM' : 'AM';
+  const displayHour = normalizedHour % 12 === 0 ? 12 : normalizedHour % 12;
   return `${displayHour.toString().padStart(2, '0')}:00 ${period}`;
 }
 
@@ -184,7 +185,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const totalSlots = END_OPERATIONAL_HOUR - START_OPERATIONAL_HOUR; // 16 operational 1-hr slots
+      const totalSlots = END_OPERATIONAL_HOUR - START_OPERATIONAL_HOUR; // 18 operational 1-hr slots
       const isPast = dayDateStr < todayPhDateStr;
       const isToday = dayDateStr === todayPhDateStr;
 
@@ -215,8 +216,8 @@ export async function GET(request: NextRequest) {
       } else {
         if (availableSlots === 0) {
           status = 'fully_booked';
-        } else if (availableSlots <= 5 || bookedSlots >= 11) {
-          // 5 or fewer slots remaining, or 65%+ booked
+        } else if (availableSlots <= 5 || bookedSlots >= 12) {
+          // 5 or fewer slots remaining, or ~65%+ booked
           status = 'almost_full';
         } else {
           status = 'available';

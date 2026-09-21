@@ -274,7 +274,7 @@ export default function BookPage() {
     if (timeFilter === 'all') return slots;
     if (timeFilter === 'morning') return slots.filter((s) => s.hour24 >= 6 && s.hour24 < 12);
     if (timeFilter === 'afternoon') return slots.filter((s) => s.hour24 >= 12 && s.hour24 < 17);
-    if (timeFilter === 'night') return slots.filter((s) => s.hour24 >= 17 && s.hour24 <= 22);
+    if (timeFilter === 'night') return slots.filter((s) => s.hour24 >= 17 && s.hour24 < 24);
     return slots;
   }, [slots, timeFilter]);
 
@@ -630,7 +630,7 @@ export default function BookPage() {
                       </span>
                     </div>
                     <p className="text-xs text-[#64748B] mt-0.5 leading-relaxed">
-                      All 16 court hours (6:00 AM – 10:00 PM) on {selectedCourt.name} are reserved. Switch courts or jump to the next available date below.
+                      All 18 court hours (6:00 AM – 12:00 AM) on {selectedCourt.name} are reserved. Switch courts or jump to the next available date below.
                     </p>
                   </div>
                 </div>

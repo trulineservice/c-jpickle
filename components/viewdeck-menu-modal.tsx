@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   X,
@@ -35,6 +36,7 @@ export interface MenuItem {
   price: number;
   isPopular?: boolean;
   desc: string;
+  image?: string;
 }
 
 export const VIEWDECK_MENU_ITEMS: MenuItem[] = [
@@ -43,14 +45,16 @@ export const VIEWDECK_MENU_ITEMS: MenuItem[] = [
     name: "Long Black",
     category: "Coffee & Espresso",
     price: 110.0,
-    desc: "Double shot of espresso diluted with hot water.",
+    desc: "Double shot of espresso diluted with hot water with rich golden crema.",
+    image: "/coffee/long-black.jpg",
   },
   {
     sku: "00-02",
     name: "Cappuccino Italiano",
     category: "Coffee & Espresso",
     price: 130.0,
-    desc: "Espresso topped with steamed milk foam.",
+    desc: "Espresso topped with steamed milk foam and cocoa dusting.",
+    image: "/coffee/cappuccino.jpg",
   },
   {
     sku: "00-04",
@@ -58,7 +62,8 @@ export const VIEWDECK_MENU_ITEMS: MenuItem[] = [
     category: "Coffee & Espresso",
     price: 145.0,
     isPopular: true,
-    desc: "Espresso sweetened with condensed milk over ice.",
+    desc: "Espresso sweetened with condensed milk and fresh milk over ice.",
+    image: "/coffee/spanish-latte.jpg",
   },
   {
     sku: "00-05",
@@ -66,14 +71,41 @@ export const VIEWDECK_MENU_ITEMS: MenuItem[] = [
     category: "Coffee & Espresso",
     price: 150.0,
     isPopular: true,
-    desc: "Espresso crowned with sea salt sweet cream.",
+    desc: "Espresso crowned with thick hand-whipped sea salt sweet cream.",
+    image: "/coffee/seasalt-latte.jpg",
   },
   {
     sku: "00-07",
     name: "Caramel Macchiato",
     category: "Coffee & Espresso",
     price: 150.0,
-    desc: "Steamed milk marked with espresso and caramel drizzle.",
+    desc: "Steamed vanilla milk marked with espresso and golden caramel drizzle.",
+    image: "/coffee/caramel-macchiato.jpg",
+  },
+  {
+    sku: "00-09",
+    name: "Brown Sugar Latte",
+    category: "Coffee & Espresso",
+    price: 145.0,
+    isPopular: true,
+    desc: "Caramelized brown sugar tiger stripes with milk, ice, and espresso.",
+    image: "/coffee/brown-sugar-latte.jpg",
+  },
+  {
+    sku: "00-10",
+    name: "Artisan Iced Mocha",
+    category: "Coffee & Espresso",
+    price: 150.0,
+    desc: "70% dark chocolate ganache swirled with espresso and cold foam.",
+    image: "/coffee/mocha-latte.jpg",
+  },
+  {
+    sku: "00-11",
+    name: "Choco Hazelnut Latte",
+    category: "Coffee & Espresso",
+    price: 150.0,
+    desc: "Roasted hazelnut chocolate mocha with espresso and hazelnut dust.",
+    image: "/coffee/choco-hazelnut.jpg",
   },
   {
     sku: "00-13",
@@ -87,7 +119,8 @@ export const VIEWDECK_MENU_ITEMS: MenuItem[] = [
     name: "Seasalt Butterscotch Decaf",
     category: "Coffee & Espresso",
     price: 165.0,
-    desc: "Decaf roast with butterscotch and sea salt.",
+    desc: "Decaf roast with golden butterscotch syrup and sea salt cream.",
+    image: "/coffee/seasalt-butterscotch.jpg",
   },
   {
     sku: "K00-09",
@@ -260,9 +293,15 @@ export function ViewDeckMenuModal({
   const [rentalHours, setRentalHours] = useState<number>(2);
   const [withAddtlChairs, setWithAddtlChairs] = useState<boolean>(false);
 
+  const pathname = usePathname();
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -348,7 +387,7 @@ export function ViewDeckMenuModal({
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-medium text-[#64748B] pt-1">
             <span className="flex items-center gap-1 font-semibold text-[#0B2A67]">
               <Clock className="w-3.5 h-3.5 text-[#FFD21C]" />
-              Open Daily 6:00 AM – 10:00 PM
+              Open Daily 6:00 AM – 12:00 AM
             </span>
             <span>•</span>
             <span className="flex items-center gap-1">
@@ -719,9 +758,21 @@ export function ViewDeckMenuModal({
               {filteredItems.map((item) => (
                 <div
                   key={item.sku}
-                  className="p-4 rounded-2xl border border-[#E2E8F0] bg-white hover:border-[#0B2A67]/30 hover:shadow-md transition-all flex flex-col justify-between"
+                  className="p-3.5 sm:p-4 rounded-2xl border border-[#E2E8F0] bg-white hover:border-[#0B2A67]/30 hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
                 >
-                  <div className="space-y-1.5">
+                  {item.image && (
+                    <div className="relative w-full aspect-[16/10] rounded-xl overflow-hidden mb-3 bg-slate-100">
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 300px"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5 flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-[10px] font-mono font-bold text-[#64748B] bg-[#F5F7FA] px-1.5 py-0.5 rounded">
                         SKU {item.sku}
@@ -734,7 +785,7 @@ export function ViewDeckMenuModal({
                       )}
                     </div>
 
-                    <h4 className="font-extrabold text-sm text-[#0B2A67] pt-1">
+                    <h4 className="font-extrabold text-sm text-[#0B2A67] pt-0.5">
                       {item.name}
                     </h4>
                     <p className="text-[11px] text-[#64748B] line-clamp-2 leading-relaxed">
