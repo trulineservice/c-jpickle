@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PaginationBar } from '@/components/ui/pagination-bar';
+import { buildPaginationMeta } from '@/lib/pagination';
 import { Button } from '@/components/ui/button';
 import { SubmitButton } from '@/components/submit-button';
 import { Input } from '@/components/ui/input';
@@ -275,6 +277,19 @@ export default function AdminDashboardClient({
   const [isUpdatingPin, setIsUpdatingPin] = useState(false);
   const [isGCalModalOpen, setIsGCalModalOpen] = useState(false);
 
+  // Tab Pagination States
+  const [bookingPage, setBookingPage] = useState(1);
+  const [bookingLimit, setBookingLimit] = useState(25);
+
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryLimit, setInventoryLimit] = useState(25);
+
+  const [expensePage, setExpensePage] = useState(1);
+  const [expenseLimit, setExpenseLimit] = useState(25);
+
+  const [txPage, setTxPage] = useState(1);
+  const [txLimit, setTxLimit] = useState(25);
+
   // Filter Bookings
   const safeBookings = bookings || [];
   const filteredBookings = safeBookings.filter((b) => {
@@ -381,6 +396,27 @@ export default function AdminDashboardClient({
     const matchesStatus = txStatusFilter === 'all' || tx.status === txStatusFilter;
     return Boolean(matchesSearch && matchesStatus);
   });
+
+  // Paginated Slices for Performance & Large Data Sets
+  const paginatedBookings = useMemo(() => {
+    const from = (bookingPage - 1) * bookingLimit;
+    return filteredBookings.slice(from, from + bookingLimit);
+  }, [filteredBookings, bookingPage, bookingLimit]);
+
+  const paginatedInventoryProducts = useMemo(() => {
+    const from = (inventoryPage - 1) * inventoryLimit;
+    return filteredInventoryProducts.slice(from, from + inventoryLimit);
+  }, [filteredInventoryProducts, inventoryPage, inventoryLimit]);
+
+  const paginatedExpenses = useMemo(() => {
+    const from = (expensePage - 1) * expenseLimit;
+    return filteredExpenses.slice(from, from + expenseLimit);
+  }, [filteredExpenses, expensePage, expenseLimit]);
+
+  const paginatedTransactions = useMemo(() => {
+    const from = (txPage - 1) * txLimit;
+    return filteredTransactions.slice(from, from + txLimit);
+  }, [filteredTransactions, txPage, txLimit]);
 
   // Duty Roster Calculations & Handlers
   const activeOnDutySessions = dutySessionList.filter((s) => s.status === 'on_duty');
@@ -1239,14 +1275,20 @@ export default function AdminDashboardClient({
                   <Input
                     placeholder="Search player, email, ref..."
                     value={bookingSearch}
-                    onChange={(e) => setBookingSearch(e.target.value)}
+                    onChange={(e) => {
+                      setBookingSearch(e.target.value);
+                      setBookingPage(1);
+                    }}
                     className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus:border-[#111111] dark:focus:border-white"
                   />
                 </div>
 
                 <select
                   value={bookingStatusFilter}
-                  onChange={(e) => setBookingStatusFilter(e.target.value)}
+                  onChange={(e) => {
+                    setBookingStatusFilter(e.target.value);
+                    setBookingPage(1);
+                  }}
                   className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
                 >
                   <option value="all">All Statuses</option>
@@ -1259,7 +1301,10 @@ export default function AdminDashboardClient({
 
                 <select
                   value={bookingMethodFilter}
-                  onChange={(e) => setBookingMethodFilter(e.target.value)}
+                  onChange={(e) => {
+                    setBookingMethodFilter(e.target.value);
+                    setBookingPage(1);
+                  }}
                   className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
                 >
                   <option value="all">All Channels</option>
@@ -1292,7 +1337,7 @@ export default function AdminDashboardClient({
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredBookings.map((b) => {
+                    paginatedBookings.map((b) => {
                       const isCheckedIn = b.status === 'checked_in';
                       const isPaid = b.status === 'paid';
                       const isRefundPending = b.status === 'cancelled_refund_pending' || b.refund_status === 'pending';
@@ -1385,6 +1430,18 @@ export default function AdminDashboardClient({
                 </TableBody>
               </Table>
             </div>
+
+            <div className="px-6 py-4 border-t border-[#cacacb] dark:border-[#222226]">
+              <PaginationBar
+                meta={buildPaginationMeta(bookingPage, bookingLimit, filteredBookings.length)}
+                onPageChange={setBookingPage}
+                onLimitChange={(lim) => {
+                  setBookingLimit(lim);
+                  setBookingPage(1);
+                }}
+                label="court bookings"
+              />
+            </div>
           </div>
         )}
 
@@ -1457,14 +1514,20 @@ export default function AdminDashboardClient({
                     <Input
                       placeholder="Search SKU, product..."
                       value={inventorySearch}
-                      onChange={(e) => setInventorySearch(e.target.value)}
+                      onChange={(e) => {
+                        setInventorySearch(e.target.value);
+                        setInventoryPage(1);
+                      }}
                       className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46]"
                     />
                   </div>
 
                   <select
                     value={inventoryCategoryFilter}
-                    onChange={(e) => setInventoryCategoryFilter(e.target.value)}
+                    onChange={(e) => {
+                      setInventoryCategoryFilter(e.target.value);
+                      setInventoryPage(1);
+                    }}
                     className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
                   >
                     {inventoryCategories.map((c) => (
@@ -1477,7 +1540,10 @@ export default function AdminDashboardClient({
                   <div className="flex items-center border border-[#cacacb] dark:border-[#27272a] rounded-full p-0.5 bg-[#f5f5f5] dark:bg-[#18181c]">
                     <button
                       type="button"
-                      onClick={() => setInventoryStockFilter('all')}
+                      onClick={() => {
+                        setInventoryStockFilter('all');
+                        setInventoryPage(1);
+                      }}
                       className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
                         inventoryStockFilter === 'all'
                           ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
@@ -1488,7 +1554,10 @@ export default function AdminDashboardClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setInventoryStockFilter('low')}
+                      onClick={() => {
+                        setInventoryStockFilter('low');
+                        setInventoryPage(1);
+                      }}
                       className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
                         inventoryStockFilter === 'low'
                           ? 'bg-white dark:bg-zinc-800 text-[#eab308] shadow-xs'
@@ -1499,7 +1568,10 @@ export default function AdminDashboardClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setInventoryStockFilter('out')}
+                      onClick={() => {
+                        setInventoryStockFilter('out');
+                        setInventoryPage(1);
+                      }}
                       className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
                         inventoryStockFilter === 'out'
                           ? 'bg-white dark:bg-zinc-800 text-[#d30005] dark:text-red-400 shadow-xs'
@@ -1545,7 +1617,7 @@ export default function AdminDashboardClient({
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredInventoryProducts.map((prod) => {
+                      paginatedInventoryProducts.map((prod) => {
                         const stock = prod.stock_level ?? 0;
                         const threshold = prod.reorder_threshold ?? 10;
                         const cost = prod.cost_price ?? 0;
@@ -1627,6 +1699,18 @@ export default function AdminDashboardClient({
                     )}
                   </TableBody>
                 </Table>
+              </div>
+
+              <div className="px-6 py-4 border-t border-[#cacacb] dark:border-[#222226]">
+                <PaginationBar
+                  meta={buildPaginationMeta(inventoryPage, inventoryLimit, filteredInventoryProducts.length)}
+                  onPageChange={setInventoryPage}
+                  onLimitChange={(lim) => {
+                    setInventoryLimit(lim);
+                    setInventoryPage(1);
+                  }}
+                  label="inventory items"
+                />
               </div>
             </div>
 
@@ -1740,14 +1824,20 @@ export default function AdminDashboardClient({
                     <Input
                       placeholder="Search expense, ref #..."
                       value={expenseSearch}
-                      onChange={(e) => setExpenseSearch(e.target.value)}
+                      onChange={(e) => {
+                        setExpenseSearch(e.target.value);
+                        setExpensePage(1);
+                      }}
                       className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground border border-[#cacacb] dark:border-[#3f3f46]"
                     />
                   </div>
 
                   <select
                     value={expenseCategoryFilter}
-                    onChange={(e) => setExpenseCategoryFilter(e.target.value)}
+                    onChange={(e) => {
+                      setExpenseCategoryFilter(e.target.value);
+                      setExpensePage(1);
+                    }}
                     className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
                   >
                     <option value="all">All Categories</option>
@@ -1762,7 +1852,10 @@ export default function AdminDashboardClient({
                   <div className="flex items-center border border-[#cacacb] dark:border-[#27272a] rounded-full p-0.5 bg-[#f5f5f5] dark:bg-[#18181c]">
                     <button
                       type="button"
-                      onClick={() => setExpenseDateFilter('today')}
+                      onClick={() => {
+                        setExpenseDateFilter('today');
+                        setExpensePage(1);
+                      }}
                       className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
                         expenseDateFilter === 'today'
                           ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
@@ -1773,7 +1866,10 @@ export default function AdminDashboardClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setExpenseDateFilter('7days')}
+                      onClick={() => {
+                        setExpenseDateFilter('7days');
+                        setExpensePage(1);
+                      }}
                       className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
                         expenseDateFilter === '7days'
                           ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
@@ -1784,7 +1880,10 @@ export default function AdminDashboardClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setExpenseDateFilter('month')}
+                      onClick={() => {
+                        setExpenseDateFilter('month');
+                        setExpensePage(1);
+                      }}
                       className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
                         expenseDateFilter === 'month'
                           ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
@@ -1795,7 +1894,10 @@ export default function AdminDashboardClient({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setExpenseDateFilter('all')}
+                      onClick={() => {
+                        setExpenseDateFilter('all');
+                        setExpensePage(1);
+                      }}
                       className={`px-3 py-1 text-[11px] font-bold rounded-full transition-colors cursor-pointer ${
                         expenseDateFilter === 'all'
                           ? 'bg-white dark:bg-zinc-800 text-foreground shadow-xs'
@@ -1847,7 +1949,7 @@ export default function AdminDashboardClient({
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredExpenses.map((exp) => (
+                      paginatedExpenses.map((exp) => (
                         <TableRow key={exp.id} className="border-b border-[#e5e5e5] dark:border-[#222226] hover:bg-[#f5f5f5] dark:hover:bg-[#18181c] transition-colors">
                           <TableCell className="font-mono text-xs font-medium py-3 text-foreground">
                             {exp.expense_date}
@@ -1895,6 +1997,18 @@ export default function AdminDashboardClient({
                     )}
                   </TableBody>
                 </Table>
+              </div>
+
+              <div className="px-6 py-4 border-t border-[#cacacb] dark:border-[#222226]">
+                <PaginationBar
+                  meta={buildPaginationMeta(expensePage, expenseLimit, filteredExpenses.length)}
+                  onPageChange={setExpensePage}
+                  onLimitChange={(lim) => {
+                    setExpenseLimit(lim);
+                    setExpensePage(1);
+                  }}
+                  label="expenses"
+                />
               </div>
             </div>
           </div>
@@ -1954,49 +2068,55 @@ export default function AdminDashboardClient({
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#707072] dark:text-[#8a8a93]" />
                     <Input
                       placeholder="Search invoice, customer..."
-                    value={txSearch}
-                    onChange={(e) => setTxSearch(e.target.value)}
-                    className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus:border-[#111111] dark:focus:border-white"
-                  />
+                      value={txSearch}
+                      onChange={(e) => {
+                        setTxSearch(e.target.value);
+                        setTxPage(1);
+                      }}
+                      className="pl-10 h-9 rounded-full bg-[#f5f5f5] dark:bg-black text-xs text-foreground placeholder:text-[#707072] dark:placeholder:text-[#a1a1aa] border border-[#cacacb] dark:border-[#3f3f46] focus:border-[#111111] dark:focus:border-white"
+                    />
+                  </div>
+
+                  <select
+                    value={txStatusFilter}
+                    onChange={(e) => {
+                      setTxStatusFilter(e.target.value);
+                      setTxPage(1);
+                    }}
+                    className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
+                  >
+                    <option value="all">All Invoices</option>
+                    <option value="completed">Completed Only</option>
+                    <option value="voided">Voided Only</option>
+                  </select>
                 </div>
-
-                <select
-                  value={txStatusFilter}
-                  onChange={(e) => setTxStatusFilter(e.target.value)}
-                  className="h-9 px-4 rounded-full bg-[#f5f5f5] dark:bg-[#18181c] border border-transparent text-xs font-medium text-foreground outline-none cursor-pointer"
-                >
-                  <option value="all">All Invoices</option>
-                  <option value="completed">Completed Only</option>
-                  <option value="voided">Voided Only</option>
-                </select>
               </div>
-            </div>
 
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-[#f5f5f5] dark:bg-[#18181c] border-b border-[#cacacb] dark:border-[#222226]">
-                  <TableRow className="border-[#cacacb] dark:border-[#222226]">
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Invoice No</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Customer</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Cashier on Duty</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Timestamp</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Channel</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Gross</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Discount</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Net Amount</TableHead>
-                    <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Status</TableHead>
-                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTransactions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center py-12 text-[#707072] text-xs font-medium">
-                        No POS transactions matched your search criteria.
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-[#f5f5f5] dark:bg-[#18181c] border-b border-[#cacacb] dark:border-[#222226]">
+                    <TableRow className="border-[#cacacb] dark:border-[#222226]">
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Invoice No</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Customer</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Cashier on Duty</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Timestamp</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Channel</TableHead>
+                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Gross</TableHead>
+                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Discount</TableHead>
+                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Net Amount</TableHead>
+                      <TableHead className="text-xs font-bold uppercase tracking-wider text-foreground">Status</TableHead>
+                      <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-foreground">Action</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredTransactions.map((tx) => {
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTransactions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="text-center py-12 text-[#707072] text-xs font-medium">
+                          No POS transactions matched your search criteria.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedTransactions.map((tx) => {
                       const isVoided = tx.status === 'voided';
                       const isDiscounted = tx.discount_type === 'senior_citizen' || tx.discount_type === 'pwd';
 
@@ -2478,6 +2598,18 @@ export default function AdminDashboardClient({
                     )}
                   </TableBody>
                 </Table>
+              </div>
+
+              <div className="px-6 py-4 border-t border-[#cacacb] dark:border-[#222226]">
+                <PaginationBar
+                  meta={buildPaginationMeta(txPage, txLimit, filteredTransactions.length)}
+                  onPageChange={setTxPage}
+                  onLimitChange={(lim) => {
+                    setTxLimit(lim);
+                    setTxPage(1);
+                  }}
+                  label="sales invoices"
+                />
               </div>
             </div>
           </div>
