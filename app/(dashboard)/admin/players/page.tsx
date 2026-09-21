@@ -94,8 +94,7 @@ export default async function AdminPlayersPage({
       deleted_reason,
       skill_level,
       emergency_contact,
-      notes,
-      player_stats ( total_played, total_hours, total_spend, last_played )
+      notes
     `);
 
   // Tab filter (is_deleted)
@@ -122,7 +121,7 @@ export default async function AdminPlayersPage({
   const sortMap: Record<string, { column: string; ascending: boolean }> = {
     name_asc: { column: 'full_name', ascending: true },
     recent: { column: 'created_at', ascending: false },
-    matches_desc: { column: 'created_at', ascending: false }, // fallback; stats sort below
+    matches_desc: { column: 'created_at', ascending: false },
     hours_desc: { column: 'created_at', ascending: false },
     spend_desc: { column: 'created_at', ascending: false },
   };
@@ -132,13 +131,13 @@ export default async function AdminPlayersPage({
   // Apply pagination range
   dataQuery = dataQuery.range(from, to);
 
-  // 4. Global stats (always full-DB, no filters except non-deleted for totals)
+  // 4. Global stats & paginated profiles
   const [
     { count: totalActive },
     { count: totalArchived },
     { count: totalAll },
     { count: totalCount },
-    { data: rawPlayers },
+    { data: rawPlayers, error: rawError },
     { data: globalStatsRows },
   ] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
@@ -148,6 +147,21 @@ export default async function AdminPlayersPage({
     dataQuery,
     supabase.from('player_stats').select('total_played, total_hours'),
   ]);
+
+  if (rawError) {
+    console.error('[Admin Players Fetch Error]:', rawError);
+  }
+
+  // Fetch performance stats for the paginated slice of players
+  const profileIds = (rawPlayers ?? []).map((p) => p.id);
+  const { data: statsRows } = profileIds.length > 0
+    ? await supabase
+        .from('player_stats')
+        .select('id, total_played, total_hours, total_spend, last_played')
+        .in('id', profileIds)
+    : { data: [] };
+
+  const statsMap = new Map((statsRows ?? []).map((s) => [s.id, s]));
 
   const globalStats: PlayerGlobalStats = {
     totalActive: totalActive ?? 0,
@@ -165,8 +179,7 @@ export default async function AdminPlayersPage({
 
   // 5. Map raw rows to PlayerSummary
   const playerSummaries: PlayerSummary[] = (rawPlayers ?? []).map((p) => {
-    const statsArr = p.player_stats as Array<{ total_played: number; total_hours: number; total_spend: number; last_played: string | null }> | null;
-    const stats = Array.isArray(statsArr) ? statsArr[0] : (statsArr as { total_played: number; total_hours: number; total_spend: number; last_played: string | null } | null);
+    const stats = statsMap.get(p.id);
     return {
       id: p.id,
       fullName: p.full_name || 'Member Player',
