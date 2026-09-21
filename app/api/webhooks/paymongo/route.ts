@@ -44,8 +44,10 @@ export async function POST(request: NextRequest) {
         process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
 
-      // Locate booking by ID or paymongo session ID
-      let query = supabaseAdmin.from('bookings').select('*, courts(name), profiles(full_name, phone)');
+      // Locate booking by ID or paymongo session ID (disambiguating profiles foreign key)
+      let query = supabaseAdmin
+        .from('bookings')
+        .select('*, courts(name), profiles:profiles!bookings_user_id_fkey(full_name, phone)');
 
       if (bookingId) {
         query = query.eq('id', bookingId);
@@ -60,62 +62,69 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      // Update status to 'paid'
-      const { error: updateError } = await supabaseAdmin
-        .from('bookings')
-        .update({
-          status: 'paid',
-          payment_method: 'paymongo',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', booking.id);
+      // Idempotency: if booking is already paid, skip redundant updates and emails
+      const isAlreadyPaid = booking.status === 'paid';
 
-      if (updateError) {
-        console.error('[PayMongo Webhook] Failed to update booking to paid:', updateError);
+      if (!isAlreadyPaid) {
+        // Update status to 'paid'
+        const { error: updateError } = await supabaseAdmin
+          .from('bookings')
+          .update({
+            status: 'paid',
+            payment_method: 'paymongo',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', booking.id);
+
+        if (updateError) {
+          console.error('[PayMongo Webhook] Failed to update booking to paid:', updateError);
+        } else {
+          console.log(`[PayMongo Webhook] Booking #${booking.id} successfully marked as PAID.`);
+        }
+
+        // Trigger Resend Confirmation Email
+        const customerEmail = booking.guest_email || 'customer@cjcourt.com';
+        const customerName = booking.guest_name || 'Player';
+        const courtName = Array.isArray(booking.courts)
+          ? booking.courts[0]?.name
+          : booking.courts?.name || 'Court 1 - Indoor';
+
+        const startDate = new Date(booking.start_time);
+        const endDate = new Date(booking.end_time);
+
+        const dateStr = new Intl.DateTimeFormat('en-PH', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }).format(startDate);
+
+        const formatTime = (d: Date) =>
+          new Intl.DateTimeFormat('en-PH', { hour: '2-digit', minute: '2-digit' }).format(d);
+
+        const timeRange = `${formatTime(startDate)} - ${formatTime(endDate)}`;
+
+        await sendBookingConfirmationEmail({
+          bookingId: booking.id,
+          customerName,
+          customerEmail,
+          courtName,
+          dateStr,
+          timeRange,
+          durationHours: booking.duration_hours,
+          totalPrice: Number(booking.total_price),
+          paymentMethod: 'PayMongo (Online)',
+          notes: booking.notes,
+        });
+
+        // Automatically sync booking event to Google Calendar
+        try {
+          await pushBookingToGoogleCalendar(booking.id);
+        } catch (calSyncErr) {
+          console.error('[PayMongo Webhook] Google Calendar auto-sync error:', calSyncErr);
+        }
       } else {
-        console.log(`[PayMongo Webhook] Booking #${booking.id} successfully marked as PAID.`);
-      }
-
-      // Trigger Resend Confirmation Email
-      const customerEmail = booking.guest_email || 'customer@cjcourt.com';
-      const customerName = booking.guest_name || 'Player';
-      const courtName = Array.isArray(booking.courts)
-        ? booking.courts[0]?.name
-        : booking.courts?.name || 'Court 1 - Indoor';
-
-      const startDate = new Date(booking.start_time);
-      const endDate = new Date(booking.end_time);
-
-      const dateStr = new Intl.DateTimeFormat('en-PH', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }).format(startDate);
-
-      const formatTime = (d: Date) =>
-        new Intl.DateTimeFormat('en-PH', { hour: '2-digit', minute: '2-digit' }).format(d);
-
-      const timeRange = `${formatTime(startDate)} - ${formatTime(endDate)}`;
-
-      await sendBookingConfirmationEmail({
-        bookingId: booking.id,
-        customerName,
-        customerEmail,
-        courtName,
-        dateStr,
-        timeRange,
-        durationHours: booking.duration_hours,
-        totalPrice: Number(booking.total_price),
-        paymentMethod: 'PayMongo (Online)',
-        notes: booking.notes,
-      });
-
-      // Automatically sync booking event to Google Calendar
-      try {
-        await pushBookingToGoogleCalendar(booking.id);
-      } catch (calSyncErr) {
-        console.error('[PayMongo Webhook] Google Calendar auto-sync error:', calSyncErr);
+        console.log(`[PayMongo Webhook] Booking #${booking.id} was already marked as paid. Skipping duplicate processing.`);
       }
     }
 

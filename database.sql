@@ -328,6 +328,46 @@ CREATE INDEX IF NOT EXISTS idx_pos_transactions_cashier_id
 CREATE INDEX IF NOT EXISTS idx_pos_transaction_items_tx_id 
   ON public.pos_transaction_items (transaction_id);
 
+-- Foreign Key Covering Indexes (Performance Optimized)
+CREATE INDEX IF NOT EXISTS idx_bookings_cashier_id 
+  ON public.bookings(cashier_id) 
+  WHERE cashier_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_bookings_refund_processed_by 
+  ON public.bookings(refund_processed_by) 
+  WHERE refund_processed_by IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_court_maintenance_created_by 
+  ON public.court_maintenance_schedules(created_by) 
+  WHERE created_by IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_court_pricing_rules_court_id 
+  ON public.court_pricing_rules(court_id) 
+  WHERE court_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_daily_expenses_recorded_by 
+  ON public.daily_expenses(recorded_by) 
+  WHERE recorded_by IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_equipment_rentals_product_id 
+  ON public.equipment_rentals(product_id) 
+  WHERE product_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id 
+  ON public.password_reset_tokens(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_pos_products_category_id 
+  ON public.pos_products(category_id);
+
+CREATE INDEX IF NOT EXISTS idx_pos_transactions_voided_by 
+  ON public.pos_transactions(voided_by) 
+  WHERE voided_by IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_profiles_deleted_by 
+  ON public.profiles(deleted_by) 
+  WHERE deleted_by IS NOT NULL;
+
+
 -- ----------------------------------------------------------------------------
 -- 14. COMPOSITE VIEWS
 -- ----------------------------------------------------------------------------
@@ -380,6 +420,66 @@ SELECT
   r.processed_by AS refund_processed_by
 FROM public.bookings b
 LEFT JOIN public.booking_refunds r ON b.id = r.booking_id;
+
+-- Player Statistics Aggregate View (Security Invoker)
+CREATE OR REPLACE VIEW public.player_stats 
+WITH (security_invoker = on) AS
+SELECT 
+  p.id,
+  count(b.id) FILTER (WHERE (b.status = ANY (ARRAY['paid'::text, 'checked_in'::text, 'walk_in'::text]))) AS total_played,
+  COALESCE(sum(b.duration_hours) FILTER (WHERE (b.status = ANY (ARRAY['paid'::text, 'checked_in'::text, 'walk_in'::text]))), (0)::bigint) AS total_hours,
+  COALESCE(sum(b.total_price) FILTER (WHERE (b.status = ANY (ARRAY['paid'::text, 'checked_in'::text, 'walk_in'::text]))), (0)::numeric) AS total_spend,
+  max(b.start_time) FILTER (WHERE (b.status = ANY (ARRAY['paid'::text, 'checked_in'::text, 'walk_in'::text]))) AS last_played
+FROM (public.profiles p
+  LEFT JOIN public.bookings b ON (((b.user_id = p.id) OR ((b.guest_email IS NOT NULL) AND (lower(b.guest_email) = lower(p.email))))))
+GROUP BY p.id;
+
+GRANT SELECT ON public.player_stats TO anon, authenticated;
+
+-- Normalization Triggers
+CREATE OR REPLACE FUNCTION public.normalize_booking_fields()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.user_id IS NOT NULL AND NEW.customer_id IS NULL THEN
+    NEW.customer_id := NEW.user_id;
+  ELSIF NEW.customer_id IS NOT NULL AND NEW.user_id IS NULL THEN
+    NEW.user_id := NEW.customer_id;
+  END IF;
+
+  IF NEW.total_price IS NOT NULL AND NEW.total_amount IS NULL THEN
+    NEW.total_amount := NEW.total_price;
+  ELSIF NEW.total_amount IS NOT NULL AND NEW.total_price IS NULL THEN
+    NEW.total_price := NEW.total_amount;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trg_normalize_booking_fields ON public.bookings;
+CREATE TRIGGER trg_normalize_booking_fields
+  BEFORE INSERT OR UPDATE ON public.bookings
+  FOR EACH ROW
+  EXECUTE FUNCTION public.normalize_booking_fields();
+
+CREATE OR REPLACE FUNCTION public.sync_pos_product_category()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.category_id IS NOT NULL THEN
+    SELECT name INTO NEW.category FROM public.pos_categories WHERE id = NEW.category_id;
+  ELSIF NEW.category IS NOT NULL THEN
+    SELECT id INTO NEW.category_id FROM public.pos_categories WHERE lower(name) = lower(NEW.category);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trg_sync_pos_product_category ON public.pos_products;
+CREATE TRIGGER trg_sync_pos_product_category
+  BEFORE INSERT OR UPDATE ON public.pos_products
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_pos_product_category();
+
 
 -- ----------------------------------------------------------------------------
 -- 15. ROW LEVEL SECURITY (RLS) - HARDENED DEFENSE-IN-DEPTH

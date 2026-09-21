@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import type { AvailabilitySlot } from '@/types/database';
 
@@ -41,8 +40,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Duration must be between 1 and 12 hours.' }, { status: 400 });
     }
 
-    const supabase = await createClient();
-
     // Check if courtId is a valid UUID
     const isValidUuid = (id: string | null) =>
       Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
@@ -67,7 +64,7 @@ export async function GET(request: NextRequest) {
     // Safely query Supabase for court & bookings
     try {
       if (!targetCourtId) {
-        const { data: firstCourt } = await supabase
+        const { data: firstCourt } = await adminSupabase
           .from('courts')
           .select('id')
           .limit(1)
@@ -76,17 +73,6 @@ export async function GET(request: NextRequest) {
         if (firstCourt?.id) {
           targetCourtId = firstCourt.id;
         }
-      }
-
-      // Proactively mark abandoned/expired checkout holds as 'expired'
-      try {
-        await adminSupabase
-          .from('bookings')
-          .update({ status: 'expired' })
-          .eq('status', 'pending_payment')
-          .lt('expires_at', nowUtc.toISOString());
-      } catch (cleanErr) {
-        console.warn('[Availability API] Could not auto-expire pending holds:', cleanErr);
       }
 
       // Query bookings using SECURITY DEFINER RPC (bypasses RLS safely with zero PII)
@@ -122,7 +108,7 @@ export async function GET(request: NextRequest) {
 
       // Check for court maintenance schedules
       try {
-        let maintenanceQuery = supabase
+        let maintenanceQuery = adminSupabase
           .from('court_maintenance_schedules')
           .select('id, start_time, end_time')
           .gte('end_time', startOfMonth.toISOString())
@@ -155,6 +141,55 @@ export async function GET(request: NextRequest) {
       targetCourtId = '80d4920a-34d9-47f3-8f1b-4627f5b289de';
     }
 
+    // Pre-calculate occupied hours grouped by Philippine date (YYYY-MM-DD)
+    const occupiedHoursByDate = new Map<string, Set<number>>();
+
+    for (const b of allBookings) {
+      // Skip pending payments whose temporary hold has expired
+      if (b.status === 'pending_payment') {
+        if (!b.expires_at || new Date(b.expires_at) <= nowUtc) {
+          continue;
+        }
+      }
+
+      const bStart = new Date(b.start_time);
+      const bEnd = new Date(b.end_time);
+      const phStart = new Date(bStart.getTime() + 8 * 3600 * 1000);
+      const phEnd = new Date(bEnd.getTime() + 8 * 3600 * 1000);
+
+      const startDateStr = phStart.toISOString().slice(0, 10);
+      const endDateStr = phEnd.toISOString().slice(0, 10);
+
+      if (startDateStr === endDateStr) {
+        let hourSet = occupiedHoursByDate.get(startDateStr);
+        if (!hourSet) {
+          hourSet = new Set<number>();
+          occupiedHoursByDate.set(startDateStr, hourSet);
+        }
+        const startH = Math.max(START_OPERATIONAL_HOUR, phStart.getUTCHours());
+        const endH = Math.min(END_OPERATIONAL_HOUR, phEnd.getUTCHours());
+        for (let h = startH; h < endH; h++) {
+          hourSet.add(h);
+        }
+      } else {
+        const sTime = phStart.getTime();
+        const eTime = phEnd.getTime();
+        for (let t = sTime; t < eTime; t += 3600 * 1000) {
+          const slotDate = new Date(t);
+          const dStr = slotDate.toISOString().slice(0, 10);
+          const h = slotDate.getUTCHours();
+          if (h >= START_OPERATIONAL_HOUR && h < END_OPERATIONAL_HOUR) {
+            let hourSet = occupiedHoursByDate.get(dStr);
+            if (!hourSet) {
+              hourSet = new Set<number>();
+              occupiedHoursByDate.set(dStr, hourSet);
+            }
+            hourSet.add(h);
+          }
+        }
+      }
+    }
+
     // Build month density overview map
     const monthOverview: Record<
       string,
@@ -169,35 +204,7 @@ export async function GET(request: NextRequest) {
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dayDateStr = `${yearNum}-${monthNum.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-      const dayStart = new Date(`${dayDateStr}T00:00:00.000+08:00`);
-      const dayEnd = new Date(`${dayDateStr}T23:59:59.999+08:00`);
-
-      // Find bookings overlapping with this day
-      const dayOccupiedHours = new Set<number>();
-
-      for (const b of allBookings) {
-        // Skip pending payments whose temporary hold has expired
-        if (b.status === 'pending_payment') {
-          if (!b.expires_at || new Date(b.expires_at) <= nowUtc) {
-            continue;
-          }
-        }
-
-        const bStart = new Date(b.start_time);
-        const bEnd = new Date(b.end_time);
-
-        if (bEnd > dayStart && bStart < dayEnd) {
-          const phStart = new Date(bStart.getTime() + 8 * 3600 * 1000);
-          const phEnd = new Date(bEnd.getTime() + 8 * 3600 * 1000);
-
-          const startHour = phStart.toISOString().startsWith(dayDateStr) ? phStart.getUTCHours() : START_OPERATIONAL_HOUR;
-          const endHour = phEnd.toISOString().startsWith(dayDateStr) ? phEnd.getUTCHours() : END_OPERATIONAL_HOUR;
-
-          for (let h = Math.max(START_OPERATIONAL_HOUR, startHour); h < Math.min(END_OPERATIONAL_HOUR, endHour); h++) {
-            dayOccupiedHours.add(h);
-          }
-        }
-      }
+      const dayOccupiedHours = occupiedHoursByDate.get(dayDateStr) || new Set<number>();
 
       const totalSlots = END_OPERATIONAL_HOUR - START_OPERATIONAL_HOUR; // 18 operational 1-hr slots
       const isPast = dayDateStr < todayPhDateStr;
@@ -231,7 +238,6 @@ export async function GET(request: NextRequest) {
         if (availableSlots === 0) {
           status = 'fully_booked';
         } else if (availableSlots <= 5 || bookedSlots >= 12) {
-          // 5 or fewer slots remaining, or ~65%+ booked
           status = 'almost_full';
         } else {
           status = 'available';
@@ -266,34 +272,7 @@ export async function GET(request: NextRequest) {
     // Single Date Slots calculation
     const isTargetToday = dateStr === todayPhDateStr;
     const isTargetPast = dateStr < todayPhDateStr;
-    const targetOccupiedHours = new Set<number>();
-
-    const targetDayStart = new Date(`${dateStr}T00:00:00.000+08:00`);
-    const targetDayEnd = new Date(`${dateStr}T23:59:59.999+08:00`);
-
-    for (const b of allBookings) {
-      // Skip pending payments whose temporary hold has expired
-      if (b.status === 'pending_payment') {
-        if (!b.expires_at || new Date(b.expires_at) <= nowUtc) {
-          continue;
-        }
-      }
-
-      const bStart = new Date(b.start_time);
-      const bEnd = new Date(b.end_time);
-
-      if (bEnd > targetDayStart && bStart < targetDayEnd) {
-        const phStart = new Date(bStart.getTime() + 8 * 3600 * 1000);
-        const phEnd = new Date(bEnd.getTime() + 8 * 3600 * 1000);
-
-        const startHour = phStart.toISOString().startsWith(dateStr) ? phStart.getUTCHours() : START_OPERATIONAL_HOUR;
-        const endHour = phEnd.toISOString().startsWith(dateStr) ? phEnd.getUTCHours() : END_OPERATIONAL_HOUR;
-
-        for (let h = Math.max(START_OPERATIONAL_HOUR, startHour); h < Math.min(END_OPERATIONAL_HOUR, endHour); h++) {
-          targetOccupiedHours.add(h);
-        }
-      }
-    }
+    const targetOccupiedHours = occupiedHoursByDate.get(dateStr) || new Set<number>();
 
     const slots: AvailabilitySlot[] = [];
 

@@ -6,7 +6,7 @@ export interface CreateCheckoutParams {
   bookingId: string;
   courtName: string;
   durationHours: number;
-  totalPrice: number; // in PHP, e.g. 300 * durationHours
+  totalPrice: number;
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
@@ -30,7 +30,7 @@ export async function createPayMongoCheckoutSession(
     console.warn(
       '[PayMongo SDK] PAYMONGO_SECRET_KEY is not set. Providing dynamic sandbox mock session for local testing.'
     );
-    
+
     // Create a mock session ID
     const mockSessionId = `cs_mock_${params.bookingId.replace(/-/g, '').slice(0, 16)}`;
     const mockCheckoutUrl = `${safeOrigin}/booking/success/${params.bookingId}?mock_payment=true&session_id=${mockSessionId}`;

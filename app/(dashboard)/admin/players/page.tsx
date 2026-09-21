@@ -54,8 +54,8 @@ export default async function AdminPlayersPage({
   // 3. Build Supabase filters
   const { from, to } = buildRangeFromPage(page, limit);
 
-  // Base query — profile + joined player_stats view
-  type ProfileRow = {
+  // Base query directly against player_stats view (contains all profile fields + precomputed aggregates)
+  type PlayerStatRow = {
     id: string;
     full_name: string | null;
     email: string | null;
@@ -68,20 +68,18 @@ export default async function AdminPlayersPage({
     skill_level: string | null;
     emergency_contact: string | null;
     notes: string | null;
-    player_stats: {
-      total_played: number;
-      total_hours: number;
-      total_spend: number;
-      last_played: string | null;
-    } | null;
+    total_played: number;
+    total_hours: number;
+    total_spend: number;
+    last_played: string | null;
   };
 
   let countQuery = supabase
-    .from('profiles')
+    .from('player_stats')
     .select('id', { count: 'exact', head: true });
 
   let dataQuery = supabase
-    .from('profiles')
+    .from('player_stats')
     .select(`
       id,
       full_name,
@@ -94,7 +92,11 @@ export default async function AdminPlayersPage({
       deleted_reason,
       skill_level,
       emergency_contact,
-      notes
+      notes,
+      total_played,
+      total_hours,
+      total_spend,
+      last_played
     `);
 
   // Tab filter (is_deleted)
@@ -117,13 +119,13 @@ export default async function AdminPlayersPage({
     );
   }
 
-  // Sort
+  // Sort directly on database columns including aggregated stats
   const sortMap: Record<string, { column: string; ascending: boolean }> = {
     name_asc: { column: 'full_name', ascending: true },
     recent: { column: 'created_at', ascending: false },
-    matches_desc: { column: 'created_at', ascending: false },
-    hours_desc: { column: 'created_at', ascending: false },
-    spend_desc: { column: 'created_at', ascending: false },
+    matches_desc: { column: 'total_played', ascending: false },
+    hours_desc: { column: 'total_hours', ascending: false },
+    spend_desc: { column: 'total_spend', ascending: false },
   };
   const sortOpt = sortMap[sort] ?? { column: 'created_at', ascending: false };
   dataQuery = dataQuery.order(sortOpt.column, { ascending: sortOpt.ascending });
@@ -137,7 +139,7 @@ export default async function AdminPlayersPage({
     { count: totalArchived },
     { count: totalAll },
     { count: totalCount },
-    { data: rawPlayers, error: rawError },
+    { data: rawPlayers, error: playersError },
     { data: globalStatsRows },
   ] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('is_deleted', false),
@@ -148,20 +150,9 @@ export default async function AdminPlayersPage({
     supabase.from('player_stats').select('total_played, total_hours'),
   ]);
 
-  if (rawError) {
-    console.error('[Admin Players Fetch Error]:', rawError);
+  if (playersError) {
+    console.error('[Admin Players Page] Database query error:', playersError);
   }
-
-  // Fetch performance stats for the paginated slice of players
-  const profileIds = (rawPlayers ?? []).map((p) => p.id);
-  const { data: statsRows } = profileIds.length > 0
-    ? await supabase
-        .from('player_stats')
-        .select('id, total_played, total_hours, total_spend, last_played')
-        .in('id', profileIds)
-    : { data: [] };
-
-  const statsMap = new Map((statsRows ?? []).map((s) => [s.id, s]));
 
   const globalStats: PlayerGlobalStats = {
     totalActive: totalActive ?? 0,
@@ -178,8 +169,7 @@ export default async function AdminPlayersPage({
   };
 
   // 5. Map raw rows to PlayerSummary
-  const playerSummaries: PlayerSummary[] = (rawPlayers ?? []).map((p) => {
-    const stats = statsMap.get(p.id);
+  const playerSummaries: PlayerSummary[] = (((rawPlayers as unknown as PlayerStatRow[]) ?? [])).map((p) => {
     return {
       id: p.id,
       fullName: p.full_name || 'Member Player',
@@ -194,11 +184,11 @@ export default async function AdminPlayersPage({
       skillLevel: p.skill_level || '3.0',
       emergencyContact: p.emergency_contact || null,
       notes: p.notes || null,
-      totalPlayed: Number(stats?.total_played ?? 0),
-      totalHours: Number(stats?.total_hours ?? 0),
-      totalSpend: Number(stats?.total_spend ?? 0),
+      totalPlayed: Number(p.total_played ?? 0),
+      totalHours: Number(p.total_hours ?? 0),
+      totalSpend: Number(p.total_spend ?? 0),
       favoriteCourt: 'Court',
-      lastPlayed: stats?.last_played || null,
+      lastPlayed: p.last_played || null,
       bookings: [],
     };
   });

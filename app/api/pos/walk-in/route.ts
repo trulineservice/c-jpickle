@@ -144,7 +144,17 @@ export async function POST(request: NextRequest) {
 
     if (insertError || !newBooking) {
       console.error('Walk-in booking error:', insertError);
-      return NextResponse.json({ error: 'Failed to record walk-in booking.' }, { status: 500 });
+      if (
+        insertError?.code === '23P01' ||
+        insertError?.message?.toLowerCase().includes('conflicting') ||
+        insertError?.message?.toLowerCase().includes('exclusion')
+      ) {
+        return NextResponse.json(
+          { error: 'Cannot book: court has a conflicting active reservation during this time.' },
+          { status: 409 }
+        );
+      }
+      return NextResponse.json({ error: insertError?.message || 'Failed to record walk-in booking.' }, { status: 500 });
     }
 
     // Automatically sync confirmed booking to Google Calendar

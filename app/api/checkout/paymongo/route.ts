@@ -36,7 +36,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const duration = Math.max(1, parseInt(String(durationHours), 10));
+    const parsedDuration = durationHours !== undefined && durationHours !== null && durationHours !== ''
+      ? parseInt(String(durationHours), 10)
+      : 1;
+    if (isNaN(parsedDuration) || parsedDuration < 1 || parsedDuration > 12) {
+      return NextResponse.json(
+        { error: 'Duration must be between 1 and 12 hours.' },
+        { status: 400 }
+      );
+    }
+    const duration = parsedDuration;
     const startHour = hour24 !== undefined ? parseInt(String(hour24), 10) : parseHourFromSlot(timeSlot);
 
     // Strict boundary clamping for paddles (0 to 4 max)
@@ -204,14 +213,50 @@ export async function POST(request: NextRequest) {
       if (booking?.id) {
         bookingId = booking.id;
       } else if (insertError) {
-        console.warn('Booking insertion warning:', insertError.message);
+        console.error('Booking insertion failed:', insertError);
+        if (
+          insertError.code === '23P01' ||
+          insertError.message?.toLowerCase().includes('conflicting') ||
+          insertError.message?.toLowerCase().includes('exclusion')
+        ) {
+          return NextResponse.json(
+            { error: 'This time slot is no longer available. Please select another slot.' },
+            { status: 409 }
+          );
+        }
+        return NextResponse.json(
+          { error: insertError.message || 'Failed to initialize booking reservation.' },
+          { status: 500 }
+        );
       }
     } catch (insertErr) {
-      console.warn('Database insert failed, using generated session booking ID:', insertErr);
+      console.error('Database insert exception:', insertErr);
+      return NextResponse.json(
+        { error: 'Database error occurred while reserving booking slot.' },
+        { status: 500 }
+      );
     }
 
     if (!bookingId) {
-      bookingId = crypto.randomUUID();
+      return NextResponse.json(
+        { error: 'Failed to create booking reservation.' },
+        { status: 500 }
+      );
+    }
+
+    // Persist paddle rental in equipment_rentals table if applicable
+    if (clampedPaddleCount > 0) {
+      try {
+        await adminSupabase.from('equipment_rentals').insert({
+          booking_id: bookingId,
+          equipment_type: 'paddle',
+          quantity: clampedPaddleCount,
+          unit_price: 150,
+          total_price: paddlePrice,
+        });
+      } catch (eqErr) {
+        console.warn('[Checkout API] equipment_rentals insert warning:', eqErr);
+      }
     }
 
     const { checkoutUrl, sessionId } = await createPayMongoCheckoutSession({
