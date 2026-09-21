@@ -40,6 +40,7 @@ import { PosCartPanel, type PosCartItem } from "@/components/pos/pos-cart-panel"
 import { SalesInvoiceModal } from "@/components/pos/sales-invoice-modal";
 import { PosMasterPinModal } from "@/components/pos/pos-master-pin-modal";
 import { playHapticSound } from "@/lib/motion-feedback";
+import { usePosCartStore } from "@/lib/stores";
 import { 
   Table, 
   TableBody, 
@@ -97,12 +98,32 @@ export default function CashierClient({
 }) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [recentTransactions, setRecentTransactions] = useState<PosRecentTransaction[]>(initialRecentTransactions);
-  const [cart, setCart] = useState<PosCartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<string>("GCash / QR Ph");
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
+
+  // POS Cart, Payment & Compliance Zustand Store (Persistent & Centralized)
+  const {
+    cart,
+    setCart,
+    paymentMethod,
+    setPaymentMethod,
+    selectedCategory,
+    setSelectedCategory,
+    searchQuery,
+    setSearchQuery,
+    viewMode,
+    setViewMode,
+    discountType,
+    setDiscountType,
+    customerName,
+    setCustomerName,
+    customerTin,
+    setCustomerTin,
+    discountIdNumber,
+    setDiscountIdNumber,
+    clearCart,
+    addToCart: storeAddToCart,
+    updateQuantity: storeUpdateQuantity,
+  } = usePosCartStore();
 
   // Cashier Duty Shift State
   const [dutySession, setDutySession] = useState<StaffDutySessionInfo | null>(initialDutySession);
@@ -114,11 +135,6 @@ export default function CashierClient({
   const [isSubmittingDuty, setIsSubmittingDuty] = useState(false);
   const [dutyFeedback, setDutyFeedback] = useState<string | null>(null);
 
-  // Philippine Compliance & Statutory Discount State
-  const [discountType, setDiscountType] = useState<"none" | "senior_citizen" | "pwd">("none");
-  const [customerName, setCustomerName] = useState("");
-  const [customerTin, setCustomerTin] = useState("");
-  const [discountIdNumber, setDiscountIdNumber] = useState("");
   const [complianceError, setComplianceError] = useState<string | null>(null);
 
   // Sales Invoice Receipt Modal
@@ -195,37 +211,23 @@ export default function CashierClient({
   };
 
   const addToCart = (product: Product) => {
-    if (product.stock_level !== undefined && product.stock_level <= 0) {
+    const success = storeAddToCart(product);
+    if (!success) {
       playHapticSound("error");
       return;
     }
     playHapticSound("scan");
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      return [...prev, { ...product, quantity: 1 }];
-    });
   };
 
   // Quantity updates (if decremented to zero, prompt for Master PIN)
   const updateQuantity = (id: string, delta: number) => {
-    const item = cart.find((i) => i.id === id);
-    if (!item) return;
-
-    if (item.quantity + delta <= 0) {
+    const res = storeUpdateQuantity(id, delta);
+    if (res.requiresPin && res.item) {
       // Prompt for Master PIN to void this item
-      requestVoidItem(item.id, item.name);
+      requestVoidItem(res.item.id, res.item.name);
       return;
     }
-
     playHapticSound("tap");
-    setCart((prev) => {
-      return prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity + delta } : i));
-    });
   };
 
   // Request Master PIN to void item from active cart
@@ -267,12 +269,8 @@ export default function CashierClient({
       if (!res.success) {
         return { success: false, error: res.error || "Invalid Master PIN." };
       }
-      // Clear entire order
-      setCart([]);
-      setDiscountType("none");
-      setCustomerName("");
-      setCustomerTin("");
-      setDiscountIdNumber("");
+      // Clear entire order via store
+      clearCart();
       setComplianceError(null);
       setPendingPinAction(null);
       return { success: true };
@@ -367,12 +365,8 @@ export default function CashierClient({
         ...prev,
       ]);
 
-      // Reset cart without requiring pin
-      setCart([]);
-      setDiscountType("none");
-      setCustomerName("");
-      setCustomerTin("");
-      setDiscountIdNumber("");
+      // Reset cart and customer data via store
+      clearCart();
       setComplianceError(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to finalize POS checkout.";
