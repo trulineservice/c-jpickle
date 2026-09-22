@@ -77,7 +77,7 @@ export default async function AboutPage() {
         "Cushioned shock-absorbing sports flooring",
         "Paddle rentals (₱150) & practice ball machine (₱150)",
         "Open daily from 6:00 AM to 12:00 AM",
-        "Strict 24-hour refundable cancellation guarantee",
+        "2-day refundable cancellation & flexible reschedule policy",
       ],
       hotline: "0917-318-8720",
       hotlineLabel: "Court Inquiries",
@@ -137,8 +137,8 @@ export default async function AboutPage() {
     },
     {
       icon: <HeartHandshake className="w-6 h-6 text-[#bf050b]" />,
-      title: "Fair Cancellation Policy",
-      desc: "We respect your schedule. Any court cancellation made at least 24 hours prior to match time receives a 100% full refund directly to your original payment method.",
+      title: "Fair Cancellation & Reschedule",
+      desc: "We respect your schedule. Any court cancellation made at least 2 days prior to match time receives a 100% full refund. Within 2 days, you can easily reschedule to another session.",
     },
     {
       icon: <Users className="w-6 h-6 text-[#0B2A67]" />,

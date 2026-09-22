@@ -402,12 +402,11 @@ export default function BookingSuccessClient({ booking }: { booking: BookingDisp
               </div>
             ) : (
               <div className="text-[11px] text-[#64748B] dark:text-white/70 space-y-1 bg-amber-50/80 dark:bg-amber-950/40 p-4 rounded-2xl border border-amber-200 dark:border-amber-800/60 font-medium">
-                <p className="font-extrabold text-[#bf050b] flex items-center gap-1">
-                  <span>• 24-Hour Reschedule &amp; Cancellation Policy:</span>
+                <p className="font-extrabold text-[#0B2A67] dark:text-[#FFD21C] flex items-center gap-1">
+                  <span>• 2-Day Refund &amp; Match Reschedule Policy:</span>
                 </p>
                 <p>
-                  Sessions may be cancelled for a refund only if requested at least 24 hours prior to
-                  session start. Non-marking court shoes are strictly required inside the arena.
+                  Sessions may be cancelled for a full refund if requested at least 2 days (48 hours) prior to session start. Within 2 days, you can reschedule your session anytime from your player dashboard. Non-marking court shoes are strictly required.
                 </p>
               </div>
             )}

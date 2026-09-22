@@ -97,7 +97,7 @@ export default async function LandingPage() {
     },
     {
       q: "What is your cancellation and refund policy?",
-      a: "We maintain a 24-hour refundable cancellation policy. Cancel at least 24 hours prior to your match time for a 100% full refund directly to your original payment method. Cancellations within 24 hours are non-refundable.",
+      a: "We maintain a 2-day (48-hour) refundable cancellation policy. Cancel at least 2 days prior to your match time for a 100% full refund directly to your original payment method. Cancellations within 2 days are non-refundable, but players can easily reschedule their booking to any available date and time.",
     },
     {
       q: "What footwear is required on the courts?",
@@ -184,7 +184,7 @@ export default async function LandingPage() {
               <div className="pt-4 border-t border-white/10 flex flex-wrap items-center gap-4 sm:gap-6 text-xs text-white/70">
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#007d48]" />
-                  <span>Strict 24h Refundable Policy</span>
+                  <span>2-Day Refund &amp; Reschedule Policy</span>
                 </div>
                 <span>&bull;</span>
                 <div className="flex items-center gap-1.5">
@@ -351,10 +351,10 @@ export default async function LandingPage() {
               </div>
               <div className="space-y-1">
                 <h4 className="text-sm font-bold text-[#0B2A67] tracking-tight">
-                  24-Hour Refundable Policy
+                  2-Day Refund &amp; Reschedule Policy
                 </h4>
                 <p className="text-xs text-[#64748B] leading-relaxed">
-                  Hassle-free 100% refund on cancellations made at least 24 hours before your match.
+                  100% refund on cancellations made at least 2 days ahead. Within 2 days, players can flexibly reschedule their session.
                 </p>
               </div>
             </div>

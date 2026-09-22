@@ -33,7 +33,7 @@ export default async function PricingPage() {
         "Court 1 (Pickleball) or Court 2 (Dual-Sport)",
         "Sports overhead lighting",
         "Secure PayMongo checkout (GCash, Maya, Cards)",
-        "24-hour refundable cancellation policy"
+        "2-day refundable cancellation & reschedule policy"
       ],
       cta: "Book Court — ₱300/hr",
       href: "/book",
@@ -75,7 +75,7 @@ export default async function PricingPage() {
   const faqs = [
     {
       q: "What is your cancellation and refund policy?",
-      a: "Reservations cancelled at least 24 hours prior to the scheduled start time receive a 100% full refund processed back to your original payment method. Cancellations made within 24 hours of play are non-refundable."
+      a: "Reservations cancelled at least 2 days (48 hours) prior to the scheduled start time receive a 100% full refund back to your original payment method. Within 2 days of play, refunds are not available, but players can easily reschedule their booking to any open slot."
     },
     {
       q: "What footwear is required on court?",

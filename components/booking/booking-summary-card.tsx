@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PolicyAgreementModal } from "@/components/booking/policy-agreement-modal";
 import {
   ShieldCheck,
   UserCheck,
@@ -134,7 +135,16 @@ export function BookingSummaryCard({
     return null;
   }, [selectedSlots, selectedSlot, durationHours]);
 
-  const handleSubmitWithFeedback = () => {
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+
+  const handleProceedToPayment = () => {
+    playHapticSound("tap");
+    if (!timeSlotDisplay) return;
+    setIsPolicyModalOpen(true);
+  };
+
+  const handlePolicyConfirmed = () => {
+    setIsPolicyModalOpen(false);
     playHapticSound("scan");
     fireCourtBookingCelebration();
     onSubmit();
@@ -374,7 +384,7 @@ export function BookingSummaryCard({
 
         {/* Primary PayMongo Checkout Button */}
         <Button
-          onClick={handleSubmitWithFeedback}
+          onClick={handleProceedToPayment}
           disabled={isSubmitting || !timeSlotDisplay}
           variant="yellow"
           size="lg"
@@ -397,11 +407,35 @@ export function BookingSummaryCard({
         </Button>
       </div>
 
-      {/* 24-Hour Guarantee Badge */}
-      <div className="p-3.5 rounded-xl bg-[#EDF4FC] border border-[#E2E8F0] flex items-center gap-2.5 text-[11px] text-[#0B2A67] font-semibold">
-        <ShieldCheck className="w-5 h-5 text-[#007d48] shrink-0" />
-        <span>Strict 24-Hour Refundable Cancellation Policy with Instant QR Pass generation.</span>
-      </div>
+      {/* 2-Day Guarantee Badge with direct policy review trigger */}
+      <button
+        type="button"
+        onClick={() => {
+          playHapticSound("tap");
+          setIsPolicyModalOpen(true);
+        }}
+        className="w-full p-3.5 rounded-xl bg-[#EDF4FC] border border-[#E2E8F0] hover:border-[#0B2A67]/40 flex items-center justify-between text-[11px] text-[#0B2A67] font-semibold transition-all cursor-pointer text-left"
+      >
+        <div className="flex items-center gap-2.5">
+          <ShieldCheck className="w-5 h-5 text-[#007d48] shrink-0" />
+          <span>2-Day Refund &amp; Reschedule Policy (Click to review terms)</span>
+        </div>
+        <ArrowRight className="w-3.5 h-3.5 text-[#0B2A67]/60 shrink-0" />
+      </button>
+
+      {/* Mandatory Policy Agreement Modal Before Payment */}
+      <PolicyAgreementModal
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+        onConfirm={handlePolicyConfirmed}
+        isSubmitting={isSubmitting}
+        bookingDetails={{
+          courtName: selectedCourt.name,
+          dateStr: selectedDateStr,
+          timeSlotDisplay,
+          totalAmount: grandTotal,
+        }}
+      />
     </div>
   );
 }

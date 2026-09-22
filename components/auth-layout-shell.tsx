@@ -38,8 +38,8 @@ export function AuthLayoutShell({
     },
     {
       icon: <ShieldCheck className="w-4 h-4 text-[#00e676]" />,
-      title: "24-Hour Refundable Guarantee",
-      desc: "Full automated refund directly to your GCash, Maya, or Card.",
+      title: "2-Day Refund & Reschedule Guarantee",
+      desc: "Full refund 2 days ahead, with flexible match rescheduling available.",
     },
     {
       icon: <Coffee className="w-4 h-4 text-[#FFD21C]" />,

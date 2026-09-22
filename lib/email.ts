@@ -350,7 +350,7 @@ export function generateBookingEmailHtml(details: BookingEmailDetails, qrDataUrl
       }
 
       <div class="policy">
-        <strong>Strict 24-Hour Cancellation Policy:</strong> Cancellations must be requested at least 24 hours prior to session start time to be eligible for a refund.
+        <strong>Strict 2-Day (48-Hour) Cancellation &amp; Reschedule Policy:</strong> Cancellations must be requested at least 2 days (48 hours) prior to session start time to be eligible for a refund. Within 2 days of play, you may reschedule your session to an alternate slot directly via your athlete dashboard.
       </div>
     </div>
 

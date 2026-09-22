@@ -21,7 +21,9 @@ import { pushBookingToGoogleCalendar, testGoogleCalendarConnection, normalizePri
  *    - logout()
  *
  * 2. COURT BOOKING & PLAYER LIFECYCLE
- *    - cancelBooking(bookingId) [Strict 24-Hour Rule]
+ *    - cancelBooking(bookingId) [Strict 2-Day (48-Hour) Rule]
+ *    - requestBookingRefund(payload) [Strict 2-Day (48-Hour) Rule]
+ *    - rescheduleBooking(payload) [Player Reschedule Feature]
  *    - checkInBooking(bookingId)
  *
  * 3. CASHIER & POS OPERATIONS
@@ -106,8 +108,19 @@ export async function signup(formData: FormData) {
   const fullName = (formData.get('fullName') as string)?.trim();
   const next = formData.get('next') as string | null;
 
-  // Never route confirmation emails to localhost; always use the public production app URL
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://c-j-pickleball.vercel.app').replace(/\/$/, '');
+  // Determine host dynamically for accurate email redirect
+  let appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://c-j-pickleball.vercel.app').replace(/\/$/, '');
+  try {
+    const headersList = await headers();
+    const host = headersList.get('x-forwarded-host') || headersList.get('host');
+    const proto = headersList.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
+    if (host) {
+      appUrl = `${proto}://${host}`;
+    }
+  } catch {
+    // Fallback
+  }
+
   const destination = next && next.startsWith('/') ? next : '/dashboard';
   const emailRedirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(destination)}`;
 
@@ -131,8 +144,18 @@ export async function signup(formData: FormData) {
     return redirect(redirectUrl);
   }
 
-  // If user signed up but session is null, Supabase has sent a verification email
+  // If user signed up and email is auto-confirmed, sign in immediately so account is active and credited
   if (data?.user && !data.session) {
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (!signInError && signInData?.user) {
+      await redirectBasedOnRole(signInData.user.id, next);
+      return redirect(destination);
+    }
+
     const redirectUrl = next
       ? `/signup?verification_sent=true&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`
       : `/signup?verification_sent=true&email=${encodeURIComponent(email)}`;
@@ -162,8 +185,9 @@ export async function logout() {
 // ============================================================================
 
 /**
- * Strict 24-Hour Cancellation Action:
- * - Allows cancellation only if (start_time - NOW() >= 24 hours).
+ * Strict 2-Day (48-Hour) Cancellation Action:
+ * - Allows cancellation with refund eligibility only if (start_time - NOW() >= 48 hours).
+ * - Cancellations within 48 hours are non-refundable for players (reschedule available instead).
  * - Online (PayMongo) bookings transition to 'cancelled_refund_pending'.
  * - Cash/Counter bookings transition to 'cancelled'.
  */
@@ -210,16 +234,16 @@ export async function cancelBooking(bookingId: string): Promise<{
     return { error: `Booking is already marked as ${booking.status}.` };
   }
 
-  // 3. Evaluate 24-hour rule
+  // 3. Evaluate 2-day (48-hour) refund eligibility rule
   const startTime = new Date(booking.start_time).getTime();
   const now = Date.now();
   const differenceHours = (startTime - now) / (1000 * 60 * 60);
 
-  if (!isStaff && differenceHours < 24) {
+  if (!isStaff && differenceHours < 48) {
     return {
-      error: `Strict 24-hour cancellation rule: This court reservation begins in ${differenceHours.toFixed(
+      error: `Strict 2-day cancellation policy: This court reservation begins in ${differenceHours.toFixed(
         1
-      )} hours. Cancellations are only permitted at least 24 hours in advance.`,
+      )} hours. Cancellations with refund eligibility must be requested at least 2 days (48 hours) in advance. You can reschedule your booking instead.`,
     };
   }
 
@@ -256,7 +280,7 @@ export async function cancelBooking(bookingId: string): Promise<{
 /**
  * Request Booking Refund with E-Wallet Details (GCash, Maya, etc.):
  * - Player provides E-Wallet provider, account holder name, and account/mobile number.
- * - Validates strict 24-hour rule (unless staff override).
+ * - Validates strict 2-day (48-hour) rule (unless staff override).
  * - Transitions status to 'cancelled_refund_pending' and refund_status to 'pending'.
  */
 export async function requestBookingRefund({
@@ -318,16 +342,16 @@ export async function requestBookingRefund({
     return { error: `Booking is already marked as ${booking.status}.` };
   }
 
-  // 3. Evaluate 24-hour rule
+  // 3. Evaluate 2-day (48-hour) refund rule
   const startTime = new Date(booking.start_time).getTime();
   const now = Date.now();
   const differenceHours = (startTime - now) / (1000 * 60 * 60);
 
-  if (!isStaff && differenceHours < 24) {
+  if (!isStaff && differenceHours < 48) {
     return {
-      error: `Strict 24-hour cancellation rule: This court reservation begins in ${differenceHours.toFixed(
+      error: `Strict 2-day refund policy: This court reservation begins in ${differenceHours.toFixed(
         1
-      )} hours. Cancellations are only permitted at least 24 hours in advance.`,
+      )} hours. Cancellations are only eligible for a refund at least 2 days (48 hours) in advance. However, you can reschedule your session to another date or time slot!`,
     };
   }
 
@@ -359,6 +383,187 @@ export async function requestBookingRefund({
     success: true,
     status: 'cancelled_refund_pending',
     message: `Cancellation requested. Your refund of ₱${Number(booking.total_price).toFixed(2)} will be processed to your ${walletType} account (${accountNumber.trim()}) by management.`,
+  };
+}
+
+/**
+ * Reschedule Court Booking:
+ * - Allows player or staff to reschedule an active reservation to another date/time/court.
+ * - Prevents double-booking and overlaps on the destination court.
+ * - Validates that the original reservation has not already passed.
+ */
+export async function rescheduleBooking({
+  bookingId,
+  newCourtId,
+  newStartTime,
+  reason,
+}: {
+  bookingId: string;
+  newCourtId: string;
+  newStartTime: string;
+  reason?: string;
+}): Promise<{
+  success?: boolean;
+  message?: string;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'You must be logged in to reschedule a booking.' };
+  }
+
+  // 1. Fetch target booking
+  const { data: booking, error: fetchError } = await supabase
+    .from('bookings')
+    .select('id, user_id, court_id, start_time, end_time, duration_hours, status, notes, reschedule_count, original_start_time')
+    .eq('id', bookingId)
+    .single();
+
+  if (fetchError || !booking) {
+    return { error: 'Booking reservation not found.' };
+  }
+
+  // 2. Check permissions
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const isStaff = profile?.role && ['owner', 'admin', 'cashier'].includes(profile.role);
+
+  if (!isStaff && booking.user_id !== user.id) {
+    return { error: 'You are not authorized to reschedule this booking.' };
+  }
+
+  // 3. Validate status
+  if (['cancelled', 'cancelled_refund_pending', 'expired'].includes(booking.status)) {
+    return { error: `Cannot reschedule a booking that is currently ${booking.status}.` };
+  }
+
+  // 4. Validate original start time has not already passed
+  const currentStartTime = new Date(booking.start_time).getTime();
+  if (!isStaff && currentStartTime <= Date.now()) {
+    return { error: 'Past or currently ongoing court sessions cannot be rescheduled.' };
+  }
+
+  // 5. Validate new date and time
+  const targetStart = new Date(newStartTime);
+  if (isNaN(targetStart.getTime()) || targetStart.getTime() <= Date.now()) {
+    return { error: 'Please choose a valid future date and time slot.' };
+  }
+
+  const durationHours = booking.duration_hours || 1;
+  const targetEnd = new Date(targetStart.getTime() + durationHours * 60 * 60 * 1000);
+
+  // 6. Verify destination court exists and is active
+  const targetCourtId = newCourtId || booking.court_id;
+  const { data: court, error: courtError } = await supabase
+    .from('courts')
+    .select('id, name, is_active')
+    .eq('id', targetCourtId)
+    .single();
+
+  if (courtError || !court || court.is_active === false) {
+    return { error: 'The selected court is currently not active or available.' };
+  }
+
+  // 7. Check for slot conflicts on the target court (excluding this current booking)
+  const nowUtc = new Date();
+  const { data: conflicts, error: conflictErr } = await supabase
+    .from('bookings')
+    .select('id, start_time, end_time, status, expires_at')
+    .eq('court_id', targetCourtId)
+    .neq('id', booking.id)
+    .in('status', ['paid', 'checked_in', 'walk_in', 'pending_payment'])
+    .lt('start_time', targetEnd.toISOString())
+    .gt('end_time', targetStart.toISOString());
+
+  if (conflictErr) {
+    console.error('[Reschedule Conflict Check Error]:', conflictErr);
+    return { error: 'Failed to verify court availability for the new time slot.' };
+  }
+
+  const activeConflict = (conflicts || []).find((b) => {
+    if (b.status === 'pending_payment') {
+      return b.expires_at ? new Date(b.expires_at) > nowUtc : false;
+    }
+    return true;
+  });
+
+  if (activeConflict) {
+    return {
+      error: 'The chosen slot on this court is already reserved or occupied. Please select another time or court.',
+    };
+  }
+
+  // 8. Check maintenance windows
+  try {
+    const { data: maintenanceWindows } = await supabase
+      .from('court_maintenance_schedules')
+      .select('id')
+      .eq('court_id', targetCourtId)
+      .lt('start_time', targetEnd.toISOString())
+      .gt('end_time', targetStart.toISOString());
+
+    if (maintenanceWindows && maintenanceWindows.length > 0) {
+      return { error: 'Court is scheduled for maintenance during this time slot. Please choose another slot.' };
+    }
+  } catch (maintErr) {
+    // Silently continue if maintenance table is optional
+  }
+
+  // 9. Update the booking in Supabase
+  const logEntry = `[Rescheduled ${new Date().toISOString()}]: From ${booking.start_time} to ${targetStart.toISOString()} (${court.name})${reason ? ` - Reason: ${reason}` : ''}`;
+  const updatedNotes = booking.notes ? `${booking.notes}\n${logEntry}` : logEntry;
+
+  const updatePayload: Record<string, any> = {
+    court_id: targetCourtId,
+    start_time: targetStart.toISOString(),
+    end_time: targetEnd.toISOString(),
+    notes: updatedNotes,
+    updated_at: new Date().toISOString(),
+    rescheduled_at: new Date().toISOString(),
+    reschedule_count: (booking.reschedule_count || 0) + 1,
+  };
+
+  if (!booking.original_start_time) {
+    updatePayload.original_start_time = booking.start_time;
+  }
+
+  const { error: updateError } = await supabase
+    .from('bookings')
+    .update(updatePayload)
+    .eq('id', booking.id);
+
+  if (updateError) {
+    console.error('[Reschedule Booking Error]:', updateError);
+    return { error: 'Failed to reschedule booking. Please try again or select another time.' };
+  }
+
+  revalidatePath('/dashboard');
+  revalidatePath('/cashier/schedule');
+  revalidatePath('/admin');
+  revalidatePath('/book');
+
+  const formattedDate = targetStart.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+  const formattedTime = targetStart.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  return {
+    success: true,
+    message: `Session successfully rescheduled to ${court.name} on ${formattedDate} at ${formattedTime}!`,
   };
 }
 
@@ -865,17 +1070,20 @@ export async function createCashierAccount(formData: FormData): Promise<void> {
 }
 
 /**
- * Helper to fetch POS Master PIN code.
+ * Helper to fetch POS Master PIN code reliably using service client to avoid session/cookie edge cases.
  */
 async function getPosMasterPin(): Promise<string> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
+    const adminSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data, error } = await adminSupabase
       .from('system_settings')
       .select('value')
       .eq('key', 'pos_master_pin')
       .single();
-    if (data?.value) return data.value.trim();
+    if (!error && data?.value) return data.value.trim();
   } catch (err) {
     console.warn('[Get Master PIN fallback]:', err);
   }
@@ -933,8 +1141,13 @@ export async function voidPosTransactionWithPin(payload: {
     return { success: false, error: 'Invalid Master PIN code. Void authorization failed.' };
   }
 
+  const adminSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   // 1. Fetch transaction and verify it's not already voided
-  const { data: tx, error: fetchErr } = await supabase
+  const { data: tx, error: fetchErr } = await adminSupabase
     .from('pos_transactions')
     .select('id, invoice_number, status, total_amount')
     .eq('id', transactionId)
@@ -949,10 +1162,6 @@ export async function voidPosTransactionWithPin(payload: {
   }
 
   // 2. Fetch line items to restore inventory stock using elevated client once PIN is verified
-  const adminSupabase = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
 
   const { data: lineItems } = await adminSupabase
     .from('pos_transaction_items')
@@ -1271,59 +1480,124 @@ export async function requestPasswordReset(formData: FormData): Promise<void> {
 }
 
 /**
- * Complete Password Reset with New Password using secure token.
+ * Complete Password Reset with New Password using secure token or active recovery session.
  */
 export async function resetPasswordWithToken(formData: FormData): Promise<void> {
   const token = (formData.get('token') as string)?.trim();
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirmPassword') as string;
 
-  if (!token) {
-    redirect('/forgot-password?message=' + encodeURIComponent('Missing or invalid reset token. Please request a new link.'));
-  }
-
   if (!password || password.length < 6) {
-    redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent('Password must be at least 6 characters long.'));
+    const targetUrl = token
+      ? `/reset-password?token=${encodeURIComponent(token)}&message=`
+      : `/reset-password?message=`;
+    redirect(targetUrl + encodeURIComponent('Password must be at least 6 characters long.'));
   }
 
   if (password !== confirmPassword) {
-    redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent('Passwords do not match. Please re-enter and try again.'));
+    const targetUrl = token
+      ? `/reset-password?token=${encodeURIComponent(token)}&message=`
+      : `/reset-password?message=`;
+    redirect(targetUrl + encodeURIComponent('Passwords do not match. Please re-enter and try again.'));
   }
 
   const supabase = await createClient();
-  const { data: rpcData, error: rpcError } = await supabase.rpc('complete_password_reset', {
-    p_token: token,
-    p_new_password: password,
+
+  // Mode 1: Token-based reset (custom link from email)
+  if (token) {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('complete_password_reset', {
+      p_token: token,
+      p_new_password: password,
+    });
+
+    if (rpcError) {
+      console.error('[Complete Password Reset RPC Error]:', rpcError);
+      redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent('Failed to update password. Please try again.'));
+    }
+
+    const result = rpcData as { success?: boolean; error?: string; email?: string } | null;
+    if (!result?.success) {
+      redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent(result?.error || 'Reset link is invalid or has expired. Please request a new one.'));
+    }
+
+    // Direct synchronization via admin client to ensure Supabase Auth internal hash is updated
+    if (result.email) {
+      try {
+        const adminSupabase = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        const { data: userData } = await adminSupabase.auth.admin.listUsers();
+        const matchedUser = userData?.users.find(
+          (u) => u.email?.toLowerCase() === result.email?.toLowerCase()
+        );
+        if (matchedUser) {
+          await adminSupabase.auth.admin.updateUserById(matchedUser.id, {
+            password,
+            email_confirm: true,
+          });
+        }
+      } catch (adminErr) {
+        console.warn('[Admin password sync warning]:', adminErr);
+      }
+    }
+
+    // Attempt automatic login with the new credentials
+    if (result.email) {
+      try {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: result.email,
+          password,
+        });
+
+        if (!signInError && signInData?.user) {
+          await redirectBasedOnRole(signInData.user.id, '/dashboard');
+          redirect('/dashboard');
+        }
+      } catch {
+        // If sign-in triggers redirect, let Next handle it
+      }
+    }
+
+    redirect('/login?message=' + encodeURIComponent('Your password has been changed successfully! You can now log in with your new password.'));
+  }
+
+  // Mode 2: Session-based recovery (from Supabase native reset email link)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    redirect('/forgot-password?message=' + encodeURIComponent('Your reset session has expired or is invalid. Please request a new reset link.'));
+  }
+
+  // 1. Update user password in active Supabase session
+  const { error: updateError } = await supabase.auth.updateUser({
+    password,
   });
 
-  if (rpcError) {
-    console.error('[Complete Password Reset RPC Error]:', rpcError);
-    redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent('Failed to update password. Please try again.'));
+  if (updateError) {
+    console.error('[Session Reset Password Error]:', updateError);
+    redirect('/reset-password?message=' + encodeURIComponent(updateError.message || 'Failed to update password. Please try again.'));
   }
 
-  const result = rpcData as { success?: boolean; error?: string; email?: string } | null;
-  if (!result?.success) {
-    redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent(result?.error || 'Reset link is invalid or has expired. Please request a new one.'));
+  // 2. Also ensure via admin client that email_confirm is true and password hash is synced
+  try {
+    const adminSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    await adminSupabase.auth.admin.updateUserById(user.id, {
+      password,
+      email_confirm: true,
+    });
+  } catch (adminErr) {
+    console.warn('[Admin password sync warning for session recovery]:', adminErr);
   }
 
-  // Attempt automatic login with the new credentials
-  if (result.email) {
-    try {
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: result.email,
-        password,
-      });
-
-      if (!signInError && signInData?.user) {
-        await redirectBasedOnRole(signInData.user.id, '/dashboard');
-        redirect('/dashboard');
-      }
-    } catch {
-      // If sign-in triggers redirect, let Next handle it
-    }
-  }
-
-  redirect('/login?message=' + encodeURIComponent('Your password has been changed successfully! You can now log in with your new password.'));
+  await redirectBasedOnRole(user.id, '/dashboard');
+  redirect('/dashboard');
 }
 
 /**

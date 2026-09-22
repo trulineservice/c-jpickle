@@ -457,7 +457,7 @@ export default function BookPage() {
           <span>•</span>
           <span>PayMongo Instant Lock</span>
           <span>•</span>
-          <span className="text-[#007d48]">24h Refundable Guarantee</span>
+          <span className="text-[#007d48]">2-Day Refund &amp; Reschedule Guarantee</span>
         </div>
       </div>
 

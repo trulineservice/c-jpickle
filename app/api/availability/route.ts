@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     const dateStr = searchParams.get('date'); // YYYY-MM-DD
     const monthParam = searchParams.get('month'); // YYYY-MM
     const durationHours = parseInt(searchParams.get('durationHours') || '1', 10);
+    const excludeBookingId = searchParams.get('excludeBookingId');
 
     if (!dateStr && !monthParam) {
       return NextResponse.json(
@@ -104,6 +105,10 @@ export async function GET(request: NextRequest) {
         if (!queryErr && dbBookings) {
           allBookings = dbBookings;
         }
+      }
+
+      if (excludeBookingId) {
+        allBookings = allBookings.filter((b) => b.id !== excludeBookingId);
       }
 
       // Check for court maintenance schedules

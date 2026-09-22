@@ -8,7 +8,7 @@ import { AuthSubmitButton } from "@/components/auth-submit-button";
 import { resetPasswordWithToken } from "@/app/actions";
 
 interface ResetPasswordFormProps {
-  token: string;
+  token?: string;
   email?: string;
   errorMessage?: string;
 }
@@ -44,7 +44,7 @@ export function ResetPasswordForm({
 
   return (
     <form action={resetPasswordWithToken} onSubmit={handleSubmit} className="space-y-6">
-      <input type="hidden" name="token" value={token} />
+      {token && <input type="hidden" name="token" value={token} />}
 
       {(initialErrorMessage || validationError) && (
         <div className="p-3.5 rounded-xl border border-[#bf050b]/30 bg-[#bf050b]/10 text-[#bf050b] text-xs flex items-center gap-2.5 shadow-xs animate-in fade-in duration-200">

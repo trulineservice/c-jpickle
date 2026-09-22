@@ -48,9 +48,15 @@ export function PosMasterPinModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState(false);
 
+  // Mutable refs to prevent stale closure and double-submit issues during rapid typing
+  const pinRef = React.useRef("");
+  const isSubmittingRef = React.useRef(false);
+
   // Reset state on open/close
   useEffect(() => {
     if (isOpen) {
+      pinRef.current = "";
+      isSubmittingRef.current = false;
       setPin("");
       setErrorMessage(null);
       setIsShaking(false);
@@ -59,27 +65,36 @@ export function PosMasterPinModal({
   }, [isOpen]);
 
   const handleDigit = useCallback((digit: string) => {
-    if (pin.length < 8) {
+    if (isSubmittingRef.current) return;
+    if (pinRef.current.length < 8) {
       playHapticSound("tap");
       setErrorMessage(null);
-      setPin((prev) => prev + digit);
+      const next = pinRef.current + digit;
+      pinRef.current = next;
+      setPin(next);
     }
-  }, [pin.length]);
+  }, []);
 
   const handleBackspace = useCallback(() => {
+    if (isSubmittingRef.current) return;
     playHapticSound("tap");
-    setPin((prev) => prev.slice(0, -1));
     setErrorMessage(null);
+    const next = pinRef.current.slice(0, -1);
+    pinRef.current = next;
+    setPin(next);
   }, []);
 
   const handleClear = useCallback(() => {
+    if (isSubmittingRef.current) return;
     playHapticSound("tap");
-    setPin("");
     setErrorMessage(null);
+    pinRef.current = "";
+    setPin("");
   }, []);
 
   const handleSubmit = useCallback(async (pinToSubmit?: string) => {
-    const finalPin = pinToSubmit || pin;
+    if (isSubmittingRef.current) return;
+    const finalPin = pinToSubmit !== undefined ? pinToSubmit : pinRef.current;
     if (!finalPin || finalPin.length < 4) {
       setErrorMessage("Please enter at least 4 digits.");
       setIsShaking(true);
@@ -88,6 +103,7 @@ export function PosMasterPinModal({
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -104,6 +120,7 @@ export function PosMasterPinModal({
         setIsShaking(true);
         setTimeout(() => setIsShaking(false), 500);
         playHapticSound("error");
+        pinRef.current = "";
         setPin("");
       } else {
         playHapticSound("success");
@@ -115,17 +132,32 @@ export function PosMasterPinModal({
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 500);
       playHapticSound("error");
+      pinRef.current = "";
       setPin("");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [pin, requireReason, reason, customReason, onSuccess, onClose]);
+  }, [requireReason, reason, customReason, onSuccess, onClose]);
 
   // Physical keyboard listener
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Do not intercept if user is typing inside text input, textarea, or select
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")
+      ) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onClose();
+        }
+        return;
+      }
+
       if (e.key >= "0" && e.key <= "9") {
         e.preventDefault();
         handleDigit(e.key);
@@ -137,7 +169,9 @@ export function PosMasterPinModal({
         onClose();
       } else if (e.key === "Enter") {
         e.preventDefault();
-        handleSubmit();
+        if (!isSubmittingRef.current) {
+          handleSubmit(pinRef.current);
+        }
       }
     };
 
@@ -216,10 +250,10 @@ export function PosMasterPinModal({
           </div>
         )}
 
-        {/* Masked PIN Indicators (4 to 8 dots) */}
+        {/* Masked PIN Indicators (Dynamic dots for 4 to 8 digits) */}
         <div className="py-4 flex flex-col items-center justify-center">
-          <div className="flex items-center gap-3">
-            {[0, 1, 2, 3].map((index) => {
+          <div className="flex items-center gap-2.5">
+            {Array.from({ length: Math.max(4, Math.min(8, pin.length)) }).map((_, index) => {
               const isFilled = pin.length > index;
               return (
                 <div
@@ -233,6 +267,12 @@ export function PosMasterPinModal({
               );
             })}
           </div>
+
+          {pin.length > 4 && (
+            <div className="mt-2 text-[11px] font-mono font-bold text-[#707072] dark:text-[#8a8a93] animate-in fade-in">
+              {pin.length} digits entered
+            </div>
+          )}
 
           {/* Error Message */}
           {errorMessage && (

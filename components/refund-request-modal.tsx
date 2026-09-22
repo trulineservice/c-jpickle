@@ -231,7 +231,7 @@ export function RefundRequestModal({
 
           {/* Policy Note */}
           <div className="p-3 border border-[#cacacb] dark:border-[#27272a] bg-[#f5f5f5] dark:bg-[#18181c] text-[11px] text-[#707072] dark:text-[#8a8a93] leading-relaxed">
-            <strong className="text-[#111111] dark:text-foreground">24-Hour Policy:</strong> Cancellations made 24+ hours before start time receive a 100% full refund to your specified {walletType} account within 24–48 hours.
+            <strong className="text-[#111111] dark:text-foreground">2-Day (48-Hour) Policy:</strong> Cancellations made 2+ days (48+ hours) before start time receive a 100% full refund to your specified {walletType} account within 24–48 hours. Cancellations within 2 days are non-refundable, but players can reschedule their session.
           </div>
 
           {/* Action Buttons */}

@@ -82,6 +82,7 @@ export default async function UserDashboardPage() {
 
     return {
       id: b.id,
+      court_id: b.court_id,
       start_time: b.start_time,
       end_time: b.end_time,
       duration_hours: b.duration_hours,

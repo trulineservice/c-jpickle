@@ -48,6 +48,9 @@ export interface Booking {
   expires_at: string | null;
   notes?: string | null;
   paddle_count?: number;
+  rescheduled_at?: string | null;
+  reschedule_count?: number;
+  original_start_time?: string | null;
   created_at: string;
   updated_at: string;
   courts?: Court | Court[] | null;

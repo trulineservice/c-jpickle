@@ -76,7 +76,7 @@ export default async function ResetPasswordPage({
           </p>
         </div>
 
-        {isValidToken && token ? (
+        {(isValidToken && token) || hasSession ? (
           <ResetPasswordForm
             token={token}
             email={targetEmail}

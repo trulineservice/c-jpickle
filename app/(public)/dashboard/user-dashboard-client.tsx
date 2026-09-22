@@ -28,14 +28,17 @@ import {
   X,
   CreditCard,
   Building,
+  RotateCcw,
 } from 'lucide-react';
 import { cancelBooking, updateUserPassword } from '@/app/actions';
 import { RefundRequestModal } from '@/components/refund-request-modal';
+import { RescheduleModal } from '@/components/reschedule-modal';
 import { AnimatedNumber } from '@/components/ui/animated-number';
 import { playHapticSound } from '@/lib/motion-feedback';
 
 export interface UserBookingItem {
   id: string;
+  court_id?: string;
   start_time: string;
   end_time: string;
   duration_hours: number;
@@ -64,6 +67,7 @@ export default function UserDashboardClient({
   const [activeBookings, setActiveBookings] = useState<UserBookingItem[]>(bookings);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [refundModalBooking, setRefundModalBooking] = useState<UserBookingItem | null>(null);
+  const [rescheduleModalBooking, setRescheduleModalBooking] = useState<UserBookingItem | null>(null);
   const [passModalBooking, setPassModalBooking] = useState<UserBookingItem | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -145,7 +149,7 @@ export default function UserDashboardClient({
     const hoursRemaining = msDiff / (1000 * 60 * 60);
 
     return {
-      isEligible: hoursRemaining >= 24,
+      isEligible: hoursRemaining >= 48,
       hoursRemaining: Math.max(0, Math.floor(hoursRemaining)),
       hoursTotal: hoursRemaining,
     };
@@ -158,11 +162,47 @@ export default function UserDashboardClient({
       playHapticSound('error');
       setFeedbackMessage({
         type: 'error',
-        text: 'Cancellations must be made at least 24 hours in advance to receive a 100% refund.',
+        text: 'Cancellations with refund must be requested at least 2 days (48 hours) in advance. You can reschedule your booking instead!',
       });
       return;
     }
     setRefundModalBooking(booking);
+  };
+
+  const handleRescheduleClick = (booking: UserBookingItem) => {
+    playHapticSound('tap');
+    setRescheduleModalBooking(booking);
+  };
+
+  const handleRescheduleSuccess = (
+    message: string,
+    newStartTime: string,
+    newCourtName: string
+  ) => {
+    if (rescheduleModalBooking) {
+      const bId = rescheduleModalBooking.id;
+      const duration = rescheduleModalBooking.duration_hours || 1;
+      const newEndTime = new Date(new Date(newStartTime).getTime() + duration * 3600 * 1000).toISOString();
+
+      setActiveBookings((prev) =>
+        prev.map((b) =>
+          b.id === bId
+            ? {
+                ...b,
+                court_name: newCourtName,
+                start_time: newStartTime,
+                end_time: newEndTime,
+              }
+            : b
+        )
+      );
+    }
+    setRescheduleModalBooking(null);
+    playHapticSound('success');
+    setFeedbackMessage({
+      type: 'success',
+      text: message,
+    });
   };
 
   const handleRefundConfirmed = (bookingId: string) => {
@@ -508,12 +548,12 @@ export default function UserDashboardClient({
                           Confirmed
                         </span>
                         {cancelInfo.isEligible ? (
-                          <span className="text-[10px] font-semibold text-[#64748B] dark:text-white/60 bg-[#F1F5F9] dark:bg-white/10 px-2.5 py-0.5 rounded-full">
+                          <span className="text-[10px] font-semibold text-[#007d48] bg-[#007d48]/10 px-2.5 py-0.5 rounded-full border border-[#007d48]/20">
                             100% Refund Eligible ({cancelInfo.hoursRemaining}h left)
                           </span>
                         ) : (
-                          <span className="text-[10px] font-semibold text-[#bf050b] bg-[#bf050b]/10 px-2.5 py-0.5 rounded-full">
-                            Non-refundable (&lt;24h policy)
+                          <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/25">
+                            Non-refundable (&lt;2 days) • Reschedule Available
                           </span>
                         )}
                       </div>
@@ -539,7 +579,7 @@ export default function UserDashboardClient({
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                       <Button
                         variant="outline"
                         size="sm"
@@ -547,7 +587,17 @@ export default function UserDashboardClient({
                         className="text-xs border-[#0B2A67]/30 text-[#0B2A67] dark:text-white hover:bg-[#EDF4FC] dark:hover:bg-white/10 font-bold rounded-xl cursor-pointer flex items-center gap-1.5"
                       >
                         <QrCode className="w-3.5 h-3.5 text-[#FFD21C]" />
-                        <span>Digital Pass &amp; Receipt</span>
+                        <span>Pass</span>
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRescheduleClick(b)}
+                        className="text-xs border-[#FFD21C]/60 text-[#0B2A67] dark:text-[#FFD21C] hover:bg-[#FFD21C]/15 font-bold rounded-xl cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-[#FFD21C]" />
+                        <span>Reschedule</span>
                       </Button>
 
                       <Button
@@ -555,7 +605,16 @@ export default function UserDashboardClient({
                         size="sm"
                         disabled={isPending && cancellingId === b.id}
                         onClick={() => handleCancelClick(b)}
-                        className="text-xs border-[#bf050b]/30 text-[#bf050b] hover:bg-[#bf050b]/10 font-bold rounded-xl cursor-pointer"
+                        className={`text-xs font-bold rounded-xl cursor-pointer ${
+                          cancelInfo.isEligible
+                            ? 'border-[#bf050b]/30 text-[#bf050b] hover:bg-[#bf050b]/10'
+                            : 'border-slate-300 dark:border-white/15 text-slate-400 dark:text-white/40 hover:bg-slate-100 dark:hover:bg-white/5'
+                        }`}
+                        title={
+                          cancelInfo.isEligible
+                            ? 'Cancel reservation and request refund'
+                            : 'Refund unavailable within 2 days. Click Reschedule to move your session.'
+                        }
                       >
                         {isPending && cancellingId === b.id ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -813,6 +872,16 @@ export default function UserDashboardClient({
           booking={refundModalBooking}
           onClose={() => setRefundModalBooking(null)}
           onSuccess={(msg) => handleRefundConfirmed(refundModalBooking.id)}
+        />
+      )}
+
+      {/* Reschedule Match Modal Component */}
+      {rescheduleModalBooking && (
+        <RescheduleModal
+          isOpen={!!rescheduleModalBooking}
+          booking={rescheduleModalBooking}
+          onClose={() => setRescheduleModalBooking(null)}
+          onSuccess={handleRescheduleSuccess}
         />
       )}
     </div>
