@@ -1515,18 +1515,24 @@ export async function resetPasswordWithToken(formData: FormData): Promise<void> 
       redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent('Failed to update password. Please try again.'));
     }
 
-    const result = rpcData as { success?: boolean; error?: string; email?: string } | null;
+    const result = rpcData as { success?: boolean; error?: string; email?: string; user_id?: string } | null;
     if (!result?.success) {
       redirect(`/reset-password?token=${encodeURIComponent(token)}&message=` + encodeURIComponent(result?.error || 'Reset link is invalid or has expired. Please request a new one.'));
     }
 
     // Direct synchronization via admin client to ensure Supabase Auth internal hash is updated
-    if (result.email) {
-      try {
-        const adminSupabase = createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
+    const targetUserId = result.user_id;
+    try {
+      const adminSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      if (targetUserId) {
+        await adminSupabase.auth.admin.updateUserById(targetUserId, {
+          password,
+          email_confirm: true,
+        });
+      } else if (result.email) {
         const { data: userData } = await adminSupabase.auth.admin.listUsers();
         const matchedUser = userData?.users.find(
           (u) => u.email?.toLowerCase() === result.email?.toLowerCase()
@@ -1537,9 +1543,9 @@ export async function resetPasswordWithToken(formData: FormData): Promise<void> 
             email_confirm: true,
           });
         }
-      } catch (adminErr) {
-        console.warn('[Admin password sync warning]:', adminErr);
       }
+    } catch (adminErr) {
+      console.warn('[Admin password sync warning]:', adminErr);
     }
 
     // Attempt automatic login with the new credentials
@@ -1579,21 +1585,35 @@ export async function resetPasswordWithToken(formData: FormData): Promise<void> 
 
   if (updateError) {
     console.error('[Session Reset Password Error]:', updateError);
-    redirect('/reset-password?message=' + encodeURIComponent(updateError.message || 'Failed to update password. Please try again.'));
-  }
-
-  // 2. Also ensure via admin client that email_confirm is true and password hash is synced
-  try {
-    const adminSupabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    await adminSupabase.auth.admin.updateUserById(user.id, {
-      password,
-      email_confirm: true,
-    });
-  } catch (adminErr) {
-    console.warn('[Admin password sync warning for session recovery]:', adminErr);
+    try {
+      const adminSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { error: adminUpdateError } = await adminSupabase.auth.admin.updateUserById(user.id, {
+        password,
+        email_confirm: true,
+      });
+      if (adminUpdateError) {
+        redirect('/reset-password?message=' + encodeURIComponent(adminUpdateError.message || updateError.message || 'Failed to update password. Please try again.'));
+      }
+    } catch {
+      redirect('/reset-password?message=' + encodeURIComponent(updateError.message || 'Failed to update password. Please try again.'));
+    }
+  } else {
+    // 2. Also ensure via admin client that email_confirm is true and password hash is synced
+    try {
+      const adminSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      await adminSupabase.auth.admin.updateUserById(user.id, {
+        password,
+        email_confirm: true,
+      });
+    } catch (adminErr) {
+      console.warn('[Admin password sync warning for session recovery]:', adminErr);
+    }
   }
 
   await redirectBasedOnRole(user.id, '/dashboard');
@@ -1609,22 +1629,49 @@ export const resetPasswordWithTempPassword = requestPasswordReset;
  * Handle Dashboard Settings Password Update
  */
 export async function updateUserPassword(formData: FormData): Promise<{ success?: boolean; error?: string }> {
-  const { createClient } = await import('@/utils/supabase/server');
-  const supabase = await createClient();
-  const password = formData.get('password') as string;
+  try {
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = await createClient();
+    const password = (formData.get('password') as string)?.trim();
 
-  if (!password || password.length < 6) {
-    return { error: 'Password must be at least 6 characters.' };
+    if (!password || password.length < 6) {
+      return { error: 'Password must be at least 6 characters.' };
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return { error: 'Your session has expired. Please log in again.' };
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+
+    try {
+      const adminSupabase = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { error: adminError } = await adminSupabase.auth.admin.updateUserById(user.id, {
+        password,
+        email_confirm: true,
+      });
+      if (adminError && updateError) {
+        return { error: adminError.message || updateError.message };
+      }
+    } catch (adminErr) {
+      if (updateError) {
+        return { error: updateError.message };
+      }
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[updateUserPassword Exception]:', err);
+    return { error: err?.message || 'Failed to update password. Please try again.' };
   }
-
-  const { error } = await supabase.auth.updateUser({ password });
-
-  if (error) {
-    console.error('[Update Password Error]:', error);
-    return { error: error.message };
-  }
-
-  return { success: true };
 }
 
 // ============================================================================
