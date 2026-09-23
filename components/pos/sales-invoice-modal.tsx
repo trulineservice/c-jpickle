@@ -168,7 +168,7 @@ export function SalesInvoiceModal({
               25 Bologna Muzon, Taytay, Rizal, Philippines, 1920
             </p>
             <p className="text-[10px] text-[#555555]">
-              VAT Reg. TIN: 000-123-456-00000 &bull; EOPT Compliant
+              TIN: 000-123-456-00000 &bull; Non-VAT Registered
             </p>
             <div className="pt-1.5 font-bold text-xs text-[#111111] tracking-wider">
               {invoice.invoiceNumber}
@@ -198,12 +198,24 @@ export function SalesInvoiceModal({
                     <span className="font-bold uppercase">
                       {invoice.discountType === "senior_citizen"
                         ? "Senior Citizen (RA 9994)"
-                        : "PWD (RA 10754)"}
+                        : invoice.discountType === "pwd"
+                        ? "PWD (RA 10754)"
+                        : invoice.discountType === "student"
+                        ? "Student Privilege"
+                        : invoice.discountType === "employee"
+                        ? "Employee / Staff"
+                        : "Special Privilege"}
                     </span>
                   </div>
                   {invoice.discountIdNumber && (
                     <div className="flex justify-between">
-                      <span className="text-[#555555]">Privilege ID No:</span>
+                      <span className="text-[#555555]">
+                        {invoice.discountType === "student"
+                          ? "Student ID:"
+                          : invoice.discountType === "employee"
+                          ? "Staff ID:"
+                          : "Privilege ID No:"}
+                      </span>
                       <span className="font-bold">{invoice.discountIdNumber}</span>
                     </div>
                   )}
@@ -230,7 +242,7 @@ export function SalesInvoiceModal({
             ))}
           </div>
 
-          {/* BIR EOPT Statutory Tax Breakdown */}
+          {/* Order Financial Summary (Tax Removed) */}
           <div className="space-y-1 text-[11px]">
             <div className="flex justify-between text-[#555555]">
               <span>Gross Sales:</span>
@@ -238,30 +250,50 @@ export function SalesInvoiceModal({
             </div>
             {invoice.discountAmount > 0 && (
               <div className="flex justify-between font-bold text-[#111111]">
-                <span>Statutory 20% Discount:</span>
+                <span>
+                  {invoice.discountType === "senior_citizen"
+                    ? "Senior Discount (20%):"
+                    : invoice.discountType === "pwd"
+                    ? "PWD Discount (20%):"
+                    : invoice.discountType === "student"
+                    ? "Student Discount (₱10 Off):"
+                    : invoice.discountType === "employee"
+                    ? "Employee Discount (10%):"
+                    : "Discount:"}
+                </span>
                 <span>-₱{invoice.discountAmount.toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between text-[#555555]">
-              <span>Vatable Sales:</span>
-              <span>₱{invoice.vatableSales.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-[#555555]">
-              <span>12% VAT:</span>
-              <span>₱{invoice.vatAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-[#555555]">
-              <span>VAT-Exempt Sales:</span>
-              <span>₱{invoice.vatExemptSales.toFixed(2)}</span>
-            </div>
             <div className="flex justify-between font-black text-sm pt-2 border-t border-dashed border-[#111111] text-[#111111]">
               <span>TOTAL DUE:</span>
               <span>₱{invoice.total.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-[#555555] text-[10px] pt-1">
-              <span>Payment Mode:</span>
-              <span className="font-bold uppercase text-[#111111]">{invoice.paymentMethod}</span>
-            </div>
+            {invoice.paymentMethod.startsWith("Split:") ? (
+              <div className="space-y-1 pt-1.5 border-t border-dotted border-[#999999]/50 mt-1">
+                <div className="flex justify-between text-[#555555] text-[10px]">
+                  <span>Payment Mode:</span>
+                  <span className="font-bold uppercase text-[#111111]">SPLIT PAYMENT</span>
+                </div>
+                <div className="space-y-0.5 text-[10px] font-mono">
+                  {invoice.paymentMethod.replace("Split: ", "").split(" + ").map((part, idx) => {
+                    const match = part.match(/^(.*?)\s*\(₱?([0-9.]+)\)$/);
+                    const label = match ? match[1] : part;
+                    const amt = match ? match[2] : "";
+                    return (
+                      <div key={idx} className="flex justify-between text-[#444444]">
+                        <span>&bull; {label}:</span>
+                        <span className="font-bold text-[#111111]">₱{Number(amt || 0).toFixed(2)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between text-[#555555] text-[10px] pt-1">
+                <span>Payment Mode:</span>
+                <span className="font-bold uppercase text-[#111111]">{invoice.paymentMethod}</span>
+              </div>
+            )}
           </div>
 
           {/* Monochromatic Barcode Pattern for Thermal Head Alignment */}

@@ -167,6 +167,8 @@ export interface AdminMetrics {
   paymongoRevenue: number;
   cashRevenue: number;
   totalTransactionsCount: number;
+  posGrossSales?: number;
+  posNetSales?: number;
   posVatableSales?: number;
   posVatAmount?: number;
   posVatExemptSales?: number;
@@ -1092,59 +1094,59 @@ export default function AdminDashboardClient({
         </div>
       </div>
 
-      {/* BIR EOPT Strip (Box Type) */}
+      {/* Retail Sales & Discounts Strip (Non-VAT) */}
       <div className="border border-slate-300 dark:border-white/15 bg-white dark:bg-[#071E4B] shadow-xs">
         <div className="p-3.5 bg-[#0B2A67] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#FFD21C]" />
             <h3 className="text-xs font-black uppercase tracking-wider text-white">
-              Philippine Tax Compliance (BIR EOPT Act RA 11976 / RA 9994 / RA 10754)
+              POS Retail Sales &amp; Discounts Summary
             </h3>
           </div>
           <span className="text-[11px] font-mono font-bold text-white/90">
-            TIN: 432-891-002-00000 • MIN: MIN-260908-CJ01
+            TIN: 432-891-002-00000 &bull; Non-VAT Registered
           </span>
         </div>
 
         <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/50 dark:bg-black/20">
           <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              VATable Net Sales
+              Gross Retail Sales
             </span>
             <div className="text-lg sm:text-xl font-black font-mono text-foreground">
-              ₱{(metrics.posVatableSales || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ₱{(metrics.posGrossSales || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">Subject to 12% standard output VAT</p>
-          </div>
-
-          <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              12% Output VAT
-            </span>
-            <div className="text-lg sm:text-xl font-black font-mono text-foreground">
-              ₱{(metrics.posVatAmount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">Tax liabilities for BIR filing</p>
-          </div>
-
-          <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              VAT-Exempt Sales
-            </span>
-            <div className="text-lg sm:text-xl font-black font-mono text-foreground">
-              ₱{(metrics.posVatExemptSales || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">Senior Citizen &amp; PWD base</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">Pre-discount order subtotal</p>
           </div>
 
           <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
             <span className="text-[10px] font-black uppercase tracking-wider text-[#007d48] dark:text-emerald-400">
-              SC / PWD Discounts
+              Total Discounts Granted
             </span>
             <div className="text-lg sm:text-xl font-black font-mono text-[#007d48] dark:text-emerald-400">
               ₱{(metrics.posDiscounts || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">20% statutory deductions granted</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">Senior, PWD, Student, Staff</p>
+          </div>
+
+          <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Net Retail Revenue
+            </span>
+            <div className="text-lg sm:text-xl font-black font-mono text-foreground">
+              ₱{(metrics.posNetSales || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">Net payments collected</p>
+          </div>
+
+          <div className="p-3 bg-white dark:bg-[#0c1a3b] border border-slate-200 dark:border-white/10 space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Tax Regime
+            </span>
+            <div className="text-lg sm:text-xl font-black font-mono text-foreground">
+              Non-VAT
+            </div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">Zero VAT on retail orders</p>
           </div>
         </div>
       </div>
@@ -2154,11 +2156,23 @@ export default function AdminDashboardClient({
                             </TableCell>
                             <TableCell className="text-xs">
                               <span className="font-bold text-foreground">{tx.customer_name || 'Walk-in'}</span>
-                              {isDiscounted && (
+                              {tx.discount_type === 'senior_citizen' ? (
                                 <span className="inline-block ml-1.5 px-1.5 py-0.5 rounded-none text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/80 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
-                                  {tx.discount_type === 'senior_citizen' ? 'Senior (20%)' : 'PWD (20%)'}
+                                  Senior (20%)
                                 </span>
-                              )}
+                              ) : tx.discount_type === 'pwd' ? (
+                                <span className="inline-block ml-1.5 px-1.5 py-0.5 rounded-none text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950/80 text-[#007d48] dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
+                                  PWD (20%)
+                                </span>
+                              ) : tx.discount_type === 'student' ? (
+                                <span className="inline-block ml-1.5 px-1.5 py-0.5 rounded-none text-[9px] font-black uppercase bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-800">
+                                  Student (-₱10)
+                                </span>
+                              ) : tx.discount_type === 'employee' ? (
+                                <span className="inline-block ml-1.5 px-1.5 py-0.5 rounded-none text-[9px] font-black uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800">
+                                  Employee (10%)
+                                </span>
+                              ) : null}
                             </TableCell>
                             <TableCell className="text-xs">
                               <div className="flex items-center gap-2">
@@ -2180,7 +2194,9 @@ export default function AdminDashboardClient({
                             </TableCell>
                             <TableCell>
                               <span className="px-2 py-0.5 rounded-none text-[10px] font-black uppercase bg-slate-100 dark:bg-white/10 text-foreground border border-slate-300 dark:border-white/20">
-                                {tx.payment_method}
+                                {tx.payment_method?.startsWith('Split:')
+                                  ? 'Split (E-Wallet + Cash)'
+                                  : tx.payment_method}
                               </span>
                             </TableCell>
                             <TableCell className="text-right text-xs font-mono font-medium text-slate-600 dark:text-slate-300">

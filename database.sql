@@ -238,7 +238,7 @@ CREATE TABLE IF NOT EXISTS public.pos_transactions (
   cashier_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   customer_name text,
   customer_tin text,
-  discount_type text DEFAULT 'none' CHECK (discount_type IN ('none', 'senior_citizen', 'pwd', 'special')),
+  discount_type text DEFAULT 'none' CHECK (discount_type IN ('none', 'senior_citizen', 'pwd', 'student', 'employee', 'special')),
   discount_id_number text,
   gross_amount numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (gross_amount >= 0),
   discount_amount numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (discount_amount >= 0),

@@ -27,6 +27,7 @@ import {
   BadgePercent,
   Ban,
   CheckCircle2,
+  ArrowLeftRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PosMasterPinModal } from "@/components/pos/pos-master-pin-modal";
@@ -247,35 +248,39 @@ export function CashierReportsClient({
         </div>
       </div>
 
-      {/* BIR Tax Breakdown */}
+      {/* Sales & Discounts Summary */}
       <div className="border border-[#cacacb] dark:border-[#222226] p-6 bg-[#fafafa] dark:bg-[#18181c] space-y-4">
         <div className="flex items-center justify-between border-b border-[#cacacb] dark:border-[#222226] pb-3">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-[#007d48] dark:text-[#10b981]" />
             <h3 className="text-xs font-bold uppercase tracking-widest text-foreground">
-              Philippine BIR Tax Summary (EOPT RA 11976 / RA 9994 / RA 10754)
+              Sales &amp; Privilege Discounts Summary
             </h3>
           </div>
-          <span className="text-[11px] text-[#707072] dark:text-[#8a8a93]">VAT Reg. TIN: 432-891-002-00000</span>
+          <span className="text-[11px] text-[#707072] dark:text-[#8a8a93]">Non-VAT Registered &bull; C&amp;J Sports Arena</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: 'VATable Sales (Net)', value: totalVatable, note: 'Subject to 12% standard VAT' },
-            { label: '12% Output VAT', value: totalVat, note: 'Collected for remittance' },
-            { label: 'VAT-Exempt Sales', value: totalVatExempt, note: 'Senior Citizen & PWD base' },
-          ].map(({ label, value, note }) => (
-            <div key={label} className="p-4 bg-white dark:bg-[#121215] border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">{label}</span>
-              <div className="text-xl font-bold text-foreground">₱{value.toFixed(2)}</div>
-              <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">{note}</p>
-            </div>
-          ))}
+          <div className="p-4 bg-white dark:bg-[#121215] border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">Gross Order Subtotal</span>
+            <div className="text-xl font-bold text-foreground">₱{(financialSummary.totalGross || 0).toFixed(2)}</div>
+            <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">Pre-discount item total</p>
+          </div>
           <div className="p-4 bg-white dark:bg-[#121215] border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#007d48] dark:text-[#10b981] flex items-center gap-1">
-              <BadgePercent className="w-3 h-3" /> SC/PWD Discounts
+              <BadgePercent className="w-3 h-3" /> Total Discounts Granted
             </span>
             <div className="text-xl font-bold text-[#007d48] dark:text-[#10b981]">₱{totalDiscounts.toFixed(2)}</div>
-            <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">20% statutory deductions</p>
+            <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">Senior, PWD, Student, Staff</p>
+          </div>
+          <div className="p-4 bg-white dark:bg-[#121215] border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">Net Sales Paid</span>
+            <div className="text-xl font-bold text-foreground">₱{totalSales.toFixed(2)}</div>
+            <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">Total collected amount</p>
+          </div>
+          <div className="p-4 bg-white dark:bg-[#121215] border border-[#e5e5e5] dark:border-[#27272a] space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93]">Completed Invoices</span>
+            <div className="text-xl font-bold text-foreground">{totalTransactions}</div>
+            <p className="text-[10px] text-[#707072] dark:text-[#8a8a93]">Active completed orders</p>
           </div>
         </div>
       </div>
@@ -294,7 +299,7 @@ export function CashierReportsClient({
           <Table>
             <TableHeader className="bg-white dark:bg-[#121215] border-b border-[#cacacb] dark:border-[#222226]">
               <TableRow className="border-[#cacacb] dark:border-[#222226]">
-                {['Invoice No', 'Timestamp', 'Tax Class', 'Channel', 'Gross', 'Discount', 'Net Paid', 'Status', 'Action'].map((h) => (
+                {['Invoice No', 'Timestamp', 'Privilege', 'Channel', 'Gross', 'Discount', 'Net Paid', 'Status', 'Action'].map((h) => (
                   <TableHead
                     key={h}
                     className={`text-xs font-bold uppercase tracking-wider text-[#707072] dark:text-[#8a8a93] h-12 ${h === 'Gross' || h === 'Discount' || h === 'Net Paid' ? 'text-right' : ''} ${h === 'Action' ? 'text-right' : ''}`}
@@ -337,22 +342,37 @@ export function CashierReportsClient({
                         {formatDateTime(tx.created_at)}
                       </TableCell>
                       <TableCell className="py-4">
-                        {isDiscounted ? (
+                        {tx.discount_type === "senior_citizen" ? (
                           <span className="inline-block px-2.5 py-0.5 text-[10px] font-bold uppercase bg-[#e8f5e9] dark:bg-emerald-950/50 text-[#007d48] dark:text-emerald-400 border border-[#a5d6a7] dark:border-emerald-800">
-                            {tx.discount_type === "senior_citizen" ? "Senior (20%)" : "PWD (20%)"}
+                            Senior (20%)
+                          </span>
+                        ) : tx.discount_type === "pwd" ? (
+                          <span className="inline-block px-2.5 py-0.5 text-[10px] font-bold uppercase bg-[#e8f5e9] dark:bg-emerald-950/50 text-[#007d48] dark:text-emerald-400 border border-[#a5d6a7] dark:border-emerald-800">
+                            PWD (20%)
+                          </span>
+                        ) : tx.discount_type === "student" ? (
+                          <span className="inline-block px-2.5 py-0.5 text-[10px] font-bold uppercase bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                            Student (-₱10)
+                          </span>
+                        ) : tx.discount_type === "employee" ? (
+                          <span className="inline-block px-2.5 py-0.5 text-[10px] font-bold uppercase bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                            Employee (10%)
                           </span>
                         ) : (
                           <span className="inline-block px-2.5 py-0.5 text-[10px] font-medium bg-[#f5f5f5] dark:bg-[#18181c] text-[#707072] dark:text-[#8a8a93] border border-[#cacacb] dark:border-[#27272a]">
-                            12% VAT
+                            Regular
                           </span>
                         )}
                       </TableCell>
                       <TableCell className="py-4">
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#f5f5f5] dark:bg-[#18181c] text-foreground border border-[#cacacb] dark:border-[#27272a] text-[11px] font-bold uppercase tracking-wider">
                           {tx.payment_method === "Cash" && <Banknote className="h-3 w-3" />}
-                          {tx.payment_method === "Card" && <CreditCard className="h-3 w-3" />}
-                          {tx.payment_method !== "Cash" && tx.payment_method !== "Card" && <QrCode className="h-3 w-3" />}
-                          {tx.payment_method}
+                          {tx.payment_method === "Credit / Debit Card" && <CreditCard className="h-3 w-3" />}
+                          {tx.payment_method?.startsWith("Split") && <ArrowLeftRight className="h-3 w-3 text-indigo-600 dark:text-indigo-400" />}
+                          {!tx.payment_method?.startsWith("Split") && tx.payment_method !== "Cash" && tx.payment_method !== "Credit / Debit Card" && <QrCode className="h-3 w-3" />}
+                          {tx.payment_method?.startsWith("Split:")
+                            ? "Split (E-Wallet + Cash)"
+                            : tx.payment_method}
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-xs text-[#707072] dark:text-[#8a8a93] py-4">

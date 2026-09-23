@@ -244,7 +244,9 @@ export default async function AdminOverviewPage() {
   let paymongoRevenue = 0;
   let cashRevenue = 0;
 
-  // BIR Tax Compliance Accumulators
+  // Sales & Discounts Accumulators
+  let posGrossSales = 0;
+  let posNetSales = 0;
   let posVatableSales = 0;
   let posVatAmount = 0;
   let posVatExemptSales = 0;
@@ -277,23 +279,32 @@ export default async function AdminOverviewPage() {
     }
   }
 
-  // Include only active (non-voided) completed POS shop sales into revenue & tax metrics
+  // Include only active (non-voided) completed POS shop sales into revenue & discount metrics
   for (const tx of posTransactions) {
     if (tx.status === 'voided') continue;
 
     const txDate = new Date(tx.created_at);
     const txAmount = Number(tx.total_amount) || 0;
+    const txGross = Number(tx.gross_amount) || txAmount;
 
     if (txDate >= startOfYear) ytdRevenue += txAmount;
     if (txDate >= startOfThisMonth) thisMonthRevenue += txAmount;
     else if (txDate >= startOfLastMonth && txDate <= endOfLastMonth) lastMonthRevenue += txAmount;
 
-    if (tx.payment_method?.toLowerCase().includes('gcash') || tx.payment_method?.toLowerCase().includes('paymongo')) {
+    const pmLower = tx.payment_method?.toLowerCase() || '';
+    if (pmLower.startsWith('split:')) {
+      const match = tx.payment_method.match(/Cash\s*(?:\d+%)?\s*\(?₱?([0-9.]+)\)?/i);
+      const splitCash = match && match[1] ? Number(match[1]) : txAmount * 0.5;
+      cashRevenue += splitCash;
+      paymongoRevenue += Math.max(0, txAmount - splitCash);
+    } else if (pmLower.includes('gcash') || pmLower.includes('paymongo') || pmLower.includes('card')) {
       paymongoRevenue += txAmount;
     } else {
       cashRevenue += txAmount;
     }
 
+    posGrossSales += txGross;
+    posNetSales += txAmount;
     posVatableSales += Number(tx.vatable_sales || 0);
     posVatAmount += Number(tx.vat_amount || 0);
     posVatExemptSales += Number(tx.vat_exempt_sales || 0);
@@ -390,6 +401,8 @@ export default async function AdminOverviewPage() {
     paymongoRevenue,
     cashRevenue,
     totalTransactionsCount: activeBookings.length + activePosCount,
+    posGrossSales,
+    posNetSales,
     posVatableSales,
     posVatAmount,
     posVatExemptSales,

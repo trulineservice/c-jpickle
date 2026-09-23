@@ -13,6 +13,8 @@ export interface InventoryItemRecord {
   cost_price: number;
   stock_level: number;
   reorder_threshold: number;
+  base_unit: string;
+  volume: number;
   is_active: boolean;
   updated_at: string;
 }
@@ -50,6 +52,8 @@ export default async function CashierInventoryPage() {
       cost_price,
       stock_level,
       reorder_threshold,
+      base_unit,
+      volume,
       is_active,
       updated_at
     `)
@@ -65,6 +69,8 @@ export default async function CashierInventoryPage() {
     cost_price: Number(p.cost_price) || 0,
     stock_level: Number(p.stock_level) || 0,
     reorder_threshold: Number(p.reorder_threshold) || 10,
+    base_unit: p.base_unit || 'pcs',
+    volume: Number(p.volume) || 0,
     is_active: p.is_active !== false,
     updated_at: p.updated_at || new Date().toISOString(),
   }));

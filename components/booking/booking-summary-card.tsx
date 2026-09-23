@@ -106,8 +106,8 @@ export function BookingSummaryCard({
 
   const hourlyRate = selectedCourt.hourly_rate;
   const courtSubtotal = hourlyRate * durationHours;
-  const paddleFee = effectivePaddleCount * 150;
-  const ballThrowerFee = ballThrowerRental ? 150 * durationHours : 0;
+  const paddleFee = effectivePaddleCount * 110;
+  const ballThrowerFee = ballThrowerRental ? 350 * durationHours : 0;
 
   // Format time range display
   const timeSlotDisplay = useMemo(() => {
@@ -194,7 +194,7 @@ export function BookingSummaryCard({
           <div className="flex justify-between py-1.5 border-b border-[#F5F7FA]">
             <span className="text-[#64748B]">Paddle Rentals</span>
             <span className="font-bold text-[#007d48]">
-              {effectivePaddleCount} × ₱150 = ₱{paddleFee.toFixed(2)}
+              {effectivePaddleCount} × ₱110 = ₱{paddleFee.toFixed(2)}
             </span>
           </div>
         )}
@@ -202,7 +202,7 @@ export function BookingSummaryCard({
           <div className="flex justify-between py-1.5 border-b border-[#F5F7FA]">
             <span className="text-[#64748B]">Ball Thrower Machine</span>
             <span className="font-bold text-[#007d48]">
-              {durationHours} hr = ₱{ballThrowerFee.toFixed(2)}
+              {durationHours} hr × ₱350 = ₱{ballThrowerFee.toFixed(2)}
             </span>
           </div>
         )}
@@ -224,7 +224,7 @@ export function BookingSummaryCard({
         >
           <div className="space-y-0.5">
             <span className="font-bold text-xs text-[#0B2A67] block">
-              Paddle Rental (₱150 / paddle)
+              Paddle Rental (₱110 / paddle)
             </span>
             <span className="text-[11px] text-[#64748B] block">
               Quality rental paddles for your match
@@ -275,7 +275,7 @@ export function BookingSummaryCard({
           />
           <div className="space-y-0.5">
             <span className="font-bold text-xs text-[#0B2A67] block">
-              Robotic Ball Thrower (+₱150 / hr)
+              Robotic Ball Thrower (+₱350 / hr)
             </span>
             <span className="text-[11px] text-[#64748B] block leading-relaxed">
               Automated multi-ball launcher with custom topspin/dink drills ({durationHours} hr = ₱
@@ -378,7 +378,7 @@ export function BookingSummaryCard({
             <div className="text-3xl font-black text-[#0B2A67] flex items-center justify-end">
               <AnimatedNumber value={grandTotal} />
             </div>
-            <span className="text-[11px] text-[#64748B] block">All taxes &amp; fees included</span>
+            <span className="text-[11px] text-[#64748B] block">All fees included</span>
           </div>
         </div>
 

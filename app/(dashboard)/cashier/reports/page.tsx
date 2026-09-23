@@ -92,8 +92,17 @@ export default async function CashierReportsPage({
     totalTransactions: activeSummary.length,
     voidedCount: (allForSummary ?? []).length - activeSummary.length,
     cashSales: activeSummary
-      .filter((t) => (t.payment_method ?? '').toLowerCase() === 'cash')
-      .reduce((s, t) => s + Number(t.total_amount || 0), 0),
+      .reduce((s, t) => {
+        const pm = (t.payment_method ?? '').toLowerCase();
+        if (pm === 'cash') return s + Number(t.total_amount || 0);
+        if (pm.startsWith('split:')) {
+          const match = t.payment_method.match(/Cash\s*(?:\d+%)?\s*\(?₱?([0-9.]+)\)?/i);
+          if (match && match[1]) {
+            return s + Number(match[1]);
+          }
+        }
+        return s;
+      }, 0),
   };
 
   // 5. Map rows

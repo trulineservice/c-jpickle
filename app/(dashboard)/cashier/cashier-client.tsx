@@ -25,7 +25,8 @@ import {
   UtensilsCrossed,
   Boxes,
   Sparkles,
-  Filter
+  Filter,
+  Droplets
 } from "lucide-react";
 import { 
   processPosTransaction, 
@@ -59,6 +60,8 @@ export type Product = {
   price: number;
   category: string;
   stock_level?: number;
+  base_unit?: string;
+  volume?: number;
 };
 
 export interface PosRecentTransaction {
@@ -106,6 +109,12 @@ export default function CashierClient({
     setCart,
     paymentMethod,
     setPaymentMethod,
+    splitEwalletPercent,
+    setSplitEwalletPercent,
+    splitEwalletAmount,
+    setSplitEwalletAmount,
+    splitCashAmount,
+    setSplitCashAmount,
     selectedCategory,
     setSelectedCategory,
     searchQuery,
@@ -154,6 +163,10 @@ export default function CashierClient({
     | null
   >(null);
   const [voidFeedbackMsg, setVoidFeedbackMsg] = useState<string | null>(null);
+
+  // Volume Dispensing Modal State for Bar Supplies
+  const [volumeDispenseProduct, setVolumeDispenseProduct] = useState<Product | null>(null);
+  const [selectedDispenseVolume, setSelectedDispenseVolume] = useState<number>(30);
 
   const [selectedDepartment, setSelectedDepartment] = useState<"all" | "coffee" | "drinks" | "food" | "supplies">("all");
 
@@ -207,8 +220,28 @@ export default function CashierClient({
   );
 
   const getQuantityInCart = (productId: string) => {
-    const item = cart.find((i) => i.id === productId);
-    return item ? item.quantity : 0;
+    const items = cart.filter((i) => i.id === productId);
+    return items.reduce((sum, i) => sum + i.quantity, 0);
+  };
+
+  const isVolumeProduct = (product: Product) => {
+    return product.category === 'Bar Supplies' || Boolean(product.volume && product.volume > 0 && product.base_unit && product.base_unit !== 'pcs');
+  };
+
+  const handleProductSelect = (product: Product) => {
+    if (product.stock_level !== undefined && product.stock_level <= 0) {
+      playHapticSound("error");
+      return;
+    }
+
+    if (isVolumeProduct(product)) {
+      const defaultVol = product.base_unit === 'g' ? 20 : 30;
+      setSelectedDispenseVolume(defaultVol);
+      setVolumeDispenseProduct(product);
+      return;
+    }
+
+    addToCart(product);
   };
 
   const addToCart = (product: Product) => {
@@ -218,6 +251,37 @@ export default function CashierClient({
       return;
     }
     playHapticSound("scan");
+  };
+
+  const handleConfirmVolumeDispense = () => {
+    if (!volumeDispenseProduct || selectedDispenseVolume <= 0) return;
+
+    const baseUnit = volumeDispenseProduct.base_unit || 'mL';
+    const containerVolume = volumeDispenseProduct.volume || 1;
+
+    let portionPrice = 0;
+    if (volumeDispenseProduct.price > 0) {
+      portionPrice = Math.round(((selectedDispenseVolume / containerVolume) * volumeDispenseProduct.price) * 100) / 100;
+    }
+
+    const success = storeAddToCart({
+      id: volumeDispenseProduct.id,
+      name: volumeDispenseProduct.name,
+      price: portionPrice,
+      category: volumeDispenseProduct.category,
+      sku: volumeDispenseProduct.sku,
+      stock_level: volumeDispenseProduct.stock_level,
+      dispensed_volume: selectedDispenseVolume,
+      base_unit: baseUnit,
+    });
+
+    if (!success) {
+      playHapticSound("error");
+      return;
+    }
+
+    playHapticSound("scan");
+    setVolumeDispenseProduct(null);
   };
 
   // Quantity updates (item removal from active draft cart requires NO pin)
@@ -324,7 +388,52 @@ export default function CashierClient({
 
     try {
       const rawGross = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-      const result = await processPosTransaction(cart, rawGross, paymentMethod, {
+
+      // Compute net payable to calculate exact split amounts
+      let discountAmount = 0;
+      if (discountType === "senior_citizen" || discountType === "pwd") {
+        discountAmount = Math.round((rawGross * 0.20) * 100) / 100;
+      } else if (discountType === "student") {
+        discountAmount = rawGross > 0 ? Math.min(10, rawGross) : 0;
+      } else if (discountType === "employee") {
+        discountAmount = Math.round((rawGross * 0.10) * 100) / 100;
+      }
+      const netPayable = Math.max(0, Math.round((rawGross - discountAmount) * 100) / 100);
+
+      let finalPaymentMethod = paymentMethod;
+      if (paymentMethod === "Split Payment") {
+        const hasEwalletInput = splitEwalletAmount.trim() !== "";
+        const hasCashInput = splitCashAmount.trim() !== "";
+        let ewalletAmt = 0;
+        let cashAmt = 0;
+
+        if (hasEwalletInput && hasCashInput) {
+          ewalletAmt = parseFloat(splitEwalletAmount) || 0;
+          cashAmt = parseFloat(splitCashAmount) || 0;
+        } else if (hasEwalletInput) {
+          ewalletAmt = parseFloat(splitEwalletAmount) || 0;
+          cashAmt = Math.max(0, Math.round((netPayable - ewalletAmt) * 100) / 100);
+        } else if (hasCashInput) {
+          cashAmt = parseFloat(splitCashAmount) || 0;
+          ewalletAmt = Math.max(0, Math.round((netPayable - cashAmt) * 100) / 100);
+        } else {
+          ewalletAmt = Math.round((netPayable / 2) * 100) / 100;
+          cashAmt = Math.max(0, Math.round((netPayable - ewalletAmt) * 100) / 100);
+        }
+
+        const splitSum = Math.round((ewalletAmt + cashAmt) * 100) / 100;
+        if (Math.abs(splitSum - netPayable) > 0.01) {
+          setComplianceError(
+            `Split payment total (₱${splitSum.toFixed(2)}) must equal net payable (₱${netPayable.toFixed(2)}).`
+          );
+          setIsProcessing(false);
+          return;
+        }
+
+        finalPaymentMethod = `Split: E-Wallet (₱${ewalletAmt.toFixed(2)}) + Cash (₱${cashAmt.toFixed(2)})`;
+      }
+
+      const result = await processPosTransaction(cart, rawGross, finalPaymentMethod, {
         customerName: customerName.trim() || undefined,
         customerTin: customerTin.trim() || undefined,
         discountType,
@@ -828,7 +937,7 @@ export default function CashierClient({
                             return (
                               <TableRow
                                 key={prod.id}
-                                onClick={() => !isOutOfStock && addToCart(prod)}
+                                onClick={() => !isOutOfStock && handleProductSelect(prod)}
                                 className={`border-b border-[#e5e5e5]/60 dark:border-[#222226] hover:bg-[#EDF4FC]/70 dark:hover:bg-[#15233e]/50 transition-colors cursor-pointer select-none ${
                                   inCartQty > 0 ? "bg-[#EDF4FC] dark:bg-[#15233e]/80 border-l-4 border-l-[#0B2A67] dark:border-l-[#FFD21C]" : ""
                                 }`}
@@ -867,11 +976,13 @@ export default function CashierClient({
                                       </span>
                                     ) : isLowStock ? (
                                       <span className="inline-flex items-center text-[11px] font-black text-[#bf050b] bg-amber-50 dark:bg-amber-950/60 border border-amber-300 px-2 py-0.5 rounded-full">
-                                        Low ({prod.stock_level})
+                                        Low ({isVolumeProduct(prod) ? `${Math.round(prod.stock_level * (prod.volume || 1)).toLocaleString()} ${prod.base_unit || 'mL'}` : prod.stock_level})
                                       </span>
                                     ) : (
                                       <span className="inline-flex items-center text-[11px] font-bold text-[#007d48] dark:text-[#10b981]">
-                                        {prod.stock_level} in stock
+                                        {isVolumeProduct(prod)
+                                          ? `${Math.round(prod.stock_level * (prod.volume || 1)).toLocaleString()} ${prod.base_unit || 'mL'} in stock`
+                                          : `${prod.stock_level} in stock`}
                                       </span>
                                     )
                                   ) : (
@@ -898,7 +1009,7 @@ export default function CashierClient({
                                       disabled={isOutOfStock}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        addToCart(prod);
+                                        handleProductSelect(prod);
                                       }}
                                       className={`h-7 px-3 text-xs font-black rounded-full cursor-pointer transition-all active:scale-[0.98] ${
                                         inCartQty > 0
@@ -907,7 +1018,7 @@ export default function CashierClient({
                                       }`}
                                     >
                                       <Plus className="w-3 h-3 mr-1 text-[#FFD21C]" />
-                                      Add
+                                      {isVolumeProduct(prod) ? `Add (${prod.base_unit || 'mL'})` : "Add"}
                                     </Button>
                                   </div>
                                 </TableCell>
@@ -933,7 +1044,7 @@ export default function CashierClient({
                     key={prod.id}
                     type="button"
                     disabled={isOutOfStock}
-                    onClick={() => addToCart(prod)}
+                    onClick={() => handleProductSelect(prod)}
                     className={`group border rounded-2xl p-4 text-left transition-all flex flex-col justify-between h-44 cursor-pointer active:scale-[0.98] ${
                       inCartQty > 0
                         ? "border-2 border-[#0B2A67] dark:border-[#FFD21C] bg-[#EDF4FC] dark:bg-[#15233e] shadow-sm"
@@ -962,7 +1073,9 @@ export default function CashierClient({
                                 : "text-[#bf050b]"
                             }`}
                           >
-                            {prod.stock_level} in stock
+                            {isVolumeProduct(prod)
+                              ? `${Math.round(prod.stock_level * (prod.volume || 1)).toLocaleString()} ${prod.base_unit || 'mL'}`
+                              : `${prod.stock_level} in stock`}
                           </span>
                         )}
                       </div>
@@ -999,7 +1112,11 @@ export default function CashierClient({
             </div>
           )}
 
-          {/* Compliance Discount Panel */}
+        </div>
+
+        {/* Right Column: Discounts, POS Cart & Checkout Panel */}
+        <div className="lg:col-span-4 sticky top-6 space-y-4">
+          {/* Order Discounts & Privileges Panel */}
           <ComplianceDiscountPanel
             discountType={discountType}
             onDiscountTypeChange={setDiscountType}
@@ -1011,10 +1128,7 @@ export default function CashierClient({
             onDiscountIdNumberChange={setDiscountIdNumber}
             complianceError={complianceError}
           />
-        </div>
 
-        {/* Right Column: POS Cart & Checkout Panel */}
-        <div className="lg:col-span-4 sticky top-6">
           <PosCartPanel
             cart={cart}
             onUpdateQuantity={updateQuantity}
@@ -1023,6 +1137,12 @@ export default function CashierClient({
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
             discountType={discountType}
+            splitEwalletPercent={splitEwalletPercent}
+            onSplitEwalletPercentChange={setSplitEwalletPercent}
+            splitEwalletAmount={splitEwalletAmount}
+            onSplitEwalletAmountChange={setSplitEwalletAmount}
+            splitCashAmount={splitCashAmount}
+            onSplitCashAmountChange={setSplitCashAmount}
             isProcessing={isProcessing}
             onCheckout={handleCheckout}
           />
@@ -1302,6 +1422,152 @@ export default function CashierClient({
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Volume Dispense Modal for Bar Supplies */}
+      {volumeDispenseProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md bg-white dark:bg-[#071E4B] border border-slate-300 dark:border-white/20 text-foreground rounded-none p-6 sm:p-7 shadow-2xl animate-in zoom-in-95 duration-150">
+            <button
+              type="button"
+              onClick={() => setVolumeDispenseProduct(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-none text-slate-500 hover:text-foreground hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="space-y-1 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-9 h-9 rounded-none bg-[#EDF4FC] dark:bg-white/10 text-[#0B2A67] dark:text-[#FFD21C] border border-[#0B2A67]/20 flex items-center justify-center">
+                  <Droplets className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="px-2 py-0.5 rounded-none bg-[#EDF4FC] dark:bg-[#0c1a3b] text-[#0B2A67] dark:text-[#FFD21C] border border-[#0B2A67]/20 text-[10px] font-black uppercase tracking-wider">
+                    {volumeDispenseProduct.category} • DISPENSE
+                  </span>
+                </div>
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-tight text-[#0B2A67] dark:text-[#FFD21C]">
+                {volumeDispenseProduct.name}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                SKU: <span className="font-mono font-black text-foreground">{volumeDispenseProduct.sku || 'N/A'}</span>
+              </p>
+            </div>
+
+            {/* Current Stock Volume Ribbon */}
+            <div className="p-3 mb-4 rounded-none bg-blue-50/70 dark:bg-white/5 border border-[#0B2A67]/20 dark:border-[#FFD21C]/25 flex items-center justify-between text-xs">
+              <span className="text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px]">
+                Available In Stock:
+              </span>
+              <span className="font-mono font-black text-sm text-[#0B2A67] dark:text-[#FFD21C]">
+                {Math.round((volumeDispenseProduct.stock_level ?? 0) * (volumeDispenseProduct.volume || 1)).toLocaleString('en-US')}{' '}
+                {volumeDispenseProduct.base_unit || 'mL'}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {/* Quick Preset Buttons */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-black uppercase tracking-wider text-foreground">
+                  Select Dispense Volume ({volumeDispenseProduct.base_unit || 'mL'})
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(volumeDispenseProduct.base_unit === 'g'
+                    ? [10, 20, 30, 50, 100, volumeDispenseProduct.volume || 1000]
+                    : [15, 30, 45, 60, 100, volumeDispenseProduct.volume || 300]
+                  ).map((preset) => {
+                    const isSelected = selectedDispenseVolume === preset;
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setSelectedDispenseVolume(preset)}
+                        className={`h-10 text-xs font-mono font-black rounded-none border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#0B2A67] text-white border-[#0B2A67] dark:bg-[#FFD21C] dark:text-[#0B2A67] dark:border-[#FFD21C] shadow-xs'
+                            : 'bg-white dark:bg-black text-foreground border-slate-300 dark:border-white/20 hover:border-[#0B2A67]'
+                        }`}
+                      >
+                        {preset.toLocaleString('en-US')} {volumeDispenseProduct.base_unit || 'mL'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Input */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-black uppercase tracking-wider text-foreground">
+                  Or Enter Custom Amount ({volumeDispenseProduct.base_unit || 'mL'})
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={Math.round((volumeDispenseProduct.stock_level ?? 0) * (volumeDispenseProduct.volume || 1))}
+                    value={selectedDispenseVolume}
+                    onChange={(e) => setSelectedDispenseVolume(Math.max(1, parseFloat(e.target.value) || 0))}
+                    className="h-11 font-mono text-base font-black text-center bg-white dark:bg-black rounded-none border-slate-300 dark:border-white/20 focus:border-[#0B2A67] dark:focus:border-[#FFD21C]"
+                  />
+                  <span className="absolute right-3 top-3 text-xs font-mono font-bold text-slate-400 pointer-events-none">
+                    {volumeDispenseProduct.base_unit || 'mL'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Real-time Price & Stock Deduct Preview */}
+              <div className="p-3.5 rounded-none bg-[#EDF4FC]/60 dark:bg-white/5 border border-[#0B2A67]/20 dark:border-white/10 space-y-1 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600 dark:text-slate-300 font-medium">Item Charge:</span>
+                  <span className="font-mono font-black text-foreground">
+                    {volumeDispenseProduct.price > 0 ? (
+                      <>
+                        ₱{(Math.round(((selectedDispenseVolume / (volumeDispenseProduct.volume || 1)) * volumeDispenseProduct.price) * 100) / 100).toFixed(2)}
+                      </>
+                    ) : (
+                      <span className="text-[#007d48] dark:text-emerald-400">₱0.00 (Bar Supply)</span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                  <span>Stock Remaining After Order:</span>
+                  <span className="font-mono font-bold">
+                    {Math.max(
+                      0,
+                      Math.round((volumeDispenseProduct.stock_level ?? 0) * (volumeDispenseProduct.volume || 1)) - selectedDispenseVolume
+                    ).toLocaleString('en-US')}{' '}
+                    {volumeDispenseProduct.base_unit || 'mL'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setVolumeDispenseProduct(null)}
+                  className="flex-1 h-10 text-xs rounded-none border border-slate-300 dark:border-white/20 font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmVolumeDispense}
+                  disabled={
+                    selectedDispenseVolume <= 0 ||
+                    selectedDispenseVolume > Math.round((volumeDispenseProduct.stock_level ?? 0) * (volumeDispenseProduct.volume || 1))
+                  }
+                  className="flex-1 h-10 text-xs bg-[#0B2A67] hover:bg-[#081F4D] dark:bg-[#FFD21C] dark:hover:bg-[#E5BC19] text-white dark:text-[#0B2A67] rounded-none font-black uppercase tracking-wider cursor-pointer shadow-xs"
+                >
+                  Add {selectedDispenseVolume} {volumeDispenseProduct.base_unit || 'mL'} to Cart
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

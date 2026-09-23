@@ -36,7 +36,7 @@ const DEFAULT_COURTS: Court[] = [
     id: '80d4920a-34d9-47f3-8f1b-4627f5b289de',
     name: 'Court 1 — Indoor (Pro Cushion)',
     type: 'indoor',
-    hourly_rate: 300,
+    hourly_rate: 350,
     is_active: true,
     created_at: new Date().toISOString(),
   },
@@ -44,7 +44,7 @@ const DEFAULT_COURTS: Court[] = [
     id: '052becb1-e01d-4cd9-88ae-3d6e419259fd',
     name: 'Court 2 — Indoor (Pickleball / Basketball)',
     type: 'indoor',
-    hourly_rate: 300,
+    hourly_rate: 350,
     is_active: true,
     created_at: new Date().toISOString(),
   },
@@ -291,10 +291,10 @@ export default function BookPage() {
     return { almostFull: almostFullDates, fullyBooked: fullyBookedDates };
   }, [monthOverview]);
 
-  const hourlyRate = selectedCourt?.hourly_rate ?? 300;
+  const hourlyRate = selectedCourt?.hourly_rate ?? 350;
   const courtSubtotal = hourlyRate * durationHours;
-  const paddleFee = paddleCount * 150;
-  const ballThrowerFee = ballThrowerRental ? 150 * durationHours : 0;
+  const paddleFee = paddleCount * 110;
+  const ballThrowerFee = ballThrowerRental ? 350 * durationHours : 0;
   const grandTotal = courtSubtotal + paddleFee + ballThrowerFee;
 
   const filteredSlots = useMemo(() => {
@@ -453,7 +453,7 @@ export default function BookPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-bold text-[#64748B]">
-          <span className="text-[#0B2A67] font-extrabold">₱300 / hr Flat Rate</span>
+          <span className="text-[#0B2A67] font-extrabold">₱350 / hr Flat Rate</span>
           <span>•</span>
           <span>PayMongo Instant Lock</span>
           <span>•</span>

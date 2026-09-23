@@ -25,7 +25,7 @@ export default async function PricingPage() {
     {
       name: "Hourly Court Reservation",
       badge: "Fixed Flat Rate",
-      price: "₱300",
+      price: "₱350",
       period: "/ hour",
       description: "Standard hourly slot on Court 1 (Pickleball) or Court 2 (Pickleball / Basketball). Zero surge fees.",
       features: [
@@ -35,14 +35,14 @@ export default async function PricingPage() {
         "Secure PayMongo checkout (GCash, Maya, Cards)",
         "2-day refundable cancellation & reschedule policy"
       ],
-      cta: "Book Court — ₱300/hr",
+      cta: "Book Court — ₱350/hr",
       href: "/book",
       highlighted: true,
     },
     {
       name: "Paddle Rental Add-On",
       badge: "Equipment Rental",
-      price: "₱150",
+      price: "₱110",
       period: "/ session",
       description: "Paddle rental available for your match session.",
       features: [
@@ -58,7 +58,7 @@ export default async function PricingPage() {
     {
       name: "Multi-Hour Group Booking",
       badge: "Extended Play",
-      price: "₱300",
+      price: "₱350",
       period: "/ hr / court",
       description: "Contiguous multi-hour reservations for groups, squad games, and practice sessions.",
       features: [
@@ -83,7 +83,7 @@ export default async function PricingPage() {
     },
     {
       q: "Do I need to bring my own paddles and balls?",
-      a: "You may bring your own equipment or rent paddles for ₱150 during online booking or at the front counter."
+      a: "You may bring your own equipment or rent paddles for ₱110 during online booking or at the front counter."
     },
     {
       q: "Can I book contiguous multi-hour slots?",

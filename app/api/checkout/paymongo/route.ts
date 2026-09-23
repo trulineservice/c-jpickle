@@ -161,11 +161,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Calculate Total Price purely server-side (court rate * duration + paddle count * 150 + ball thrower rental)
+    // 4. Calculate Total Price purely server-side (court rate * duration + paddle count * 110 + ball thrower rental * 350)
     const hourlyRate = court.hourly_rate !== undefined && court.hourly_rate !== null ? Number(court.hourly_rate) : 1;
     const courtPrice = hourlyRate * duration;
-    const paddlePrice = clampedPaddleCount * 150;
-    const ballThrowerPrice = ballThrowerRental ? 150 * duration : 0;
+    const paddlePrice = clampedPaddleCount * 110;
+    const ballThrowerPrice = ballThrowerRental ? 350 * duration : 0;
     const totalPrice = courtPrice + paddlePrice + ballThrowerPrice;
 
     // Compose rental notes
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
       rentalNotes.push(`${clampedPaddleCount}x Pro Carbon Paddle Rental (+₱${paddlePrice})`);
     }
     if (ballThrowerRental) {
-      rentalNotes.push(`Smart Ball Thrower Machine (${duration}hr @ ₱150/hr = +₱${ballThrowerPrice})`);
+      rentalNotes.push(`Smart Ball Thrower Machine (${duration}hr @ ₱350/hr = +₱${ballThrowerPrice})`);
     }
     const notesSummary = rentalNotes.length > 0 ? rentalNotes.join(' • ') : null;
 

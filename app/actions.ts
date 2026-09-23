@@ -793,7 +793,7 @@ export async function createWalkInBooking(formData: FormData): Promise<void> {
 export interface PosCompliancePayload {
   customerName?: string;
   customerTin?: string;
-  discountType?: 'none' | 'senior_citizen' | 'pwd' | 'special';
+  discountType?: 'none' | 'senior_citizen' | 'pwd' | 'student' | 'employee' | 'special';
   discountIdNumber?: string;
 }
 
@@ -824,11 +824,17 @@ export interface PosCheckoutResult {
 
 /**
  * Process POS Item Sale (Equipment, Pro Paddles, Beverages).
- * Validates prices from pos_products server-side, applies BIR statutory discounts,
- * records VAT breakdown, and decrements stock levels.
+ * Validates prices from pos_products server-side, applies customer discounts,
+ * and decrements stock levels.
  */
 export async function processPosTransaction(
-  cart: { id: string; price?: number; quantity: number }[],
+  cart: {
+    id: string;
+    price?: number;
+    quantity: number;
+    dispensed_volume?: number;
+    base_unit?: string;
+  }[],
   _clientTotal: number,
   paymentMethod: string,
   compliance?: PosCompliancePayload
@@ -848,7 +854,7 @@ export async function processPosTransaction(
   const productIds = cart.map((item) => item.id);
   const { data: dbProducts, error: prodError } = await supabase
     .from('pos_products')
-    .select('id, name, price, stock_level')
+    .select('id, name, price, stock_level, volume, base_unit')
     .in('id', productIds);
 
   if (prodError || !dbProducts) {
@@ -856,12 +862,28 @@ export async function processPosTransaction(
     throw new Error('Failed to verify product prices from inventory.');
   }
 
-  const productMap = new Map<string, { id: string; name: string; price: number; stock_level: number }>(
-    dbProducts.map((p) => [p.id, { ...p, price: Number(p.price), stock_level: Number(p.stock_level ?? 0) }])
+  const productMap = new Map<string, { id: string; name: string; price: number; stock_level: number; volume: number; base_unit: string }>(
+    dbProducts.map((p) => [
+      p.id,
+      {
+        ...p,
+        price: Number(p.price),
+        stock_level: Number(p.stock_level ?? 0),
+        volume: Number(p.volume ?? 0),
+        base_unit: p.base_unit || 'pcs',
+      },
+    ])
   );
 
   let verifiedGross = 0;
-  const lineItems: { transaction_id?: string; product_id: string; quantity: number; price_at_time: number }[] = [];
+  const lineItems: {
+    transaction_id?: string;
+    product_id: string;
+    quantity: number;
+    price_at_time: number;
+    dispensed_volume?: number;
+    volume_unit?: string;
+  }[] = [];
   const receiptItems: PosCheckoutResult['items'] = [];
 
   for (const item of cart) {
@@ -870,7 +892,18 @@ export async function processPosTransaction(
       throw new Error(`Product not found in inventory: ${item.id}`);
     }
     const itemQuantity = Math.max(1, item.quantity);
-    const itemPrice = dbProduct.price;
+    
+    // Price calculation: if volume portion is dispensed and container has a price
+    let itemPrice = dbProduct.price;
+    if (item.dispensed_volume && item.dispensed_volume > 0 && dbProduct.volume > 0) {
+      if (dbProduct.price > 0) {
+        // Proportional portion price, rounded to 2 decimals
+        itemPrice = item.price !== undefined ? item.price : Math.round(((item.dispensed_volume / dbProduct.volume) * dbProduct.price) * 100) / 100;
+      } else {
+        itemPrice = 0;
+      }
+    }
+
     const subtotal = itemPrice * itemQuantity;
     verifiedGross += subtotal;
 
@@ -878,43 +911,40 @@ export async function processPosTransaction(
       product_id: dbProduct.id,
       quantity: itemQuantity,
       price_at_time: itemPrice,
+      dispensed_volume: item.dispensed_volume || 0,
+      volume_unit: item.base_unit || dbProduct.base_unit || 'pcs',
     });
+
+    const displayName = item.dispensed_volume && item.dispensed_volume > 0
+      ? `${dbProduct.name} (${item.dispensed_volume.toLocaleString('en-US')} ${item.base_unit || dbProduct.base_unit})`
+      : dbProduct.name;
 
     receiptItems.push({
       productId: dbProduct.id,
-      name: dbProduct.name,
+      name: displayName,
       quantity: itemQuantity,
       price: itemPrice,
       subtotal,
     });
   }
 
-  // BIR EOPT & Statutory Compliance Calculations (RA 9994 / RA 10754)
+  // Customer Privilege & Statutory Discount Calculations (Tax removed)
   const discountType = compliance?.discountType || 'none';
-  const isStatutoryDiscount = discountType === 'senior_citizen' || discountType === 'pwd';
 
-  let vatableSales = 0;
-  let vatAmount = 0;
-  let vatExemptSales = 0;
   let discountAmount = 0;
-  let finalTotal = verifiedGross;
 
-  if (isStatutoryDiscount) {
-    // 12% VAT Exemption Base
-    vatExemptSales = Math.round((verifiedGross / 1.12) * 100) / 100;
-    // 20% Statutory Discount on Net Base
-    discountAmount = Math.round((vatExemptSales * 0.20) * 100) / 100;
-    // Final Net Payable
-    finalTotal = Math.round((vatExemptSales - discountAmount) * 100) / 100;
-    vatableSales = 0;
-    vatAmount = 0;
-  } else {
-    vatableSales = Math.round((verifiedGross / 1.12) * 100) / 100;
-    vatAmount = Math.round((verifiedGross - vatableSales) * 100) / 100;
-    vatExemptSales = 0;
-    discountAmount = 0;
-    finalTotal = verifiedGross;
+  if (discountType === 'senior_citizen' || discountType === 'pwd') {
+    // 20% statutory discount applied directly to gross
+    discountAmount = Math.round((verifiedGross * 0.20) * 100) / 100;
+  } else if (discountType === 'student') {
+    // Always flat 10 pesos off total order (capped at verifiedGross)
+    discountAmount = verifiedGross > 0 ? Math.min(10, verifiedGross) : 0;
+  } else if (discountType === 'employee') {
+    // 10% employee discount applied directly to gross
+    discountAmount = Math.round((verifiedGross * 0.10) * 100) / 100;
   }
+
+  const finalTotal = Math.max(0, Math.round((verifiedGross - discountAmount) * 100) / 100);
 
   // Generate Official Sequential Sales Invoice (SI) Number
   let invoiceNumber = '';
@@ -935,7 +965,7 @@ export async function processPosTransaction(
     invoiceNumber = `SI-${dateStr}-${Math.floor(10000 + Math.random() * 90000)}`;
   }
 
-  // 2. Insert master transaction with trusted server-side total and tax fields
+  // 2. Insert master transaction with trusted server-side total and zeroed tax fields
   const { data: transaction, error: txError } = await supabase
     .from('pos_transactions')
     .insert({
@@ -947,9 +977,9 @@ export async function processPosTransaction(
       discount_id_number: compliance?.discountIdNumber?.trim() || null,
       gross_amount: verifiedGross,
       discount_amount: discountAmount,
-      vatable_sales: vatableSales,
-      vat_amount: vatAmount,
-      vat_exempt_sales: vatExemptSales,
+      vatable_sales: 0,
+      vat_amount: 0,
+      vat_exempt_sales: 0,
       zero_rated_sales: 0,
       total_amount: finalTotal,
       payment_method: paymentMethod,
@@ -975,11 +1005,25 @@ export async function processPosTransaction(
     throw new Error('Failed to record transaction items.');
   }
 
-  // 4. Update inventory stock levels
+  // 4. Update inventory stock levels (volume-aware deduction)
   for (const item of cart) {
     const dbProduct = productMap.get(item.id);
     if (dbProduct) {
-      const newStock = Math.max(0, dbProduct.stock_level - item.quantity);
+      const isVolume = Boolean(dbProduct.volume > 0 && dbProduct.base_unit !== 'pcs' && item.dispensed_volume && item.dispensed_volume > 0);
+      let newStock = 0;
+
+      if (isVolume) {
+        const totalDeductVolume = Number(item.dispensed_volume) * item.quantity;
+        const currentTotalVolume = Math.round(dbProduct.stock_level * dbProduct.volume);
+        const nextTotalVolume = Math.max(0, currentTotalVolume - totalDeductVolume);
+        newStock = nextTotalVolume / dbProduct.volume;
+        // Update local map so multiple items of the same product deduct consecutively
+        dbProduct.stock_level = newStock;
+      } else {
+        newStock = Math.max(0, dbProduct.stock_level - item.quantity);
+        dbProduct.stock_level = newStock;
+      }
+
       await supabase
         .from('pos_products')
         .update({ stock_level: newStock })
@@ -988,6 +1032,7 @@ export async function processPosTransaction(
   }
 
   revalidatePath('/cashier');
+  revalidatePath('/cashier/inventory');
   revalidatePath('/cashier/reports');
   revalidatePath('/admin');
   revalidatePath('/cashier/expenses');
@@ -1001,9 +1046,9 @@ export async function processPosTransaction(
     discountIdNumber: compliance?.discountIdNumber?.trim() || undefined,
     grossAmount: verifiedGross,
     discountAmount,
-    vatableSales,
-    vatAmount,
-    vatExemptSales,
+    vatableSales: 0,
+    vatAmount: 0,
+    vatExemptSales: 0,
     zeroRatedSales: 0,
     total: finalTotal,
     paymentMethod,
@@ -1795,6 +1840,8 @@ export interface UpdateInventoryItemParams {
   price?: number;
   stockLevel?: number;
   reorderThreshold?: number;
+  baseUnit?: string;
+  volume?: number;
   isActive?: boolean;
 }
 
@@ -1846,6 +1893,17 @@ export async function updateInventoryItem(params: UpdateInventoryItemParams): Pr
       const r = Number(params.reorderThreshold);
       if (isNaN(r) || r < 0) return { success: false, error: 'Threshold must be >= 0.' };
       updatePayload.reorder_threshold = r;
+    }
+
+    if (params.baseUnit !== undefined) {
+      updatePayload.base_unit = params.baseUnit.trim() || 'pcs';
+    }
+
+    if (params.volume !== undefined) {
+      const v = Number(params.volume);
+      if (!isNaN(v) && v >= 0) {
+        updatePayload.volume = v;
+      }
     }
 
     if (params.isActive !== undefined) {

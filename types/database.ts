@@ -118,8 +118,12 @@ export interface PosProduct {
   category_id?: string | null;
   name: string;
   price: number;
+  cost_price?: number;
   category: string;
   stock_level: number;
+  reorder_threshold?: number;
+  base_unit?: string;
+  volume?: number;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -176,7 +180,7 @@ export interface PosTransaction {
   cashier_id: string | null;
   customer_name?: string | null;
   customer_tin?: string | null;
-  discount_type?: 'none' | 'senior_citizen' | 'pwd' | 'special' | string | null;
+  discount_type?: 'none' | 'senior_citizen' | 'pwd' | 'student' | 'employee' | 'special' | string | null;
   discount_id_number?: string | null;
   gross_amount?: number;
   discount_amount?: number;
@@ -198,6 +202,8 @@ export interface PosTransactionItem {
   product_id: string;
   quantity: number;
   price_at_time: number;
+  dispensed_volume?: number;
+  volume_unit?: string;
   pos_products?: PosProduct;
 }
 
