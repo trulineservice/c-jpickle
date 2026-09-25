@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import { createClient } from '@/utils/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
-import { pushBookingToGoogleCalendar, testGoogleCalendarConnection, normalizePrivateKey } from '@/lib/google-calendar-sync-engine';
+import { pushBookingToGoogleCalendar, deleteGoogleCalendarEvent, testGoogleCalendarConnection, normalizePrivateKey } from '@/lib/google-calendar-sync-engine';
 
 /**
  * ============================================================================
@@ -144,29 +144,31 @@ export async function signup(formData: FormData) {
     return redirect(redirectUrl);
   }
 
-  // If user signed up and email is auto-confirmed, sign in immediately so account is active and credited
-  if (data?.user && !data.session) {
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  // Ensure session is cleared so user must explicitly sign in with their new credentials (except Google OAuth)
+  await supabase.auth.signOut();
 
-    if (!signInError && signInData?.user) {
-      await redirectBasedOnRole(signInData.user.id, next);
-      return redirect(destination);
-    }
-
+  // If email confirmation is required and user is unconfirmed, show verification sent screen
+  if (
+    data?.user &&
+    !data.session &&
+    data.user.identities &&
+    data.user.identities.length > 0 &&
+    !data.user.confirmed_at &&
+    !data.user.email_confirmed_at
+  ) {
     const redirectUrl = next
       ? `/signup?verification_sent=true&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`
       : `/signup?verification_sent=true&email=${encodeURIComponent(email)}`;
     return redirect(redirectUrl);
   }
 
-  if (data?.user) {
-    await redirectBasedOnRole(data.user.id, next);
-  }
+  // Redirect to login page requiring manual sign in
+  const successMsg = 'Account created successfully! Please sign in with your email and password.';
+  const loginUrl = next
+    ? `/login?message=${encodeURIComponent(successMsg)}&type=success&email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}`
+    : `/login?message=${encodeURIComponent(successMsg)}&type=success&email=${encodeURIComponent(email)}`;
 
-  redirect(destination);
+  return redirect(loginUrl);
 }
 
 /**
@@ -178,6 +180,48 @@ export async function logout() {
 
   revalidatePath('/', 'layout');
   redirect('/login');
+}
+
+/**
+ * Initiate Google OAuth / OpenID Connect sign-in.
+ * Works for both sign-in and sign-up — Supabase creates the account automatically on first login.
+ */
+export async function signInWithGoogle(formData: FormData) {
+  const supabase = await createClient();
+  const next = (formData.get('next') as string | null) ?? '/dashboard';
+
+  // Build app base URL dynamically so it works on localhost and Vercel
+  let appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://c-j-pickleball.vercel.app').replace(/\/$/, '');
+  try {
+    const headersList = await headers();
+    const host = headersList.get('x-forwarded-host') || headersList.get('host');
+    const proto = headersList.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
+    if (host) appUrl = `${proto}://${host}`;
+  } catch {
+    // Fallback to env var
+  }
+
+  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(next)}`;
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  });
+
+  if (error) {
+    console.error('[Auth Error - Google OAuth]:', error.message);
+    redirect(`/login?message=${encodeURIComponent('Google sign-in failed. Please try again.')}`);
+  }
+
+  if (data.url) {
+    redirect(data.url);
+  }
 }
 
 // ============================================================================
@@ -261,6 +305,13 @@ export async function cancelBooking(bookingId: string): Promise<{
   if (updateError) {
     console.error('[Cancel Booking Error]:', updateError);
     return { error: 'Failed to update booking cancellation status.' };
+  }
+
+  // Real-time Google Calendar deletion sync
+  try {
+    await deleteGoogleCalendarEvent(booking.id);
+  } catch (gErr) {
+    console.warn('[Cancel Booking] Google Calendar sync warning:', gErr);
   }
 
   revalidatePath('/dashboard');
@@ -372,6 +423,13 @@ export async function requestBookingRefund({
   if (updateError) {
     console.error('[Refund Request Error]:', updateError);
     return { error: 'Failed to record refund request. Please try again.' };
+  }
+
+  // Real-time Google Calendar deletion sync
+  try {
+    await deleteGoogleCalendarEvent(booking.id);
+  } catch (gErr) {
+    console.warn('[Refund Request] Google Calendar sync warning:', gErr);
   }
 
   revalidatePath('/dashboard');
@@ -545,6 +603,13 @@ export async function rescheduleBooking({
     return { error: 'Failed to reschedule booking. Please try again or select another time.' };
   }
 
+  // Real-time Google Calendar update sync
+  try {
+    await pushBookingToGoogleCalendar(booking.id);
+  } catch (gErr) {
+    console.warn('[Reschedule Booking] Google Calendar sync warning:', gErr);
+  }
+
   revalidatePath('/dashboard');
   revalidatePath('/cashier/schedule');
   revalidatePath('/admin');
@@ -664,6 +729,17 @@ export async function adminVoidAndRefundBooking({
     return { error: 'Failed to update booking status.' };
   }
 
+  // Real-time Google Calendar sync (delete if cancelled/voided, update if restored)
+  try {
+    if (['void_and_refund', 'void_only'].includes(action)) {
+      await deleteGoogleCalendarEvent(bookingId);
+    } else if (action === 'reject_refund') {
+      await pushBookingToGoogleCalendar(bookingId);
+    }
+  } catch (gErr) {
+    console.warn('[Admin Void] Google Calendar sync warning:', gErr);
+  }
+
   revalidatePath('/admin');
   revalidatePath('/dashboard');
   revalidatePath('/cashier/schedule');
@@ -767,23 +843,36 @@ export async function createWalkInBooking(formData: FormData): Promise<void> {
   const rate = court?.hourly_rate !== undefined && court?.hourly_rate !== null ? Number(court.hourly_rate) : 1;
   const totalPrice = rate * duration;
 
-  const { error } = await supabase.from('bookings').insert({
-    court_id: courtId,
-    user_id: user.id,
-    guest_name: guestName,
-    guest_phone: guestPhone || null,
-    start_time: startTime.toISOString(),
-    end_time: endTime.toISOString(),
-    duration_hours: duration,
-    total_price: totalPrice,
-    currency: 'PHP',
-    status: 'walk_in',
-    payment_method: paymentMethod === 'counter_qr' ? 'counter_qr' : 'cash',
-  });
+  const { data: insertedBooking, error } = await supabase
+    .from('bookings')
+    .insert({
+      court_id: courtId,
+      user_id: user.id,
+      guest_name: guestName,
+      guest_phone: guestPhone || null,
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      duration_hours: duration,
+      total_price: totalPrice,
+      currency: 'PHP',
+      status: 'walk_in',
+      payment_method: paymentMethod === 'counter_qr' ? 'counter_qr' : 'cash',
+    })
+    .select('id')
+    .single();
 
   if (error) {
     console.error('[POS Walk-in Error]:', error);
     throw new Error('Failed to record walk-in booking.');
+  }
+
+  // Automatically sync walk-in booking to Google Calendar in real time
+  if (insertedBooking?.id) {
+    try {
+      await pushBookingToGoogleCalendar(insertedBooking.id);
+    } catch (gErr) {
+      console.warn('[POS Walk-in] Google sync warning:', gErr);
+    }
   }
 
   revalidatePath('/cashier/schedule');
@@ -795,6 +884,7 @@ export interface PosCompliancePayload {
   customerTin?: string;
   discountType?: 'none' | 'senior_citizen' | 'pwd' | 'student' | 'employee' | 'special';
   discountIdNumber?: string;
+  discountItemSelections?: Record<string, number>;
 }
 
 export interface PosCheckoutResult {
@@ -804,6 +894,7 @@ export interface PosCheckoutResult {
   customerName?: string;
   discountType: string;
   discountIdNumber?: string;
+  discountItemSelections?: Record<string, number>;
   grossAmount: number;
   discountAmount: number;
   vatableSales: number;
@@ -834,6 +925,7 @@ export async function processPosTransaction(
     quantity: number;
     dispensed_volume?: number;
     base_unit?: string;
+    cart_item_key?: string;
   }[],
   _clientTotal: number,
   paymentMethod: string,
@@ -930,12 +1022,34 @@ export async function processPosTransaction(
 
   // Customer Privilege & Statutory Discount Calculations (Tax removed)
   const discountType = compliance?.discountType || 'none';
+  const selections = compliance?.discountItemSelections || {};
 
   let discountAmount = 0;
 
   if (discountType === 'senior_citizen' || discountType === 'pwd') {
-    // 20% statutory discount applied directly to gross
-    discountAmount = Math.round((verifiedGross * 0.20) * 100) / 100;
+    const hasExplicitSelections = Object.keys(selections).length > 0;
+    let discountableGross = 0;
+
+    if (hasExplicitSelections) {
+      discountableGross = cart.reduce((acc, item) => {
+        const dbProduct = productMap.get(item.id);
+        if (!dbProduct) return acc;
+
+        const itemKey = item.cart_item_key || item.id;
+        const selectedQty = Math.min(item.quantity, Math.max(0, selections[itemKey] || 0));
+
+        let itemPrice = dbProduct.price;
+        if (item.dispensed_volume && item.dispensed_volume > 0 && dbProduct.volume > 0) {
+          itemPrice = item.price !== undefined ? item.price : Math.round(((item.dispensed_volume / dbProduct.volume) * dbProduct.price) * 100) / 100;
+        }
+        return acc + itemPrice * selectedQty;
+      }, 0);
+    } else {
+      discountableGross = verifiedGross;
+    }
+
+    // 20% statutory discount applied strictly to designated items gross
+    discountAmount = Math.round((discountableGross * 0.20) * 100) / 100;
   } else if (discountType === 'student') {
     // Always flat 10 pesos off total order (capped at verifiedGross)
     discountAmount = verifiedGross > 0 ? Math.min(10, verifiedGross) : 0;
@@ -1044,6 +1158,7 @@ export async function processPosTransaction(
     customerName: compliance?.customerName?.trim() || undefined,
     discountType,
     discountIdNumber: compliance?.discountIdNumber?.trim() || undefined,
+    discountItemSelections: selections,
     grossAmount: verifiedGross,
     discountAmount,
     vatableSales: 0,
@@ -1374,7 +1489,7 @@ export async function createCourt(formData: FormData): Promise<void> {
   }
 
   const name = formData.get('name') as string;
-  const rate = parseFloat((formData.get('rate') as string) || '300');
+  const rate = parseFloat((formData.get('rate') as string) || '350');
   const { error } = await supabase.from('courts').insert({
     name,
     type: 'indoor',
@@ -2044,9 +2159,12 @@ export async function triggerManualGoogleCalendarSync(bookingId: string): Promis
 
 /**
  * Save Google Calendar API configuration keys into system_settings.
+ * Supports distinct calendars for Pickleball Courts vs Events Place.
  */
 export async function saveGoogleCalendarSettings(params: {
-  calendarId: string;
+  pickleballCalendarId?: string;
+  eventsCalendarId?: string;
+  calendarId?: string;
   serviceAccountEmail?: string;
   privateKey?: string;
   autoSyncEnabled: boolean;
@@ -2083,10 +2201,37 @@ export async function saveGoogleCalendarSettings(params: {
       }
     }
 
-    const updates = [
-      { key: 'google_calendar_id', value: params.calendarId.trim(), description: 'Target Google Calendar ID' },
-      { key: 'google_calendar_auto_sync_enabled', value: params.autoSyncEnabled ? 'true' : 'false', description: 'Auto sync enabled' },
+    const updates: { key: string; value: string; description: string }[] = [
+      {
+        key: 'google_calendar_auto_sync_enabled',
+        value: params.autoSyncEnabled ? 'true' : 'false',
+        description: 'Auto sync enabled',
+      },
     ];
+
+    if (params.pickleballCalendarId !== undefined) {
+      updates.push({
+        key: 'google_pickleball_calendar_id',
+        value: params.pickleballCalendarId.trim(),
+        description: 'Target Google Calendar ID for Pickleball Courts (Court 1 & 2)',
+      });
+    }
+
+    if (params.eventsCalendarId !== undefined) {
+      updates.push({
+        key: 'google_events_calendar_id',
+        value: params.eventsCalendarId.trim(),
+        description: 'Target Google Calendar ID for Events Place & View Deck Lounge',
+      });
+    }
+
+    if (params.calendarId !== undefined) {
+      updates.push({
+        key: 'google_calendar_id',
+        value: params.calendarId.trim(),
+        description: 'Fallback Target Google Calendar ID',
+      });
+    }
 
     if (serviceEmail) {
       updates.push({
@@ -2126,8 +2271,10 @@ export async function saveGoogleCalendarSettings(params: {
 /**
  * Server action to test Google Calendar direct push.
  */
-export async function testGoogleCalendarSyncAction(): Promise<{
+export async function testGoogleCalendarSyncAction(calendarType: 'pickleball' | 'events' | 'both' = 'both'): Promise<{
   success: boolean;
+  pickleballResult?: { success: boolean; message?: string; error?: string; calendarId?: string };
+  eventsResult?: { success: boolean; message?: string; error?: string; calendarId?: string };
   message?: string;
   error?: string;
 }> {
@@ -2139,7 +2286,7 @@ export async function testGoogleCalendarSyncAction(): Promise<{
 
     if (!user) return { success: false, error: 'Unauthorized' };
 
-    return await testGoogleCalendarConnection();
+    return await testGoogleCalendarConnection(calendarType);
   } catch (err: unknown) {
     return { success: false, error: err instanceof Error ? err.message : 'Test failed' };
   }
@@ -2150,6 +2297,8 @@ export async function testGoogleCalendarSyncAction(): Promise<{
  */
 export async function getGoogleCalendarSettingsAction(): Promise<{
   success: boolean;
+  pickleballCalendarId?: string;
+  eventsCalendarId?: string;
   calendarId?: string;
   serviceAccountEmail?: string;
   autoSyncEnabled?: boolean;
@@ -2162,6 +2311,8 @@ export async function getGoogleCalendarSettingsAction(): Promise<{
       .from('system_settings')
       .select('key, value')
       .in('key', [
+        'google_pickleball_calendar_id',
+        'google_events_calendar_id',
         'google_calendar_id',
         'google_service_account_email',
         'google_private_key',
@@ -2173,6 +2324,8 @@ export async function getGoogleCalendarSettingsAction(): Promise<{
     const map = new Map((data || []).map((row) => [row.key, row.value]));
     return {
       success: true,
+      pickleballCalendarId: map.get('google_pickleball_calendar_id') || '',
+      eventsCalendarId: map.get('google_events_calendar_id') || '',
       calendarId: map.get('google_calendar_id') || '',
       serviceAccountEmail: map.get('google_service_account_email') || '',
       autoSyncEnabled: map.get('google_calendar_auto_sync_enabled') !== 'false',

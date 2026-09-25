@@ -6,7 +6,9 @@ import { BrandLogo } from "@/components/brand-logo";
 import { AuthSubmitButton } from "@/components/auth-submit-button";
 import { PasswordInput } from "@/components/password-input";
 import { AuthLayoutShell } from "@/components/auth-layout-shell";
-import { signup } from "@/app/actions";
+import { signup, signInWithGoogle } from "@/app/actions";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
+
 
 export default async function SignUpPage({
   searchParams,
@@ -73,9 +75,7 @@ export default async function SignUpPage({
           </div>
         </div>
       ) : (
-        <form action={signup} className="space-y-6">
-          {next && <input type="hidden" name="next" value={next} />}
-
+        <div className="space-y-6">
           {/* Form Header */}
           <div className="text-center space-y-2 pb-2 border-b border-[#E2E8F0]">
             <div className="flex justify-center pb-1">
@@ -100,82 +100,103 @@ export default async function SignUpPage({
             </div>
           )}
 
-          {/* Input Fields */}
-          <div className="space-y-4">
-            {/* Full Name */}
-            <div className="space-y-1.5">
-              <Label htmlFor="fullName" className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] block">
-                Full Name
-              </Label>
-              <div className="relative flex items-center">
-                <div className="absolute left-3.5 text-[#64748B] pointer-events-none">
-                  <User className="w-4 h-4" />
+          {/* Google OAuth */}
+          <GoogleSignInButton
+            action={signInWithGoogle}
+            next={next ?? undefined}
+            label="Sign up with Google"
+          />
+
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-[#E2E8F0]" />
+            <span className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-wider">
+              or create account with email
+            </span>
+            <div className="flex-1 h-px bg-[#E2E8F0]" />
+          </div>
+
+          {/* Email Sign-up Form */}
+          <form action={signup} className="space-y-4">
+            {next && <input type="hidden" name="next" value={next} />}
+
+            {/* Input Fields */}
+            <div className="space-y-4">
+              {/* Full Name */}
+              <div className="space-y-1.5">
+                <Label htmlFor="fullName" className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] block">
+                  Full Name
+                </Label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3.5 text-[#64748B] pointer-events-none">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="fullName"
+                    name="fullName"
+                    type="text"
+                    placeholder="e.g. Maria Santos"
+                    required
+                    className="w-full h-11 pl-10 pr-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0B2A67] font-medium placeholder:text-[#94A3B8] focus:bg-white focus:border-[#0B2A67] focus:ring-2 focus:ring-[#FFD21C]/50 focus:outline-none transition-all"
+                  />
                 </div>
-                <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  placeholder="e.g. Maria Santos"
+              </div>
+
+              {/* Email Address */}
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] block">
+                  Email Address
+                </Label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3.5 text-[#64748B] pointer-events-none">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="player@example.com"
+                    required
+                    className="w-full h-11 pl-10 pr-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0B2A67] font-medium placeholder:text-[#94A3B8] focus:bg-white focus:border-[#0B2A67] focus:ring-2 focus:ring-[#FFD21C]/50 focus:outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] block">
+                  Password
+                </Label>
+                <PasswordInput
+                  id="password"
+                  name="password"
+                  placeholder="Minimum 6 characters"
                   required
-                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0B2A67] font-medium placeholder:text-[#94A3B8] focus:bg-white focus:border-[#0B2A67] focus:ring-2 focus:ring-[#FFD21C]/50 focus:outline-none transition-all"
                 />
               </div>
             </div>
 
-            {/* Email Address */}
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] block">
-                Email Address
-              </Label>
-              <div className="relative flex items-center">
-                <div className="absolute left-3.5 text-[#64748B] pointer-events-none">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="player@example.com"
-                  required
-                  className="w-full h-11 pl-10 pr-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0B2A67] font-medium placeholder:text-[#94A3B8] focus:bg-white focus:border-[#0B2A67] focus:ring-2 focus:ring-[#FFD21C]/50 focus:outline-none transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs font-extrabold uppercase tracking-wider text-[#0B2A67] block">
-                Password
-              </Label>
-              <PasswordInput
-                id="password"
-                name="password"
-                placeholder="Minimum 6 characters"
-                required
+            {/* Action Buttons */}
+            <div className="pt-2 space-y-4">
+              <AuthSubmitButton
+                label="Create Member Account"
+                loadingLabel="Creating Account..."
+                variant="yellow"
+                className="w-full h-12 bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-md active:scale-[0.98] transition-all cursor-pointer"
               />
-            </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="pt-2 space-y-4">
-            <AuthSubmitButton
-              label="Create Member Account"
-              loadingLabel="Creating Account..."
-              variant="yellow"
-              className="w-full h-12 bg-[#FFD21C] hover:bg-[#E8BA00] text-[#0B2A67] font-black text-xs sm:text-sm uppercase tracking-wider rounded-xl shadow-md active:scale-[0.98] transition-all cursor-pointer"
-            />
-
-            <div className="pt-2 border-t border-[#E2E8F0] text-center text-xs text-[#64748B]">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="font-extrabold text-[#0B2A67] hover:text-[#bf050b] hover:underline transition-colors"
-              >
-                Sign in here →
-              </Link>
+              <div className="pt-2 border-t border-[#E2E8F0] text-center text-xs text-[#64748B]">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
+                  className="font-extrabold text-[#0B2A67] hover:text-[#bf050b] hover:underline transition-colors"
+                >
+                  Sign in here →
+                </Link>
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       )}
     </AuthLayoutShell>
   );

@@ -108,7 +108,7 @@ export default async function PricingPage() {
           Quality Courts.
         </h1>
         <p className="text-sm sm:text-base text-[#64748B] max-w-2xl mt-4 leading-relaxed font-normal">
-          Zero surge pricing. Zero hidden fees. Enjoy Taytay, Rizal&apos;s premier indoor cushioned courts for a fixed flat rate of ₱300 per hour.
+          Zero surge pricing. Zero hidden fees. Enjoy Taytay, Rizal&apos;s premier indoor cushioned courts for a fixed flat rate of ₱350 per hour.
         </p>
       </div>
 

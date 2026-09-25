@@ -231,15 +231,28 @@ export function SalesInvoiceModal({
               <span className="col-span-2 text-center">QTY</span>
               <span className="col-span-4 text-right">TOTAL</span>
             </div>
-            {invoice.items.map((item, idx) => (
-              <div key={idx} className="grid grid-cols-12 text-[11px]">
-                <span className="col-span-6 font-medium truncate">{item.name}</span>
-                <span className="col-span-2 text-center text-[#555555]">{item.quantity}</span>
-                <span className="col-span-4 text-right font-bold">
-                  ₱{item.subtotal.toFixed(2)}
-                </span>
-              </div>
-            ))}
+            {invoice.items.map((item, idx) => {
+              const selections = invoice.discountItemSelections || {};
+              const discountedQty = selections[item.productId] || 0;
+              const isStatutory = invoice.discountType === "senior_citizen" || invoice.discountType === "pwd";
+
+              return (
+                <div key={idx} className="space-y-0.5">
+                  <div className="grid grid-cols-12 text-[11px]">
+                    <span className="col-span-6 font-medium truncate">{item.name}</span>
+                    <span className="col-span-2 text-center text-[#555555]">{item.quantity}</span>
+                    <span className="col-span-4 text-right font-bold">
+                      ₱{item.subtotal.toFixed(2)}
+                    </span>
+                  </div>
+                  {isStatutory && discountedQty > 0 && (
+                    <div className="text-[9px] text-[#007d48] font-bold pl-1">
+                      &bull; {discountedQty}x {invoice.discountType === "senior_citizen" ? "Senior" : "PWD"} 20% Disc. Applied
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* Order Financial Summary (Tax Removed) */}

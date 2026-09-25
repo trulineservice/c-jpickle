@@ -53,12 +53,13 @@ export function PublicMobileNav({ userRole, isLoggedIn }: PublicMobileNavProps) 
             <nav className="space-y-3">
               {[
                 { label: "Home", href: "/" },
-                { label: "Coffee Menu", href: "/menu" },
-                { label: "About", href: "/about" },
-                { label: "Pricing & Rates", href: "/pricing" },
                 { label: "Services", href: "/#services" },
                 { label: "Gallery", href: "/#gallery" },
-                { label: "Contact", href: "/#contact" },
+                { label: "About", href: "/#about" },
+                { label: "Contacts", href: "/#contact" },
+                { label: "FAQ", href: "/#faq" },
+                { label: "Coffee Menu", href: "/menu" },
+                { label: "Pricing & Rates", href: "/pricing" },
               ].map((item) => {
                 const active = isCurrent(item.href);
                 return (

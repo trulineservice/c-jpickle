@@ -46,7 +46,7 @@ export default async function PublicLayout({ children }: { children: React.React
 
         <div className="flex items-center gap-4 font-medium text-[11px] sm:text-xs">
           <span className="hidden md:inline text-white/80">
-            Fixed ₱300 / hr Court Rate
+            Fixed ₱350 / hr Court Rate
           </span>
           <span className="hidden md:inline text-white/30">•</span>
           <Link href="/pricing" className="hover:text-[#FFD21C] text-white/80 transition-colors">
@@ -178,23 +178,26 @@ export default async function PublicLayout({ children }: { children: React.React
               <Link href="/" className="hover:text-[#FFD21C] transition-colors">
                 Home
               </Link>
-              <Link href="/menu" className="hover:text-[#FFD21C] transition-colors">
-                Coffee Menu
-              </Link>
-              <Link href="/about" className="hover:text-[#FFD21C] transition-colors">
-                About
-              </Link>
-              <Link href="/pricing" className="hover:text-[#FFD21C] transition-colors">
-                Pricing
-              </Link>
               <Link href="/#services" className="hover:text-[#FFD21C] transition-colors">
                 Services
               </Link>
               <Link href="/#gallery" className="hover:text-[#FFD21C] transition-colors">
                 Gallery
               </Link>
+              <Link href="/#about" className="hover:text-[#FFD21C] transition-colors">
+                About
+              </Link>
               <Link href="/#contact" className="hover:text-[#FFD21C] transition-colors">
-                Contact
+                Contacts
+              </Link>
+              <Link href="/#faq" className="hover:text-[#FFD21C] transition-colors">
+                FAQ
+              </Link>
+              <Link href="/menu" className="hover:text-[#FFD21C] transition-colors">
+                Coffee Menu
+              </Link>
+              <Link href="/pricing" className="hover:text-[#FFD21C] transition-colors">
+                Pricing
               </Link>
             </nav>
 
@@ -212,7 +215,7 @@ export default async function PublicLayout({ children }: { children: React.React
                 </svg>
               </a>
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/cj.events.place.r"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#FFD21C] hover:text-[#0B2A67] text-white flex items-center justify-center transition-all duration-200"
@@ -225,7 +228,7 @@ export default async function PublicLayout({ children }: { children: React.React
                 </svg>
               </a>
               <a
-                href="https://tiktok.com"
+                href="https://www.tiktok.com/@cj.events.place.r"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#FFD21C] hover:text-[#0B2A67] text-white flex items-center justify-center transition-all duration-200"
@@ -256,7 +259,7 @@ export default async function PublicLayout({ children }: { children: React.React
             {/* Col 2 */}
             <div className="space-y-3">
               <h4 className="text-white font-bold text-xs uppercase tracking-wider">
-                Court Inquiries (₱300/HR)
+                Court Inquiries (₱350/HR)
               </h4>
               <p className="text-xs">Indoor cushioned pickleball &amp; dual-sport courts. Daily 6 AM &ndash; 10 PM.</p>
               <a href="tel:09173188720" className="inline-flex items-center gap-2 text-white hover:text-[#FFD21C] font-mono text-sm font-bold">

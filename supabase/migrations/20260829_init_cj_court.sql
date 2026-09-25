@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public.courts (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE,
   type text NOT NULL DEFAULT 'indoor' CHECK (type IN ('indoor', 'outdoor')),
-  hourly_rate numeric(10, 2) NOT NULL DEFAULT 300.00,
+  hourly_rate numeric(10, 2) NOT NULL DEFAULT 350.00,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
@@ -216,11 +216,11 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
--- 10. Seed Initial Courts (Court 1 - Indoor & Court 2 - Indoor @ ₱300/hr)
+-- 10. Seed Initial Courts (Court 1 - Indoor & Court 2 - Indoor @ ₱350/hr)
 INSERT INTO public.courts (name, type, hourly_rate, is_active)
 VALUES 
-  ('Court 1 - Indoor', 'indoor', 300.00, true),
-  ('Court 2 - Indoor', 'indoor', 300.00, true)
+  ('Court 1 - Indoor', 'indoor', 350.00, true),
+  ('Court 2 - Indoor', 'indoor', 350.00, true)
 ON CONFLICT (name) DO UPDATE SET
   hourly_rate = EXCLUDED.hourly_rate,
   type = EXCLUDED.type,

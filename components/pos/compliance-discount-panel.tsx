@@ -15,6 +15,8 @@ interface ComplianceDiscountPanelProps {
   discountIdNumber: string;
   onDiscountIdNumberChange: (val: string) => void;
   complianceError: string | null;
+  onOpenDiscountModal?: (type: "senior_citizen" | "pwd") => void;
+  selectedItemCount?: number;
 }
 
 export function ComplianceDiscountPanel({
@@ -27,10 +29,19 @@ export function ComplianceDiscountPanel({
   discountIdNumber,
   onDiscountIdNumberChange,
   complianceError,
+  onOpenDiscountModal,
+  selectedItemCount = 0,
 }: ComplianceDiscountPanelProps) {
   const isStatutory = discountType === "senior_citizen" || discountType === "pwd";
   const isStudent = discountType === "student";
   const isEmployee = discountType === "employee";
+
+  const handleSelectDiscount = (type: "none" | "senior_citizen" | "pwd" | "student" | "employee") => {
+    onDiscountTypeChange(type);
+    if ((type === "senior_citizen" || type === "pwd") && onOpenDiscountModal) {
+      onOpenDiscountModal(type);
+    }
+  };
 
   return (
     <div className="border border-[#E2E8F0] dark:border-white/10 rounded-3xl p-4 bg-white dark:bg-[#071E4B]/40 shadow-sm space-y-3">
@@ -40,9 +51,13 @@ export function ComplianceDiscountPanel({
           Discounts &amp; Privileges
         </label>
         {isStatutory && (
-          <span className="text-[9px] font-black text-[#007d48] dark:text-emerald-300 bg-[#007d48]/10 dark:bg-emerald-950/60 border border-[#007d48]/20 dark:border-emerald-800 px-2 py-0.5 rounded-full">
-            20% Statutory
-          </span>
+          <button
+            type="button"
+            onClick={() => onOpenDiscountModal?.(discountType as any)}
+            className="text-[9px] font-black text-[#007d48] dark:text-emerald-300 bg-[#007d48]/10 dark:bg-emerald-950/60 border border-[#007d48]/20 dark:border-emerald-800 px-2 py-0.5 rounded-full hover:bg-[#007d48]/20 transition-colors cursor-pointer"
+          >
+            20% Statutory &bull; {selectedItemCount > 0 ? `${selectedItemCount} Item(s)` : 'Select Items'}
+          </button>
         )}
         {isStudent && (
           <span className="text-[9px] font-black text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-full">
@@ -68,7 +83,7 @@ export function ComplianceDiscountPanel({
           <button
             key={btn.id}
             type="button"
-            onClick={() => onDiscountTypeChange(btn.id as any)}
+            onClick={() => handleSelectDiscount(btn.id as any)}
             className={`py-1.5 px-1 text-center rounded-xl border text-[11px] font-black transition-all cursor-pointer active:scale-[0.97] flex flex-col items-center justify-center gap-0.5 ${
               discountType === btn.id
                 ? "bg-[#0B2A67] text-white border-[#0B2A67] shadow-sm ring-2 ring-[#FFD21C]"
@@ -86,6 +101,21 @@ export function ComplianceDiscountPanel({
       {/* Conditional Statutory Input Fields (Senior / PWD) */}
       {isStatutory && (
         <div className="space-y-2 pt-2 border-t border-[#E2E8F0] dark:border-white/10 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase text-[#0B2A67] dark:text-[#FFD21C]">
+              {discountType === 'senior_citizen' ? 'Senior Citizen' : 'PWD Cardholder'} Allocation
+            </span>
+            {onOpenDiscountModal && (
+              <button
+                type="button"
+                onClick={() => onOpenDiscountModal(discountType as any)}
+                className="text-[10px] font-bold text-[#007d48] dark:text-emerald-400 hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>Select Specific Items &rarr;</span>
+              </button>
+            )}
+          </div>
+
           <div>
             <Label htmlFor="custName" className="text-[10px] font-black uppercase text-[#0B2A67] dark:text-white/80">
               Customer Full Name <span className="text-[#bf050b]">*</span>

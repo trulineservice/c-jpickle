@@ -7,8 +7,8 @@
 -- 1. COURTS
 INSERT INTO public.courts (id, name, type, hourly_rate, is_active)
 VALUES 
-  ('80d4920a-34d9-47f3-8f1b-4627f5b289de', 'Court 1 — Indoor (Pro Cushion)', 'indoor', 300.00, true),
-  ('052becb1-e01d-4cd9-88ae-3d6e419259fd', 'Court 2 — Indoor (Pickleball / Basketball)', 'indoor', 300.00, true)
+  ('80d4920a-34d9-47f3-8f1b-4627f5b289de', 'Court 1 — Indoor (Pro Cushion)', 'indoor', 350.00, true),
+  ('052becb1-e01d-4cd9-88ae-3d6e419259fd', 'Court 2 — Indoor (Pickleball / Basketball)', 'indoor', 350.00, true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   hourly_rate = EXCLUDED.hourly_rate,
@@ -182,7 +182,7 @@ BEGIN
           END CASE;
 
           has_ball_thrower := ((slot_idx + day_offset) % 6) = 0;
-          b_price := (300.00 * dur) + (p_count * 150.00) + (CASE WHEN has_ball_thrower THEN 150.00 * dur ELSE 0.00 END);
+          b_price := (350.00 * dur) + (p_count * 150.00) + (CASE WHEN has_ball_thrower THEN 150.00 * dur ELSE 0.00 END);
 
           IF p_count > 0 AND has_ball_thrower THEN
             b_notes := p_count || 'x Pro Carbon Paddle Rental (+₱' || (p_count * 150) || ') • Smart Ball Thrower Machine (' || dur || 'hr @ ₱150/hr = +₱' || (dur * 150) || ')';

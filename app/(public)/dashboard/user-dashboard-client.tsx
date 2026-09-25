@@ -245,7 +245,7 @@ export default function UserDashboardClient({
         start_time: new Date().toISOString(),
         end_time: new Date(Date.now() + 3600000).toISOString(),
         duration_hours: 1,
-        total_price: 300,
+        total_price: 350,
         currency: 'PHP',
         status: 'active',
         payment_method: 'Member Card',
@@ -335,7 +335,7 @@ export default function UserDashboardClient({
                 className="w-full sm:w-auto bg-[#FFD21C] text-[#0B2A67] hover:bg-[#ffe052] text-xs sm:text-sm font-black uppercase tracking-wider h-13 px-8 rounded-2xl shadow-xl shadow-[#FFD21C]/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Book a Court (₱300/hr)</span>
+                <span>Book a Court (₱350/hr)</span>
               </Button>
             </Link>
           </div>
@@ -525,7 +525,7 @@ export default function UserDashboardClient({
                     onClick={() => playHapticSound('tap')}
                     className="bg-[#0B2A67] hover:bg-[#123A82] text-white text-xs font-bold h-12 px-7 rounded-xl shadow-md cursor-pointer mt-2"
                   >
-                    <span>Book a Court Now (₱300/hr)</span>
+                    <span>Book a Court Now (₱350/hr)</span>
                     <ArrowRight className="w-4 h-4 text-[#FFD21C] ml-1.5" />
                   </Button>
                 </Link>

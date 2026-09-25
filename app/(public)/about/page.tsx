@@ -44,7 +44,7 @@ export default async function AboutPage() {
     {
       year: "Pillar 1",
       title: "Active Sports Lifestyle",
-      desc: "Two indoor courts featuring cushioned flooring, sports lighting, and a fixed ₱300/hr flat rate.",
+      desc: "Two indoor courts featuring cushioned flooring, sports lighting, and a fixed ₱350/hr flat rate.",
       icon: <Trophy className="w-5 h-5 text-[#FFD21C]" />,
       badge: "Ground Sports Level",
     },
@@ -69,7 +69,7 @@ export default async function AboutPage() {
       floor: "Ground Floor & Mezzanine",
       name: "Pickleball & Multi-Sport Arena",
       tagline: "Quality courts, zero surge fees",
-      rate: "₱300 / hour",
+      rate: "₱350 / hour",
       rateSub: "Fixed Flat Rate",
       specs: [
         "Court 1: Indoor Cushioned Court (20' × 44')",
@@ -133,7 +133,7 @@ export default async function AboutPage() {
     {
       icon: <CheckCircle2 className="w-6 h-6 text-[#FFD21C]" />,
       title: "Transparent, Upfront Pricing",
-      desc: "Zero surge pricing, zero hidden service fees. Flat ₱300/hr courts and 100% consumable rates on our 5th-floor lounge so your budget goes straight to great food and match play.",
+      desc: "Zero surge pricing, zero hidden service fees. Flat ₱350/hr courts and 100% consumable rates on our 5th-floor lounge so your budget goes straight to great food and match play.",
     },
     {
       icon: <HeartHandshake className="w-6 h-6 text-[#bf050b]" />,

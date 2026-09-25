@@ -13,11 +13,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: "/", key: "home" },
-  { label: "Coffee Menu", href: "/menu", key: "menu" },
-  { label: "About", href: "/about", key: "about" },
   { label: "Services", href: "/#services", key: "services" },
   { label: "Gallery", href: "/#gallery", key: "gallery" },
-  { label: "Contact", href: "/#contact", key: "contact" },
+  { label: "About", href: "/#about", key: "about" },
+  { label: "Contacts", href: "/#contact", key: "contact" },
+  { label: "FAQ", href: "/#faq", key: "faq" },
 ];
 
 export function PublicNavLinks() {
@@ -46,15 +46,21 @@ export function PublicNavLinks() {
     const determineActiveSection = () => {
       const scrollPosition = window.scrollY + 160; // Offset for sticky header
 
+      const faqEl = document.getElementById("faq");
       const contactEl = document.getElementById("contact");
+      const aboutEl = document.getElementById("about");
       const galleryEl = document.getElementById("gallery");
       const servicesEl = document.getElementById("services");
 
-      if (contactEl && scrollPosition >= contactEl.offsetTop - 50) {
+      if (faqEl && scrollPosition >= faqEl.offsetTop - 80) {
+        setActiveSection("faq");
+      } else if (contactEl && scrollPosition >= contactEl.offsetTop - 80) {
         setActiveSection("contact");
-      } else if (galleryEl && scrollPosition >= galleryEl.offsetTop - 50) {
+      } else if (aboutEl && scrollPosition >= aboutEl.offsetTop - 80) {
+        setActiveSection("about");
+      } else if (galleryEl && scrollPosition >= galleryEl.offsetTop - 80) {
         setActiveSection("gallery");
-      } else if (servicesEl && scrollPosition >= servicesEl.offsetTop - 50) {
+      } else if (servicesEl && scrollPosition >= servicesEl.offsetTop - 80) {
         setActiveSection("services");
       } else {
         setActiveSection("home");
@@ -64,7 +70,7 @@ export function PublicNavLinks() {
     // Initial check on mount
     if (window.location.hash) {
       const hash = window.location.hash.replace("#", "");
-      if (["services", "gallery", "contact"].includes(hash)) {
+      if (["services", "gallery", "about", "contact", "faq"].includes(hash)) {
         setActiveSection(hash);
       } else {
         determineActiveSection();

@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         name: courtId === '052becb1-e01d-4cd9-88ae-3d6e419259fd' 
           ? 'Court 2 — Indoor (Pickleball / Basketball)' 
           : 'Court 1 - Indoor (Pro Cushion)',
-        hourly_rate: 300,
+        hourly_rate: 350,
         type: 'indoor',
         is_active: true,
       };

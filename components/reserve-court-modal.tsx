@@ -27,7 +27,7 @@ export function ReserveCourtModal({
   triggerClassName,
   triggerSize = "lg",
   triggerVariant = "yellow",
-  buttonText = "Reserve Court (₱300 / hr)",
+  buttonText = "Reserve Court (₱350 / hr)",
   showIcon = true,
 }: ReserveCourtModalProps) {
   const [isOpen, setIsOpen] = useState(false);

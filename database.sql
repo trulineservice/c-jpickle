@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS public.courts (
   name text NOT NULL UNIQUE,
   type public.court_type NOT NULL DEFAULT 'indoor'::public.court_type,
   status public.court_status NOT NULL DEFAULT 'active'::public.court_status,
-  hourly_rate numeric(10, 2) NOT NULL DEFAULT 300.00 CHECK (hourly_rate >= 0),
+  hourly_rate numeric(10, 2) NOT NULL DEFAULT 350.00 CHECK (hourly_rate >= 0),
   is_active boolean GENERATED ALWAYS AS (status = 'active'::public.court_status) STORED,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())
@@ -849,3 +849,29 @@ $$;
 GRANT EXECUTE ON FUNCTION public.create_password_reset_token(TEXT, TEXT, INT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.verify_password_reset_token(TEXT) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.complete_password_reset(TEXT, TEXT) TO anon, authenticated, service_role;
+
+-- ----------------------------------------------------------------------------
+-- 13. SYSTEM SETTINGS & GOOGLE CALENDAR CONFIGURATION (SEPARATED CHANNELS)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  key text PRIMARY KEY,
+  value text NOT NULL,
+  description text,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.bookings
+  ADD COLUMN IF NOT EXISTS down_payment_amount numeric(10, 2) DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS google_calendar_event_id text,
+  ADD COLUMN IF NOT EXISTS google_calendar_target_id text,
+  ADD COLUMN IF NOT EXISTS google_calendar_synced_at timestamp with time zone;
+
+INSERT INTO public.system_settings (key, value, description)
+VALUES
+  ('google_pickleball_calendar_id', '', 'Target Google Calendar ID for Pickleball Courts (Court 1 & Court 2)'),
+  ('google_events_calendar_id', '', 'Target Google Calendar ID for Events Place & View Deck Lounge'),
+  ('google_calendar_id', '', 'Fallback Target Google Calendar ID'),
+  ('google_service_account_email', '', 'Google Cloud Service Account client email'),
+  ('google_private_key', '', 'Google Cloud Service Account RSA Private Key (PEM format)'),
+  ('google_calendar_auto_sync_enabled', 'true', 'Enable or disable automatic push synchronization to Google Calendar')
+ON CONFLICT (key) DO NOTHING;

@@ -8,7 +8,9 @@ const supabaseAdmin = createAdminClient(
 );
 
 export interface GoogleCalendarConfig {
-  calendarId: string;
+  pickleballCalendarId: string;
+  eventsCalendarId: string;
+  legacyCalendarId: string;
   serviceAccountEmail: string;
   privateKey: string;
   autoSyncEnabled: boolean;
@@ -61,7 +63,9 @@ export function normalizePrivateKey(rawKey: string): string {
  * Reads Google Calendar settings from DB (system_settings) or environment variables
  */
 export async function getGoogleCalendarConfig(): Promise<GoogleCalendarConfig> {
-  let dbCalendarId = '';
+  let dbPickleballCalId = '';
+  let dbEventsCalId = '';
+  let dbLegacyCalId = '';
   let dbServiceEmail = '';
   let dbPrivateKey = '';
   let dbAutoSync = 'true';
@@ -71,6 +75,8 @@ export async function getGoogleCalendarConfig(): Promise<GoogleCalendarConfig> {
       .from('system_settings')
       .select('key, value')
       .in('key', [
+        'google_pickleball_calendar_id',
+        'google_events_calendar_id',
         'google_calendar_id',
         'google_service_account_email',
         'google_private_key',
@@ -79,7 +85,9 @@ export async function getGoogleCalendarConfig(): Promise<GoogleCalendarConfig> {
 
     if (settings) {
       for (const s of settings) {
-        if (s.key === 'google_calendar_id') dbCalendarId = s.value;
+        if (s.key === 'google_pickleball_calendar_id') dbPickleballCalId = s.value;
+        if (s.key === 'google_events_calendar_id') dbEventsCalId = s.value;
+        if (s.key === 'google_calendar_id') dbLegacyCalId = s.value;
         if (s.key === 'google_service_account_email') dbServiceEmail = s.value;
         if (s.key === 'google_private_key') dbPrivateKey = s.value;
         if (s.key === 'google_calendar_auto_sync_enabled') dbAutoSync = s.value;
@@ -89,17 +97,70 @@ export async function getGoogleCalendarConfig(): Promise<GoogleCalendarConfig> {
     console.warn('[Google Calendar Sync] Could not fetch settings from DB:', err);
   }
 
-  const calendarId = dbCalendarId || process.env.GOOGLE_CALENDAR_ID || '';
-  const serviceAccountEmail = dbServiceEmail || process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';
+  const pickleballCalendarId =
+    dbPickleballCalId || process.env.GOOGLE_PICKLEBALL_CALENDAR_ID || '';
+  const eventsCalendarId =
+    dbEventsCalId || process.env.GOOGLE_EVENTS_CALENDAR_ID || '';
+  const legacyCalendarId =
+    dbLegacyCalId || process.env.GOOGLE_CALENDAR_ID || '';
+  const serviceAccountEmail =
+    dbServiceEmail || process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';
   const rawKey = dbPrivateKey || process.env.GOOGLE_PRIVATE_KEY || '';
   const privateKey = normalizePrivateKey(rawKey);
   const autoSyncEnabled = dbAutoSync !== 'false';
 
   return {
-    calendarId,
+    pickleballCalendarId,
+    eventsCalendarId,
+    legacyCalendarId,
     serviceAccountEmail,
     privateKey,
     autoSyncEnabled,
+  };
+}
+
+/**
+ * Determine target Google Calendar ID and category based on court/venue name
+ */
+export function getCalendarTargetForBooking(
+  courtName: string,
+  config: GoogleCalendarConfig
+): {
+  targetCalendarId: string;
+  isEventsPlace: boolean;
+  isViewDeck: boolean;
+  category: 'events' | 'pickleball';
+  calendarNameLabel: string;
+} {
+  const lower = (courtName || '').toLowerCase();
+  const isEventsPlace = lower.includes('events place') || lower.includes('banquet');
+  const isViewDeck = lower.includes('view deck') || lower.includes('deck') || lower.includes('lounge');
+
+  if (isEventsPlace || isViewDeck) {
+    const targetCalendarId =
+      config.eventsCalendarId.trim() ||
+      config.legacyCalendarId.trim() ||
+      config.pickleballCalendarId.trim();
+    return {
+      targetCalendarId,
+      isEventsPlace,
+      isViewDeck,
+      category: 'events',
+      calendarNameLabel: isEventsPlace ? "Events Place & Banquet Hall" : "View Deck Private Lounge",
+    };
+  }
+
+  // Pickleball Court (Court 1, Court 2, etc.)
+  const targetCalendarId =
+    config.pickleballCalendarId.trim() ||
+    config.legacyCalendarId.trim() ||
+    config.eventsCalendarId.trim();
+  return {
+    targetCalendarId,
+    isEventsPlace: false,
+    isViewDeck: false,
+    category: 'pickleball',
+    calendarNameLabel: 'Pickleball Courts',
   };
 }
 
@@ -169,11 +230,13 @@ async function getGoogleServiceAccountAccessToken(
 
 /**
  * Automatically pushes or updates a confirmed reservation into Google Calendar
- * Triggered on PayMongo down payment, full payment, or POS/cashier down payment
+ * Triggered in real time on PayMongo down payment, full payment, or POS/cashier down payment/walk-in/reschedule
  */
 export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
   success: boolean;
   googleEventId?: string;
+  targetCalendarId?: string;
+  calendarCategory?: 'events' | 'pickleball';
   error?: string;
 }> {
   try {
@@ -184,18 +247,17 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
       return { success: false, error: 'Auto-sync is disabled in settings' };
     }
 
-    if (!config.serviceAccountEmail || !config.privateKey || !config.calendarId) {
+    if (!config.serviceAccountEmail || !config.privateKey) {
       console.warn(
-        `[Google Calendar Auto-Sync] Credentials not fully configured. Calendar ID: ${config.calendarId || 'missing'}, Service Account: ${config.serviceAccountEmail || 'missing'}`
+        `[Google Calendar Auto-Sync] Service Account credentials not fully configured.`
       );
       return {
         success: false,
-        error: 'Google Service Account credentials or Calendar ID not configured',
+        error: 'Google Service Account credentials not configured',
       };
     }
 
     // 1. Fetch booking details with court and user profile
-    // Primary: Call SECURITY DEFINER RPC to bypass RLS safely
     let booking: any = null;
     const { data: rpcBooking, error: rpcErr } = await supabaseAdmin.rpc('get_booking_sync_details', {
       p_booking_id: bookingId,
@@ -217,6 +279,7 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
         guest_email: rpcBooking.guest_email,
         notes: rpcBooking.notes,
         google_calendar_event_id: rpcBooking.google_calendar_event_id,
+        google_calendar_target_id: rpcBooking.google_calendar_target_id,
         courts: {
           id: rpcBooking.court_id,
           name: rpcBooking.court_name,
@@ -247,6 +310,7 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
           guest_email,
           notes,
           google_calendar_event_id,
+          google_calendar_target_id,
           courts (
             id,
             name,
@@ -267,15 +331,33 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
       booking = fallbackBooking;
     }
 
+    // Do not push cancelled/expired bookings through create/update flow
+    if (['cancelled', 'cancelled_refund_pending', 'expired'].includes(booking.status)) {
+      await deleteGoogleCalendarEvent(booking.id);
+      return { success: true, error: 'Booking is cancelled; removed from Google Calendar.' };
+    }
+
     const courtData = Array.isArray(booking.courts) ? booking.courts[0] : booking.courts;
     const courtName = courtData?.name || 'C&J Arena Venue';
-    const courtLower = courtName.toLowerCase();
 
-    const isEventsPlace = courtLower.includes('events place') || courtLower.includes('banquet');
-    const isViewDeck = courtLower.includes('view deck') || courtLower.includes('deck');
+    // Separate target calendar according to Pickleball vs Events Place
+    const { targetCalendarId, isEventsPlace, isViewDeck, category } = getCalendarTargetForBooking(
+      courtName,
+      config
+    );
+
+    if (!targetCalendarId) {
+      console.warn(
+        `[Google Calendar Auto-Sync] Target Calendar ID is missing for category: ${category}`
+      );
+      return {
+        success: false,
+        error: `Target Google Calendar ID not configured for ${category === 'events' ? "Events Place" : "Pickleball Courts"}.`,
+      };
+    }
 
     const profileData = Array.isArray(booking.profiles) ? booking.profiles[0] : booking.profiles;
-    const guestName = booking.guest_name || profileData?.full_name || 'Client';
+    const guestName = booking.guest_name || profileData?.full_name || (category === 'events' ? 'Event Organizer' : 'Player');
     const guestPhone = booking.guest_phone || profileData?.phone || 'N/A';
     const guestEmail = booking.guest_email || profileData?.email || 'N/A';
 
@@ -284,8 +366,22 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
     const balanceRemaining = Math.max(0, totalPrice - downPayment);
 
     let venuePrefix = '🏓 [Court]';
-    if (isEventsPlace) venuePrefix = '🎉 [Events Place Rental]';
-    if (isViewDeck) venuePrefix = '🌆 [View Deck Lounge]';
+    let colorId = '10'; // 10 = Green / Basil
+    if (isEventsPlace) {
+      venuePrefix = '🎉 [Events Place Rental]';
+      colorId = '11'; // 11 = Flamingo / Red
+    } else if (isViewDeck) {
+      venuePrefix = '🌆 [View Deck Lounge]';
+      colorId = '5'; // 5 = Banana / Yellow
+    } else {
+      if (courtName.includes('1')) {
+        venuePrefix = '🏓 [Court 1 - Indoor]';
+        colorId = '10';
+      } else if (courtName.includes('2')) {
+        venuePrefix = '🏓 [Court 2 - Dual]';
+        colorId = '9'; // 9 = Blueberry / Dark Blue
+      }
+    }
 
     const paymentLabel =
       downPayment > 0 && downPayment < totalPrice
@@ -295,22 +391,22 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
     const eventSummary = `${venuePrefix} ${guestName} (${paymentLabel})`;
 
     const descriptionLines = [
-      `🏛️ VENUE: ${courtName}`,
-      `👤 GUEST: ${guestName}`,
-      `📞 CONTACT: ${guestPhone}`,
-      `✉️ EMAIL: ${guestEmail}`,
+      category === 'events' ? `🏛️ EVENT VENUE: ${courtName}` : `🏓 COURT FACILITY: ${courtName}`,
+      `👤 RESERVED BY: ${guestName}`,
+      `📞 CONTACT PHONE: ${guestPhone}`,
+      `✉️ EMAIL ADDRESS: ${guestEmail}`,
       `----------------------------------------`,
-      `💰 FINANCIAL SUMMARY:`,
-      `   • Total Package: ₱${totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
-      `   • Down Payment / Deposit Paid: ₱${downPayment.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
-      `   • Balance Due: ₱${balanceRemaining.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+      `💰 FINANCIAL BREAKDOWN:`,
+      `   • Total Amount: ₱${totalPrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+      `   • Down Payment / Paid: ₱${downPayment.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+      `   • Balance Remaining: ₱${balanceRemaining.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
       `   • Payment Method: ${(booking.payment_method || 'Online').toUpperCase()}`,
       `   • Status: ${booking.status.toUpperCase()}`,
       `----------------------------------------`,
       `⏱️ DURATION: ${booking.duration_hours || 1} Hour(s)`,
-      booking.notes ? `📝 PACKAGE / SPECIAL REQUESTS:\n${booking.notes}` : null,
+      booking.notes ? `📝 NOTES / SPECIAL REQUESTS:\n${booking.notes}` : null,
       `📍 ADDRESS: C&J's Events Place & Court Rental, 25 Bologna St., Muzon, Taytay, Rizal`,
-      `⚡ AUTOMATED BOOKING ID: #${booking.id}`,
+      `⚡ SYSTEM BOOKING ID: #${booking.id}`,
     ].filter(Boolean);
 
     // 2. Obtain Google Access Token
@@ -319,8 +415,25 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
       config.privateKey
     );
 
-    const targetCalendarId = encodeURIComponent(config.calendarId.trim());
+    const encodedTargetCalId = encodeURIComponent(targetCalendarId.trim());
     const existingGoogleEventId = booking.google_calendar_event_id;
+    const existingTargetCalId = booking.google_calendar_target_id;
+
+    // If previously synced to a DIFFERENT calendar (e.g. rescheduled from Court to Events Place), delete from old calendar
+    if (existingGoogleEventId && existingTargetCalId && existingTargetCalId !== targetCalendarId) {
+      try {
+        const oldCalEncoded = encodeURIComponent(existingTargetCalId.trim());
+        await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${oldCalEncoded}/events/${encodeURIComponent(existingGoogleEventId)}`,
+          {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+      } catch (delErr) {
+        console.warn('[Google Calendar Sync] Could not delete from old calendar on switch:', delErr);
+      }
+    }
 
     const eventBody = {
       summary: eventSummary,
@@ -334,7 +447,7 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
         dateTime: new Date(booking.end_time).toISOString(),
         timeZone: 'Asia/Manila',
       },
-      colorId: isEventsPlace ? '11' : isViewDeck ? '5' : '10', // 11=Red/Festive, 5=Yellow, 10=Green
+      colorId,
       reminders: {
         useDefault: false,
         overrides: [
@@ -344,11 +457,11 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
       },
     };
 
-    let googleApiUrl = `https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events`;
+    let googleApiUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodedTargetCalId}/events`;
     let method = 'POST';
 
-    // If event was previously synced, update it instead of creating a duplicate
-    if (existingGoogleEventId) {
+    // If event was previously synced to this same calendar, update it
+    if (existingGoogleEventId && (!existingTargetCalId || existingTargetCalId === targetCalendarId)) {
       googleApiUrl += `/${encodeURIComponent(existingGoogleEventId)}`;
       method = 'PUT';
     }
@@ -374,10 +487,11 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
 
     const savedEventId = apiData.id;
 
-    // 3. Record Google Event ID and sync timestamp in database
+    // 3. Record Google Event ID and target calendar in database
     const { error: rpcUpdateErr } = await supabaseAdmin.rpc('update_booking_google_event', {
       p_booking_id: booking.id,
       p_event_id: savedEventId,
+      p_target_calendar_id: targetCalendarId,
     });
 
     if (rpcUpdateErr) {
@@ -385,16 +499,22 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
         .from('bookings')
         .update({
           google_calendar_event_id: savedEventId,
+          google_calendar_target_id: targetCalendarId,
           google_calendar_synced_at: new Date().toISOString(),
         })
         .eq('id', booking.id);
     }
 
     console.log(
-      `[Google Calendar Auto-Sync SUCCESS] Synced booking #${booking.id} to Google Calendar (${savedEventId})`
+      `[Google Calendar Auto-Sync SUCCESS] Synced booking #${booking.id} to ${category.toUpperCase()} Calendar (${targetCalendarId}) -> Event ID: ${savedEventId}`
     );
 
-    return { success: true, googleEventId: savedEventId };
+    return {
+      success: true,
+      googleEventId: savedEventId,
+      targetCalendarId,
+      calendarCategory: category,
+    };
   } catch (err: any) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error('[Google Calendar Sync Exception]:', errorMsg);
@@ -403,23 +523,91 @@ export async function pushBookingToGoogleCalendar(bookingId: string): Promise<{
 }
 
 /**
+ * Remove or cancel an event on Google Calendar when a booking is cancelled, voided, or refunded
+ */
+export async function deleteGoogleCalendarEvent(bookingId: string): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const config = await getGoogleCalendarConfig();
+    if (!config.serviceAccountEmail || !config.privateKey) {
+      return { success: true }; // Nothing configured to delete
+    }
+
+    const { data: booking } = await supabaseAdmin
+      .from('bookings')
+      .select('id, court_id, google_calendar_event_id, google_calendar_target_id, courts (name)')
+      .eq('id', bookingId)
+      .single();
+
+    if (!booking || !booking.google_calendar_event_id) {
+      return { success: true };
+    }
+
+    const courtData = Array.isArray(booking.courts) ? booking.courts[0] : booking.courts;
+    const courtName = courtData?.name || '';
+    const { targetCalendarId } = getCalendarTargetForBooking(courtName, config);
+    const activeCalendarId = booking.google_calendar_target_id || targetCalendarId;
+
+    if (!activeCalendarId) return { success: true };
+
+    const accessToken = await getGoogleServiceAccountAccessToken(
+      config.serviceAccountEmail,
+      config.privateKey
+    );
+
+    const encodedCal = encodeURIComponent(activeCalendarId.trim());
+    const encodedEvent = encodeURIComponent(booking.google_calendar_event_id.trim());
+
+    const apiRes = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodedCal}/events/${encodedEvent}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    if (apiRes.ok || apiRes.status === 404 || apiRes.status === 410) {
+      // Clear event ID in database
+      await supabaseAdmin
+        .from('bookings')
+        .update({
+          google_calendar_event_id: null,
+          google_calendar_target_id: null,
+          google_calendar_synced_at: null,
+        })
+        .eq('id', booking.id);
+
+      console.log(`[Google Calendar Sync] Deleted event for cancelled booking #${booking.id}`);
+      return { success: true };
+    }
+
+    const errData = await apiRes.json().catch(() => ({}));
+    return { success: false, error: errData.error?.message || 'Failed to delete event from Google Calendar' };
+  } catch (err: any) {
+    console.warn('[Google Calendar Delete Warning]:', err);
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
  * Send a verification test event to confirm Google Calendar API integration
  */
-export async function testGoogleCalendarConnection(): Promise<{
+export async function testGoogleCalendarConnection(targetCategory: 'pickleball' | 'events' | 'both' = 'both'): Promise<{
   success: boolean;
-  eventId?: string;
-  calendarId?: string;
+  pickleballResult?: { success: boolean; message?: string; error?: string; calendarId?: string };
+  eventsResult?: { success: boolean; message?: string; error?: string; calendarId?: string };
   error?: string;
   message?: string;
 }> {
   try {
     const config = await getGoogleCalendarConfig();
 
-    if (!config.serviceAccountEmail || !config.privateKey || !config.calendarId) {
+    if (!config.serviceAccountEmail || !config.privateKey) {
       return {
         success: false,
-        error:
-          'Please provide your Google Calendar ID, Service Account Email, and Private Key in Settings.',
+        error: 'Please provide your Google Service Account Email and Private Key in Settings.',
       };
     }
 
@@ -432,51 +620,119 @@ export async function testGoogleCalendarConnection(): Promise<{
     const startTime = new Date(now.getTime() + 15 * 60 * 1000); // 15 mins from now
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);  // 1 hour later
 
-    const testEvent = {
-      summary: '✅ C&J Arena — Google Calendar Auto-Sync Verified',
-      description:
-        'Success! Your C&J Pickleball Arena and Events Place automated Google Calendar integration is working.\n\nWhenever a guest pays a down payment or reserves the Events Place or View Deck, events will be automatically created here in real time!',
-      location: "C&J's Events Place & Court Rental, 25 Bologna St., Muzon, Taytay, Rizal",
-      start: {
-        dateTime: startTime.toISOString(),
-        timeZone: 'Asia/Manila',
-      },
-      end: {
-        dateTime: endTime.toISOString(),
-        timeZone: 'Asia/Manila',
-      },
-      colorId: '10', // Green
-    };
+    let pickleballRes: { success: boolean; message?: string; error?: string; calendarId?: string } | undefined;
+    let eventsRes: { success: boolean; message?: string; error?: string; calendarId?: string } | undefined;
 
-    const targetCalendarId = encodeURIComponent(config.calendarId.trim());
-    const apiRes = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(testEvent),
+    // 1. Test Pickleball Calendar
+    if (targetCategory === 'pickleball' || targetCategory === 'both') {
+      const pCalId = config.pickleballCalendarId.trim() || config.legacyCalendarId.trim();
+      if (!pCalId) {
+        pickleballRes = {
+          success: false,
+          error: 'Pickleball Calendar ID is not specified.',
+        };
+      } else {
+        const testEvent = {
+          summary: '✅ 🏓 C&J Pickleball Court Calendar — Sync Verified',
+          description:
+            'Success! Your C&J Pickleball Arena Court 1 & Court 2 automated Google Calendar integration is working in real time!\n\nCourt reservations and walk-ins will be synced here automatically.',
+          location: "C&J's Events Place & Court Rental, 25 Bologna St., Muzon, Taytay, Rizal",
+          start: { dateTime: startTime.toISOString(), timeZone: 'Asia/Manila' },
+          end: { dateTime: endTime.toISOString(), timeZone: 'Asia/Manila' },
+          colorId: '10', // Green
+        };
+
+        const apiRes = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(pCalId)}/events`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testEvent),
+          }
+        );
+        const apiData = await apiRes.json();
+
+        if (apiRes.ok) {
+          pickleballRes = {
+            success: true,
+            calendarId: pCalId,
+            message: `Pickleball test event verified in ${pCalId}!`,
+          };
+        } else {
+          pickleballRes = {
+            success: false,
+            calendarId: pCalId,
+            error: apiData.error?.message || 'Access denied. Make sure calendar is shared with Service Account.',
+          };
+        }
       }
-    );
-
-    const apiData = await apiRes.json();
-
-    if (!apiRes.ok) {
-      return {
-        success: false,
-        error:
-          apiData.error?.message ||
-          'Failed to write test event to Google Calendar. Make sure your calendar is shared with the service account email with "Make changes to events" permission.',
-      };
     }
 
+    // 2. Test Events Place Calendar
+    if (targetCategory === 'events' || targetCategory === 'both') {
+      const eCalId = config.eventsCalendarId.trim() || config.legacyCalendarId.trim();
+      if (!eCalId) {
+        eventsRes = {
+          success: false,
+          error: 'Events Place Calendar ID is not specified.',
+        };
+      } else {
+        const testEvent = {
+          summary: '✅ 🎉 C&J Events Place & View Deck Calendar — Sync Verified',
+          description:
+            'Success! Your C&J 3rd Floor Events Place & 5th Floor View Deck automated Google Calendar integration is working in real time!\n\nBanquet hall rentals, catering events, and private lounge reservations will be synced here automatically.',
+          location: "C&J's Events Place & Court Rental, 25 Bologna St., Muzon, Taytay, Rizal",
+          start: { dateTime: startTime.toISOString(), timeZone: 'Asia/Manila' },
+          end: { dateTime: endTime.toISOString(), timeZone: 'Asia/Manila' },
+          colorId: '11', // Red / Flamingo
+        };
+
+        const apiRes = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(eCalId)}/events`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testEvent),
+          }
+        );
+        const apiData = await apiRes.json();
+
+        if (apiRes.ok) {
+          eventsRes = {
+            success: true,
+            calendarId: eCalId,
+            message: `Events Place test event verified in ${eCalId}!`,
+          };
+        } else {
+          eventsRes = {
+            success: false,
+            calendarId: eCalId,
+            error: apiData.error?.message || 'Access denied. Make sure calendar is shared with Service Account.',
+          };
+        }
+      }
+    }
+
+    const overallSuccess =
+      targetCategory === 'pickleball'
+        ? pickleballRes?.success === true
+        : targetCategory === 'events'
+        ? eventsRes?.success === true
+        : (pickleballRes?.success ?? true) && (eventsRes?.success ?? true);
+
     return {
-      success: true,
-      eventId: apiData.id,
-      calendarId: config.calendarId,
-      message: `Test event created successfully in ${config.calendarId}! Check your Google Calendar.`,
+      success: overallSuccess,
+      pickleballResult: pickleballRes,
+      eventsResult: eventsRes,
+      message: overallSuccess
+        ? 'Google Calendar verification successful!'
+        : 'One or more calendar tests failed. Check calendar sharing permissions.',
     };
   } catch (err: any) {
     return {

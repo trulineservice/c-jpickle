@@ -19,7 +19,7 @@ const bebasNeue = Bebas_Neue({
 
 export const metadata: Metadata = {
   title: "C&J Pickleball • Events Place & Court Rental | Taytay, Rizal",
-  description: "Indoor pickleball and basketball courts, events place, and 5th-floor view deck dining in Taytay, Rizal. Fixed ₱300/hr court rate.",
+  description: "Indoor pickleball and basketball courts, events place, and 5th-floor view deck dining in Taytay, Rizal. Fixed ₱350/hr court rate.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

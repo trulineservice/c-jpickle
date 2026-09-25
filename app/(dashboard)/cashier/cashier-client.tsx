@@ -39,9 +39,10 @@ import {
 import { ComplianceDiscountPanel } from "@/components/pos/compliance-discount-panel";
 import { PosCartPanel, type PosCartItem } from "@/components/pos/pos-cart-panel";
 import { SalesInvoiceModal } from "@/components/pos/sales-invoice-modal";
+import { PwdSeniorDiscountModal } from "@/components/pos/pwd-senior-discount-modal";
 import { PosMasterPinModal } from "@/components/pos/pos-master-pin-modal";
 import { playHapticSound } from "@/lib/motion-feedback";
-import { usePosCartStore } from "@/lib/stores";
+import { usePosCartStore, computeCartTotals } from "@/lib/stores/use-pos-cart-store";
 import { 
   Table, 
   TableBody, 
@@ -123,6 +124,8 @@ export default function CashierClient({
     setViewMode,
     discountType,
     setDiscountType,
+    discountItemSelections,
+    setDiscountItemSelections,
     customerName,
     setCustomerName,
     customerTin,
@@ -134,6 +137,9 @@ export default function CashierClient({
     addToCart: storeAddToCart,
     updateQuantity: storeUpdateQuantity,
   } = usePosCartStore();
+
+  // PWD / Senior Itemized Discount Modal state
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
 
   // Cashier Duty Shift State
   const [dutySession, setDutySession] = useState<StaffDutySessionInfo | null>(initialDutySession);
@@ -363,6 +369,31 @@ export default function CashierClient({
     }
   };
 
+  const handleOpenDiscountModal = (type: "senior_citizen" | "pwd") => {
+    if (cart.length === 0) {
+      setComplianceError("Please add items to cart before configuring PWD / Senior discount.");
+      return;
+    }
+    setDiscountType(type);
+    setIsDiscountModalOpen(true);
+  };
+
+  const handleApplyDiscountModal = (payload: {
+    discountType: "none" | "senior_citizen" | "pwd" | "student" | "employee";
+    selections: Record<string, number>;
+    customerName: string;
+    discountIdNumber: string;
+    customerTin: string;
+  }) => {
+    setDiscountType(payload.discountType);
+    setDiscountItemSelections(payload.selections);
+    setCustomerName(payload.customerName);
+    setDiscountIdNumber(payload.discountIdNumber);
+    setCustomerTin(payload.customerTin);
+    setIsDiscountModalOpen(false);
+    setComplianceError(null);
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
 
@@ -388,17 +419,8 @@ export default function CashierClient({
 
     try {
       const rawGross = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-
-      // Compute net payable to calculate exact split amounts
-      let discountAmount = 0;
-      if (discountType === "senior_citizen" || discountType === "pwd") {
-        discountAmount = Math.round((rawGross * 0.20) * 100) / 100;
-      } else if (discountType === "student") {
-        discountAmount = rawGross > 0 ? Math.min(10, rawGross) : 0;
-      } else if (discountType === "employee") {
-        discountAmount = Math.round((rawGross * 0.10) * 100) / 100;
-      }
-      const netPayable = Math.max(0, Math.round((rawGross - discountAmount) * 100) / 100);
+      const totals = computeCartTotals(cart, discountType, discountItemSelections);
+      const netPayable = totals.netPayable;
 
       let finalPaymentMethod = paymentMethod;
       if (paymentMethod === "Split Payment") {
@@ -438,6 +460,7 @@ export default function CashierClient({
         customerTin: customerTin.trim() || undefined,
         discountType,
         discountIdNumber: discountIdNumber.trim() || undefined,
+        discountItemSelections: isStatutory ? discountItemSelections : undefined,
       });
 
       playHapticSound("success");
@@ -1127,6 +1150,8 @@ export default function CashierClient({
             discountIdNumber={discountIdNumber}
             onDiscountIdNumberChange={setDiscountIdNumber}
             complianceError={complianceError}
+            onOpenDiscountModal={handleOpenDiscountModal}
+            selectedItemCount={Object.values(discountItemSelections).reduce((a, b) => a + b, 0)}
           />
 
           <PosCartPanel
@@ -1137,6 +1162,7 @@ export default function CashierClient({
             paymentMethod={paymentMethod}
             onPaymentMethodChange={setPaymentMethod}
             discountType={discountType}
+            discountItemSelections={discountItemSelections}
             splitEwalletPercent={splitEwalletPercent}
             onSplitEwalletPercentChange={setSplitEwalletPercent}
             splitEwalletAmount={splitEwalletAmount}
@@ -1148,6 +1174,19 @@ export default function CashierClient({
           />
         </div>
       </div>
+
+      {/* PWD & Senior Citizen Itemized Discount Selector Modal */}
+      <PwdSeniorDiscountModal
+        isOpen={isDiscountModalOpen}
+        onClose={() => setIsDiscountModalOpen(false)}
+        cart={cart}
+        discountType={discountType}
+        initialSelections={discountItemSelections}
+        initialCustomerName={customerName}
+        initialDiscountIdNumber={discountIdNumber}
+        initialCustomerTin={customerTin}
+        onApply={handleApplyDiscountModal}
+      />
 
       {/* Official Sales Invoice Thermal Print Modal */}
       <SalesInvoiceModal

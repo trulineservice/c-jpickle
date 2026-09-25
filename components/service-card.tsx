@@ -27,6 +27,7 @@ export interface ServiceCardProps {
   image: string;
   icon: React.ReactNode;
   ctaText: string;
+  priceBadge?: string;
   isLoggedIn?: boolean;
 }
 
@@ -37,6 +38,7 @@ export function ServiceCard({
   image,
   icon,
   ctaText,
+  priceBadge,
   isLoggedIn = false,
 }: ServiceCardProps) {
   return (
@@ -50,12 +52,20 @@ export function ServiceCard({
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 400px"
           className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
         />
+        {/* Price Badge Overlay */}
+        {priceBadge && (
+          <div className="absolute top-3 right-3 z-10">
+            <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#0B2A67]/90 backdrop-blur-md text-[#FFD21C] text-xs font-black uppercase tracking-wider shadow-md border border-white/20">
+              {priceBadge}
+            </span>
+          </div>
+        )}
         {/* Subtle gradient vignette */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-60" />
       </div>
 
       {/* Floating Circular Yellow Icon Badge overlapping boundary */}
-      <div className="relative px-6 -mt-7 z-10">
+      <div className="relative px-6 -mt-7 z-10 flex items-center justify-between">
         <div className="w-14 h-14 rounded-full bg-[#FFD21C] text-[#0B2A67] shadow-md border-4 border-white flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
           {icon}
         </div>

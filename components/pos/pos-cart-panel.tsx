@@ -3,6 +3,7 @@
 import React from "react";
 import { ShoppingCart, Plus, Minus, Trash2, Banknote, CreditCard, QrCode, Loader2, Zap, ArrowLeftRight, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { computeCartTotals } from "@/lib/stores/use-pos-cart-store";
 
 export interface PosCartItem {
   id: string;
@@ -23,6 +24,7 @@ export interface PosCartPanelProps {
   paymentMethod: string;
   onPaymentMethodChange: (method: string) => void;
   discountType: "none" | "senior_citizen" | "pwd" | "student" | "employee";
+  discountItemSelections?: Record<string, number>;
   splitEwalletPercent?: number;
   onSplitEwalletPercentChange?: (pct: number) => void;
   splitEwalletAmount?: string;
@@ -41,6 +43,7 @@ export function PosCartPanel({
   paymentMethod,
   onPaymentMethodChange,
   discountType,
+  discountItemSelections = {},
   splitEwalletPercent = 50,
   onSplitEwalletPercentChange,
   splitEwalletAmount = "",
@@ -50,24 +53,24 @@ export function PosCartPanel({
   isProcessing,
   onCheckout,
 }: PosCartPanelProps) {
-  // Financial computations (tax removed, straight discounts applied)
-  const grossSubtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  // Financial computations utilizing centralized store calculation logic
+  const totals = computeCartTotals(cart, discountType, discountItemSelections);
+  const grossSubtotal = totals.grossSubtotal;
+  const discountAmount = totals.discountAmount;
+  const netPayable = totals.netPayable;
 
-  let discountAmount = 0;
   let discountLabel = "";
-
   if (discountType === "senior_citizen" || discountType === "pwd") {
-    discountAmount = Math.round((grossSubtotal * 0.20) * 100) / 100;
-    discountLabel = discountType === "senior_citizen" ? "Senior Citizen (20%)" : "PWD (20%)";
+    const selectedCount = Object.values(discountItemSelections).reduce((a, b) => a + b, 0);
+    const labelPrefix = discountType === "senior_citizen" ? "Senior Citizen" : "PWD";
+    discountLabel = selectedCount > 0
+      ? `${labelPrefix} (20% Off on ${selectedCount} selected item/s)`
+      : `${labelPrefix} (20%)`;
   } else if (discountType === "student") {
-    discountAmount = grossSubtotal > 0 ? Math.min(10, grossSubtotal) : 0;
     discountLabel = "Student Discount (₱10 Off)";
   } else if (discountType === "employee") {
-    discountAmount = Math.round((grossSubtotal * 0.10) * 100) / 100;
     discountLabel = "Employee Discount (10%)";
   }
-
-  const netPayable = Math.max(0, Math.round((grossSubtotal - discountAmount) * 100) / 100);
 
   // Split Payment Amount Calculations
   const isSplitPayment = paymentMethod === "Split Payment";
@@ -180,10 +183,20 @@ export function PosCartPanel({
         ) : (
           cart.map((item) => {
             const itemKey = item.cart_item_key || item.id;
+            const discountedQty = Math.min(
+              item.quantity,
+              Math.max(0, discountItemSelections[itemKey] || 0)
+            );
+            const isStatutory = discountType === "senior_citizen" || discountType === "pwd";
+
             return (
               <div
                 key={itemKey}
-                className="flex items-center justify-between p-3.5 rounded-2xl border border-[#E2E8F0] dark:border-white/15 bg-[#F8FAFC] dark:bg-[#030F28] hover:border-[#0B2A67] transition-all shadow-2xs"
+                className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all shadow-2xs ${
+                  isStatutory && discountedQty > 0
+                    ? "border-[#007d48]/40 bg-[#007d48]/5 dark:bg-emerald-950/20"
+                    : "border-[#E2E8F0] dark:border-white/15 bg-[#F8FAFC] dark:bg-[#030F28] hover:border-[#0B2A67]"
+                }`}
               >
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -191,6 +204,11 @@ export function PosCartPanel({
                     {item.dispensed_volume !== undefined && item.dispensed_volume > 0 && (
                       <span className="px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-[#EDF4FC] dark:bg-white/10 text-[#0B2A67] dark:text-[#FFD21C] border border-[#0B2A67]/20 rounded">
                         {item.dispensed_volume.toLocaleString('en-US')} {item.base_unit || 'mL'}
+                      </span>
+                    )}
+                    {isStatutory && discountedQty > 0 && (
+                      <span className="px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-[#007d48] text-white rounded-full">
+                        {discountType === "senior_citizen" ? "Senior" : "PWD"} 20% Off ({discountedQty}x)
                       </span>
                     )}
                   </div>

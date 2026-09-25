@@ -146,7 +146,7 @@ export default function BookPage() {
             name: c.name,
             type: c.type || (c.name?.toLowerCase().includes('outdoor') ? 'outdoor' : 'indoor'),
             hourly_rate:
-              c.hourly_rate !== undefined && c.hourly_rate !== null ? Number(c.hourly_rate) : 300,
+              c.hourly_rate !== undefined && c.hourly_rate !== null ? Number(c.hourly_rate) : 350,
             is_active: c.is_active ?? true,
             created_at: c.created_at || new Date().toISOString(),
           }));

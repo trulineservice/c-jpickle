@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.courts (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   name text NOT NULL UNIQUE,
   type text NOT NULL DEFAULT 'indoor' CHECK (type IN ('indoor', 'outdoor')),
-  hourly_rate numeric(10, 2) NOT NULL DEFAULT 300.00,
+  hourly_rate numeric(10, 2) NOT NULL DEFAULT 350.00,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now())

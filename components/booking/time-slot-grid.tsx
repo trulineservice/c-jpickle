@@ -56,7 +56,7 @@ export function TimeSlotGrid({
   timeFilter,
   onFilterChange,
   durationHours = 1,
-  hourlyRate = 300,
+  hourlyRate = 350,
   onClearSelection,
 }: TimeSlotGridProps) {
   // Normalize effective selected slots sorted chronologically

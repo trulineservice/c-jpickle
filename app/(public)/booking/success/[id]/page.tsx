@@ -153,7 +153,7 @@ export default async function BookingSuccessPage({ params, searchParams }: PageP
       start_time: now.toISOString(),
       end_time: oneHourLater.toISOString(),
       duration_hours: 1,
-      total_price: 300,
+      total_price: 350,
       currency: 'PHP',
       status: 'paid',
       payment_method: 'paymongo',
@@ -162,7 +162,7 @@ export default async function BookingSuccessPage({ params, searchParams }: PageP
       courts: {
         name: 'Court 1 - Indoor (Pro Cushion)',
         type: 'indoor',
-        hourly_rate: 300,
+        hourly_rate: 350,
       },
       profiles: null,
     };

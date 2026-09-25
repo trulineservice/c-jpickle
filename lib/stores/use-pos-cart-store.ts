@@ -26,15 +26,30 @@ export interface PosCartTotals {
   netPayable: number;
 }
 
-export function computeCartTotals(cart: PosCartItem[], discountType: PosDiscountType): PosCartTotals {
+export function computeCartTotals(
+  cart: PosCartItem[],
+  discountType: PosDiscountType,
+  discountItemSelections: Record<string, number> = {}
+): PosCartTotals {
   const grossSubtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const isStatutory = discountType === 'senior_citizen' || discountType === 'pwd';
 
   let discountAmount = 0;
+  let discountableGross = 0;
 
   if (discountType === 'senior_citizen' || discountType === 'pwd') {
-    // 20% statutory discount applied directly to gross
-    discountAmount = Math.round((grossSubtotal * 0.20) * 100) / 100;
+    const hasExplicitSelections = Object.keys(discountItemSelections).length > 0;
+    if (hasExplicitSelections) {
+      discountableGross = cart.reduce((acc, item) => {
+        const key = item.cart_item_key || item.id;
+        const selectedQty = Math.min(item.quantity, Math.max(0, discountItemSelections[key] || 0));
+        return acc + item.price * selectedQty;
+      }, 0);
+    } else {
+      discountableGross = grossSubtotal;
+    }
+    // 20% statutory discount applied directly to designated items gross
+    discountAmount = Math.round((discountableGross * 0.20) * 100) / 100;
   } else if (discountType === 'student') {
     // Always flat 10 pesos off total order (capped at grossSubtotal)
     discountAmount = grossSubtotal > 0 ? Math.min(10, grossSubtotal) : 0;
@@ -64,6 +79,7 @@ interface PosCartStore {
   splitEwalletAmount: string;
   splitCashAmount: string;
   discountType: PosDiscountType;
+  discountItemSelections: Record<string, number>;
   customerName: string;
   customerTin: string;
   discountIdNumber: string;
@@ -95,6 +111,9 @@ interface PosCartStore {
   setSplitEwalletAmount: (amt: string) => void;
   setSplitCashAmount: (amt: string) => void;
   setDiscountType: (type: PosDiscountType) => void;
+  setDiscountItemSelections: (selections: Record<string, number>) => void;
+  setDiscountItemQuantity: (itemKey: string, quantity: number) => void;
+  clearDiscountItemSelections: () => void;
   setCustomerName: (name: string) => void;
   setCustomerTin: (tin: string) => void;
   setDiscountIdNumber: (idNum: string) => void;
@@ -116,6 +135,7 @@ export const usePosCartStore = create<PosCartStore>()(
       splitEwalletAmount: '',
       splitCashAmount: '',
       discountType: 'none',
+      discountItemSelections: {},
       customerName: '',
       customerTin: '',
       discountIdNumber: '',
@@ -171,9 +191,14 @@ export const usePosCartStore = create<PosCartStore>()(
         if (!item) return { requiresPin: false };
 
         if (item.quantity + delta <= 0) {
-          set((state) => ({
-            cart: state.cart.filter((i) => (i.cart_item_key || i.id) !== id),
-          }));
+          set((state) => {
+            const nextSelections = { ...state.discountItemSelections };
+            delete nextSelections[id];
+            return {
+              cart: state.cart.filter((i) => (i.cart_item_key || i.id) !== id),
+              discountItemSelections: nextSelections,
+            };
+          });
           return { requiresPin: false };
         }
 
@@ -185,15 +210,21 @@ export const usePosCartStore = create<PosCartStore>()(
       },
 
       removeItem: (id) => {
-        set((state) => ({
-          cart: state.cart.filter((i) => (i.cart_item_key || i.id) !== id),
-        }));
+        set((state) => {
+          const nextSelections = { ...state.discountItemSelections };
+          delete nextSelections[id];
+          return {
+            cart: state.cart.filter((i) => (i.cart_item_key || i.id) !== id),
+            discountItemSelections: nextSelections,
+          };
+        });
       },
 
       clearCart: () => {
         set({
           cart: [],
           discountType: 'none',
+          discountItemSelections: {},
           customerName: '',
           customerTin: '',
           discountIdNumber: '',
@@ -213,7 +244,22 @@ export const usePosCartStore = create<PosCartStore>()(
       setSplitEwalletPercent: (splitEwalletPercent) => set({ splitEwalletPercent }),
       setSplitEwalletAmount: (splitEwalletAmount) => set({ splitEwalletAmount }),
       setSplitCashAmount: (splitCashAmount) => set({ splitCashAmount }),
-      setDiscountType: (discountType) => set({ discountType }),
+      setDiscountType: (discountType) =>
+        set((state) => {
+          if (discountType === 'none') {
+            return { discountType, discountItemSelections: {} };
+          }
+          return { discountType };
+        }),
+      setDiscountItemSelections: (discountItemSelections) => set({ discountItemSelections }),
+      setDiscountItemQuantity: (itemKey, quantity) =>
+        set((state) => ({
+          discountItemSelections: {
+            ...state.discountItemSelections,
+            [itemKey]: Math.max(0, quantity),
+          },
+        })),
+      clearDiscountItemSelections: () => set({ discountItemSelections: {} }),
       setCustomerName: (customerName) => set({ customerName }),
       setCustomerTin: (customerTin) => set({ customerTin }),
       setDiscountIdNumber: (discountIdNumber) => set({ discountIdNumber }),
@@ -228,6 +274,7 @@ export const usePosCartStore = create<PosCartStore>()(
         set({
           cart: [],
           discountType: 'none',
+          discountItemSelections: {},
           customerName: '',
           customerTin: '',
           discountIdNumber: '',
@@ -247,6 +294,7 @@ export const usePosCartStore = create<PosCartStore>()(
         splitEwalletAmount: state.splitEwalletAmount,
         splitCashAmount: state.splitCashAmount,
         discountType: state.discountType,
+        discountItemSelections: state.discountItemSelections,
         customerName: state.customerName,
         customerTin: state.customerTin,
         discountIdNumber: state.discountIdNumber,

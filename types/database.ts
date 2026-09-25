@@ -65,7 +65,10 @@ export interface Booking {
   refund_status?: RefundStatus | string | null;
   refund_reference?: string | null;
   refund_processed_at?: string | null;
-  refund_processed_by?: string | null;
+  down_payment_amount?: number;
+  google_calendar_event_id?: string | null;
+  google_calendar_target_id?: string | null;
+  google_calendar_synced_at?: string | null;
   cashier_id?: string | null;
 }
 
@@ -228,7 +231,7 @@ export interface PayMongoCheckoutPayload {
       show_description: boolean;
       show_line_items: boolean;
       line_items: Array<{
-        amount: number; // in centavos (e.g. 30000 = ₱300.00)
+        amount: number; // in centavos (e.g. 35000 = ₱350.00)
         currency: string; // 'PHP'
         name: string;
         quantity: number;
